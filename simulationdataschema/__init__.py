@@ -16,4 +16,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-from .general import SimulationWorkflow, SimulationWorkflowMethod, SimulationWorkflowResults
+from .general import Computation
