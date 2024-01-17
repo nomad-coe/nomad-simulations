@@ -58,26 +58,28 @@ from .system import ModelSystem
 
 
 class Computation(BaseComputation, EntryData):
-    '''
-    '''
+    """ """
+
     # m_def = Section(extends_base_section=True)
     model_system = SubSection(sub_section=ModelSystem.m_def, repeats=True)
     # method = SubSection(
-        # sub_section=Method.m_def,
-        # description='''
-        # The input methodological parameters used for the computation.
-        # ''',
-        # repeats=True,
+    # sub_section=Method.m_def,
+    # description='''
+    # The input methodological parameters used for the computation.
+    # ''',
+    # repeats=True,
     # )
     # calculation = SubSection(
-        # sub_section=Calculation.m_def,
-        # description='''
-        # The output of a computation. It can reference a specific system and method section.
-        # ''',
-        # repeats=True,
+    # sub_section=Calculation.m_def,
+    # description='''
+    # The output of a computation. It can reference a specific system and method section.
+    # ''',
+    # repeats=True,
     # )
 
-    def _set_system_tree_index(self, system_parent: ModelSystem, tree_index: np.int32 = 0):
+    def _set_system_tree_index(
+        self, system_parent: ModelSystem, tree_index: np.int32 = 0
+    ):
         for system_child in system_parent.model_system:
             system_child.tree_index = tree_index + 1
             self._set_system_tree_index(system_child, tree_index + 1)
@@ -89,7 +91,7 @@ class Computation(BaseComputation, EntryData):
         # define it as the last system reported (CHECK THIS!).
         # TODO extend adding the proper representative system extraction using `normalizer.py`
         if len(self.model_system) == 0:
-            logger.error('No system information reported.')
+            logger.error("No system information reported.")
             return
         system_ref = self.model_system[-1]
         system_ref.is_representative = True

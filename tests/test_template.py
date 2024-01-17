@@ -21,6 +21,7 @@ import pytest
 from nomad.utils import get_logger
 from nomad.datamodel import EntryArchive, EntryMetadata
 
+
 def approx(value, abs=0, rel=1e-6):
     return pytest.approx(value, abs=abs, rel=rel)
 
