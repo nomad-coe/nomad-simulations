@@ -1,0 +1,4 @@
+plugin_type: schema
+name: schemas/simulationdataschema
+description: |
+  This is a collection of schemas for simulation data.

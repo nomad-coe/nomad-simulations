@@ -1,0 +1,27 @@
+name: install-and-test
+on: [push]
+jobs:
+  install-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install .[dev,tests]
+    - name: mypy
+      run: |
+        python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional simulationdataschema tests
+    - name: Test with pytest
+      if: success() || failure()
+      run: |
+        python -m pytest -sv tests
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: chartboost/ruff-action@v1
