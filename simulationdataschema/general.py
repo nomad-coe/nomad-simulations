@@ -50,7 +50,6 @@
 # m_env.m_add_sub_section(Environment.packages, system.m_package)
 import numpy as np
 
-from nomad.datamodel import EntryArchive
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Computation as BaseComputation
 from nomad.metainfo import SubSection
@@ -84,7 +83,7 @@ class Computation(BaseComputation, EntryData):
             system_child.tree_index = tree_index + 1
             self._set_system_tree_index(system_child, tree_index + 1)
 
-    def normalize(self, archive: EntryArchive, logger) -> None:
+    def normalize(self, archive, logger) -> None:
         super(EntryData, self).normalize(archive, logger)
 
         # Finding which is the representative system of a calculation: typically, we will

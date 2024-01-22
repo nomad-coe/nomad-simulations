@@ -54,7 +54,7 @@ from nomad.units import ureg
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel import EntryArchive
+
 from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
 from nomad.datamodel.metainfo.basesections import System, RealSpace
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
@@ -180,7 +180,7 @@ class AtomicCell(RealSpace):
         """,
     )
 
-    def normalize(self, archive: EntryArchive, logger) -> None:
+    def normalize(self, archive, logger) -> None:
         # Check if AtomicCell section exists
         if self is None:
             logger.error("Could not find the basic System.atomic_cell information.")
@@ -750,7 +750,7 @@ class ModelSystem(System):
             sec_symmetry.m_set(val, symmetry.get(key))
         sec_symmetry.atomic_cell_ref = self.atomic_cell[-1]
 
-    def normalize(self, archive: EntryArchive, logger) -> None:
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.logger = logger
 
