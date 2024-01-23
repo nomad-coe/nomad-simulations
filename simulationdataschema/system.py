@@ -39,7 +39,7 @@ import numpy as np
 import ase
 
 from matid import SymmetryAnalyzer, Classifier  # pylint: disable=import-error
-from matid.classifications import (
+from matid.classification.classifications import (
     Class0D,
     Atom,
     Class1D,
