@@ -181,98 +181,78 @@ class AtomicCell(RealSpace):
     )
 
     def normalize(self, archive, logger) -> None:
+        """
+        Normalizes the AtomicCell parsed section by:
+            1. Resolving the `labels`, `atomic_numbers`, and `n_atoms` in `self.resolve_labels_and_atomic_numbers()`.
+            2. Returning an ASE Atoms object in `self.resolve_labels_and_atomic_numbers()`.
+            3. Setting the pbc in ASE Atoms from the parsed data.
+            4. Setting the positions in ASE Atoms from the parsed data.
+            5. Resolving the `lattice_vectors_reciprocal` from the parsed data, and setting
+            the `lattice_vectors` in ASE Atoms.
+            6. Storing the ASE Atoms object in `self.m_cache['ase_atoms']` for using it in
+            other upper-level normalizations.
+        """
+        super().normalize(archive, logger)
+
         # Check if AtomicCell section exists
         if self is None:
             logger.error("Could not find the basic System.atomic_cell information.")
+            return
 
-        # Resolving atom_labels (either directly or from atomic_numbers)
-        atom_labels = self.labels
-        atomic_numbers = self.atomic_numbers
-        if atom_labels is None:
-            if atomic_numbers is None:
-                logger.error(
-                    "System.atomic_cell has neither labels nor atomic_numbers defined."
-                )
-                return
+        if not self.labels or not self.atomic_numbers:
+            logger.error(
+                "Could not read parsed AtomicCell.labels or AtomicCell.atomic_positions."
+            )
+            return
+
+        # We will use ASE Atoms functionalities to extract information about the AtomicCell
+        ase_atoms = ase.Atoms()
+
+        # Labels
+        if not self.labels:
             try:
                 atom_labels = [
-                    ase.data.chemical_symbols[number] for number in atomic_numbers
+                    ase.data.chemical_symbols[number] for number in self.atomic_numbers
                 ]
             except IndexError:
                 logger.error(
-                    "System.atomic_cell has atomic_numbers that are out of range of the periodic table."
+                    "The AtomicCell.atomic_numbers are out of range of the periodic table."
                 )
                 return
-            self.labels = atom_labels
         self.n_atoms = len(atom_labels)
-
-        # Using ASE functionalities to write atomic_numbers
-        ase_atoms = ase.Atoms(symbols=atom_labels)
-        chemical_symbols = ase_atoms.get_chemical_symbols()
-        if atom_labels != list(chemical_symbols):
-            logger.warning(
-                "Chemical symbols in System.atomic_cell.labels are ambigous and cannot be "
-                "recognized by ASE."
-            )
-        if atomic_numbers is None:
+        self.labels = atom_labels
+        ase_atoms.set_chemical_symbols(atom_labels)
+        # Atomic numbers
+        if not self.atomic_numbers:
             atomic_numbers = ase_atoms.get_atomic_numbers()
-        else:
-            if atomic_numbers != list(ase_atoms.get_atomic_numbers()):
-                logger.info(
-                    "The parsed System.atomic_cell.atomic_numbers do not coincide with "
-                    "the ASE extracted numbers from the labels. We will rewrite the parsed data."
-                )
-                atomic_numbers = ase_atoms.get_atomic_numbers()
         self.atomic_numbers = atomic_numbers
 
         # Periodic boundary conditions
-        pbc = self.periodic_boundary_conditions
-        if pbc is None:
-            pbc = [False, False, False]
-            logger.info(
-                "Could not find System.atomic_cell.periodic_boundary_conditions information. "
-                "Setting them to False."
-            )
-            self.periodic_boundary_conditions = pbc
-        ase_atoms.set_pbc(pbc)
+        if self.periodic_boundary_conditions:
+            self.periodic_boundary_conditions = [False, False, False]
+        ase_atoms.set_pbc(self.periodic_boundary_conditions)
 
         # Atom positions
-        atom_positions = self.positions
-        if atom_positions is None or len(atom_positions) == 0:
-            logger.error("Could not find System.atomic_cell.positions.")
-            return
-        if len(atom_positions) != len(atom_labels):
+        if not self.positions and len(self.positions) != len(self.labels):
             logger.error(
-                "Length of System.atomic_cell.positions does not coincide with the length "
-                "of the System.atomic_cell.labels."
+                "Length of AtomicCell.positions does not coincide with the length "
+                "of the AtomicCell.labels."
             )
             return
-        ase_atoms.set_positions(atom_positions.to("angstrom").magnitude)
+        ase_atoms.set_positions(self.positions.to("angstrom").magnitude)
 
         # Lattice vectors and reciprocal lattice vectors
-        lattice_vectors = self.lattice_vectors
-        if lattice_vectors is None:
-            logger.info("Could not find System.atomic_cell.lattice_vectors.")
+        if not self.lattice_vectors:
+            logger.info("Could not find AtomicCell.lattice_vectors.")
         else:
-            ase_atoms.set_cell(lattice_vectors.to("angstrom").magnitude)
-            lattice_vectors_reciprocal = self.lattice_vectors_reciprocal
-            if lattice_vectors_reciprocal is None:
+            ase_atoms.set_cell(self.lattice_vectors.to("angstrom").magnitude)
+            if not self.lattice_vectors_reciprocal:
                 self.lattice_vectors_reciprocal = (
                     2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
                 )
 
         # Store temporarily the ase.Atoms object to use in the ModelSystem.normalizer()
         self.m_cache["ase_atoms"] = ase_atoms
-
-    def to_ase_atoms(self, nomad_atomic_cell) -> ase.Atoms:
-        """
-        Generates a ASE Atoms object with the most basic information from the parsed AtomicCell
-        section (labels, positions, and lattice_vectors).
-        """
-        ase_atoms = ase.Atoms(symbols=nomad_atomic_cell.labels)
-        ase_atoms.set_positions(nomad_atomic_cell.positions.to("angstrom").magnitude)
-        ase_atoms.set_cell(nomad_atomic_cell.lattice_vectors.to("angstrom").magnitude)
-        return ase_atoms
 
 
 class Symmetry(ArchiveSection):
@@ -382,6 +362,69 @@ class Symmetry(ArchiveSection):
         a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
     )
 
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+
+class ChemicalFormula(ArchiveSection):
+    """
+    A base section used to store the chemical formulas of a ModelSystem in different formats.
+    """
+
+    descriptive = Quantity(
+        type=str,
+        description="""
+        The chemical formula of the system as a string to be descriptive of the computation.
+        It is derived from `elemental_composition` if not specified, with non-reduced integer
+        numbers for the proportions of the elements.
+        """,
+    )
+
+    reduced = Quantity(
+        type=str,
+        description="""
+        Alphabetically sorted chemical formula with reduced integer chemical proportion
+        numbers. The proportion number is omitted if it is 1.
+        """,
+    )
+
+    iupac = Quantity(
+        type=str,
+        description="""
+        Chemical formula where the elements are ordered using a formal list based on
+        electronegativity as defined in the IUPAC nomenclature of inorganic chemistry (2005):
+
+            - https://en.wikipedia.org/wiki/List_of_inorganic_compounds
+
+        Contains reduced integer chemical proportion numbers where the proportion number
+        is omitted if it is 1.
+        """,
+    )
+
+    hill = Quantity(
+        type=str,
+        description="""
+        Chemical formula where Carbon is placed first, then Hydrogen, and then all the other
+        elements in alphabetical order. If Carbon is not present, the order is alphabetical.
+        """,
+    )
+
+    anonymous = Quantity(
+        type=str,
+        description="""
+        Formula with the elements ordered by their reduced integer chemical proportion
+        number, and the chemical species replaced by alphabetically ordered letters. The
+        proportion number is omitted if it is 1.
+
+        Examples: H2O becomes A2B and H2O2 becomes AB. The letters are drawn from the English
+        alphabet that may be extended by increasing the number of letters: A, B, ..., Z, Aa, Ab
+        and so on. This definition is in line with the similarly named OPTIMADE definition.
+        """,
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
 
 class ModelSystem(System):
     """
@@ -468,70 +511,6 @@ class ModelSystem(System):
         """,
     )
 
-    time_step = Quantity(
-        type=np.int32,
-        description="""
-        Specific time snapshot of the ModelSystem. The time evolution is then encoded
-        in a list of ModelSystems under Computation where for each element this quantity defines
-        the time step.
-        """,
-    )
-
-    chemical_formula_descriptive = Quantity(
-        type=str,
-        description="""
-        The chemical formula of the system as a string to be descriptive of the computation.
-        It is derived from `elemental_composition` if not specified, with non-reduced integer
-        numbers for the proportions of the elements.
-        """,
-    )
-
-    chemical_formula_reduced = Quantity(
-        type=str,
-        description="""
-        Alphabetically sorted chemical formula with reduced integer chemical proportion
-        numbers. The proportion number is omitted if it is 1.
-        """,
-    )
-
-    chemical_formula_iupac = Quantity(
-        type=str,
-        description="""
-        Chemical formula where the elements are ordered using a formal list based on
-        electronegativity as defined in the IUPAC nomenclature of inorganic chemistry (2005):
-
-            - https://en.wikipedia.org/wiki/List_of_inorganic_compounds
-
-        Contains reduced integer chemical proportion numbers where the proportion number
-        is omitted if it is 1.
-        """,
-    )
-
-    chemical_formula_hill = Quantity(
-        type=str,
-        description="""
-        Chemical formula where Carbon is placed first, then Hydrogen, and then all the other
-        elements in alphabetical order. If Carbon is not present, the order is alphabetical.
-        """,
-    )
-
-    chemical_formula_anonymous = Quantity(
-        type=str,
-        description="""
-        Formula with the elements ordered by their reduced integer chemical proportion
-        number, and the chemical species replaced by alphabetically ordered letters. The
-        proportion number is omitted if it is 1.
-
-        Examples: H2O becomes A2B and H2O2 becomes AB. The letters are drawn from the English
-        alphabet that may be extended by increasing the number of letters: A, B, ..., Z, Aa, Ab
-        and so on. This definition is in line with the similarly named OPTIMADE definition.
-        """,
-    )
-
-    atomic_cell = SubSection(sub_section=AtomicCell.m_def, repeats=True)
-
-    symmetry = SubSection(sub_section=Symmetry.m_def, repeats=True)
-
     is_representative = Quantity(
         type=bool,
         default=False,
@@ -541,6 +520,21 @@ class ModelSystem(System):
         the `ModelSystem.normalize()` function is ran (otherwise, it is not).
         """,
     )
+
+    time_step = Quantity(
+        type=np.int32,
+        description="""
+        Specific time snapshot of the ModelSystem. The time evolution is then encoded
+        in a list of ModelSystems under Computation where for each element this quantity defines
+        the time step.
+        """,
+    )
+
+    atomic_cell = SubSection(sub_section=AtomicCell.m_def, repeats=True)
+
+    symmetry = SubSection(sub_section=Symmetry.m_def, repeats=True)
+
+    chemical_formula = SubSection(sub_section=ChemicalFormula.m_def, repeats=False)
 
     # TODO what about `branch_label`?
     tree_label = Quantity(
@@ -582,7 +576,7 @@ class ModelSystem(System):
 
     model_system = SubSection(sub_section=SectionProxy("ModelSystem"), repeats=True)
 
-    def _resolve_system_type_and_dimensionality(self, ase_atoms: ase.Atoms) -> str:
+    def resolve_system_type_and_dimensionality(self, ase_atoms: ase.Atoms) -> str:
         """
         Determine the ModelSystem.type and ModelSystem.dimensionality using MatID classification analyzer:
 
@@ -635,7 +629,7 @@ class ModelSystem(System):
 
         return system_type, dimensionality
 
-    def _resolve_bulk_symmetry(self, ase_atoms: ase.Atoms) -> None:
+    def resolve_bulk_symmetry(self, ase_atoms: ase.Atoms) -> None:
         """
         Analyze the symmetry of the material being simulated using MatID and the parsed data
         stored under ModelSystem and AtomicCell. Only available for bulk materials.
@@ -760,10 +754,10 @@ class ModelSystem(System):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
-        if len(self.atomic_cell) == 0:
+        if not self.atomic_cell:
             self.logger.warning(
                 "Could not find the originally parsed atomic system. "
-                "Symmetry and Formula extraction is thus not run."
+                "Symmetry and ChemicalFormula extraction is thus not run."
             )
             return
         self.atomic_cell[0].name = "original"
@@ -771,7 +765,8 @@ class ModelSystem(System):
         if not ase_atoms:
             return
 
-        # Resolving system `type`, `dimensionality`, and Symmetry section (if this last one does not exists already)
+        # Resolving system `type`, `dimensionality`, and Symmetry section (if this last
+        # one does not exists already)
         original_atom_positions = self.atomic_cell[0].positions
         if original_atom_positions is not None:
             self.type = "unavailable" if not self.type else self.type
@@ -781,9 +776,9 @@ class ModelSystem(System):
             (
                 self.type,
                 self.dimensionality,
-            ) = self._resolve_system_type_and_dimensionality(ase_atoms)
+            ) = self.resolve_system_type_and_dimensionality(ase_atoms)
             if self.type == "bulk" and len(self.symmetry) == 0:
-                self._resolve_bulk_symmetry(ase_atoms)
+                self.resolve_bulk_symmetry(ase_atoms)
             # Extracting the cells parameters using the object Cell from ASE
             for atom_cell in self.atomic_cell:
                 atoms = AtomicCell().to_ase_atoms(atom_cell)
