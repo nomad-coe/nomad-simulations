@@ -53,7 +53,7 @@ import numpy as np
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Computation as BaseComputation
 from nomad.metainfo import SubSection
-from .system import ModelSystem
+from . import ModelSystem
 
 
 class Computation(BaseComputation, EntryData):
