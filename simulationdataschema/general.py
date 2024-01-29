@@ -76,9 +76,7 @@ class Simulation(BaseSimulation, EntryData):
     # repeats=True,
     # )
 
-    def _set_system_tree_index(
-        self, system_parent: ModelSystem, tree_index: np.int32 = 0
-    ):
+    def _set_system_tree_index(self, system_parent: ModelSystem, tree_index: int = 0):
         for system_child in system_parent.model_system:
             system_child.tree_index = tree_index + 1
             self._set_system_tree_index(system_child, tree_index + 1)
