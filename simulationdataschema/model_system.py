@@ -201,47 +201,41 @@ class AtomicCell(RealSpace):
         """,
     )
 
-    def to_ase_atoms(self, nomad_atomic_cell, logger):
+    def to_ase_atoms(self, logger):
         """
         Generates a ASE Atoms object with the most basic information from the parsed AtomicCell
         section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
 
-        Args:
-            nomad_atomic_cell (AtomicCell): The AtomicCell section to convert to ASE Atoms.
         Returns:
             ase.Atoms: The ASE Atoms object with the basic information from the AtomicCell.
         """
         # Initialize ase.Atoms object with labels
-        ase_atoms = ase.Atoms(symbols=nomad_atomic_cell.labels)
+        ase_atoms = ase.Atoms(symbols=self.labels)
 
         # PBC
-        if nomad_atomic_cell.periodic_boundary_conditions is None:
+        if self.periodic_boundary_conditions is None:
             logger.info("Could not find AtomicCell.periodic_boundary_conditions.")
-            nomad_atomic_cell.periodic_boundary_conditions = [False, False, False]
-        ase_atoms.set_pbc(nomad_atomic_cell.periodic_boundary_conditions)
+            self.periodic_boundary_conditions = [False, False, False]
+        ase_atoms.set_pbc(self.periodic_boundary_conditions)
 
         # Positions
-        if nomad_atomic_cell.positions is not None:
-            if len(nomad_atomic_cell.positions) != len(nomad_atomic_cell.labels):
+        if self.positions is not None:
+            if len(self.positions) != len(self.labels):
                 logger.error(
                     "Length of AtomicCell.positions does not coincide with the length "
                     "of the AtomicCell.labels."
                 )
                 return
-            ase_atoms.set_positions(
-                nomad_atomic_cell.positions.to("angstrom").magnitude
-            )
+            ase_atoms.set_positions(self.positions.to("angstrom").magnitude)
         else:
             logger.error("Could not find AtomicCell.positions.")
             return
 
         # Lattice vectors
-        if nomad_atomic_cell.lattice_vectors is not None:
-            ase_atoms.set_cell(
-                nomad_atomic_cell.lattice_vectors.to("angstrom").magnitude
-            )
-            if nomad_atomic_cell.lattice_vectors_reciprocal is None:
-                nomad_atomic_cell.lattice_vectors_reciprocal = (
+        if self.lattice_vectors is not None:
+            ase_atoms.set_cell(self.lattice_vectors.to("angstrom").magnitude)
+            if self.lattice_vectors_reciprocal is None:
+                self.lattice_vectors_reciprocal = (
                     2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
                 )
         else:
@@ -281,7 +275,7 @@ class AtomicCell(RealSpace):
         self.n_atoms = len(atomic_labels)
 
         # We will use ASE Atoms functionalities to extract information about the AtomicCell
-        ase_atoms = self.to_ase_atoms(self, logger)
+        ase_atoms = self.to_ase_atoms(logger)
         # Store temporarily the ase.Atoms object to use in other ModelSystem section normalizers
         self.m_cache["ase_atoms"] = ase_atoms
 
