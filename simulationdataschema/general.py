@@ -54,27 +54,20 @@ from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Simulation as BaseSimulation
 from nomad.metainfo import SubSection
 from .model_system import ModelSystem
+from .model_method import ModelMethod
+from .outputs import Outputs
 
 
 class Simulation(BaseSimulation, EntryData):
     """ """
 
     # m_def = Section(extends_base_section=True)
+
     model_system = SubSection(sub_section=ModelSystem.m_def, repeats=True)
-    # method = SubSection(
-    # sub_section=Method.m_def,
-    # description='''
-    # The input methodological parameters used for the computation.
-    # ''',
-    # repeats=True,
-    # )
-    # calculation = SubSection(
-    # sub_section=Calculation.m_def,
-    # description='''
-    # The output of a computation. It can reference a specific system and method section.
-    # ''',
-    # repeats=True,
-    # )
+
+    model_method = SubSection(sub_section=ModelMethod.m_def, repeats=True)
+
+    outputs = SubSection(sub_section=Outputs.m_def, repeats=True)
 
     def _set_system_tree_index(self, system_parent: ModelSystem, tree_index: int = 0):
         for system_child in system_parent.model_system:
