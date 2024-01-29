@@ -56,7 +56,7 @@ from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_protot
 from nomad.datamodel.data import ArchiveSection
 
 from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
-from nomad.datamodel.metainfo.basesections import System, RealSpace
+from nomad.datamodel.metainfo.basesections import System, GeometricSpace
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 
@@ -81,7 +81,7 @@ def check_parent_and_atomic_cell(section, logger):
     return section.m_parent.atomic_cell[0]
 
 
-class AtomicCell(RealSpace):
+class AtomicCell(GeometricSpace):
     """
     A base section used to specify the atomic cell quantities (labels, positions) of a system
     at a given moment in time.
@@ -284,7 +284,7 @@ class AtomicCell(RealSpace):
             atomic_numbers = ase_atoms.get_atomic_numbers()
         self.atomic_numbers = atomic_numbers
 
-        # We then normalize `RealSpace`
+        # We then normalize `GeometricSpace`
         super().normalize(archive, logger)
 
 
@@ -480,7 +480,7 @@ class Symmetry(ArchiveSection):
         primitive_atomic_cell.atomic_numbers = primitive_num
         primitive_atomic_cell.wyckoff_letters = primitive_wyckoff
         primitive_atomic_cell.equivalent_atoms = primitive_equivalent_atoms
-        primitive_atomic_cell.get_real_space_parameters(logger)
+        primitive_atomic_cell.get_geometric_space_for_atomic_cell(logger)
 
         # Populating the standarized Atoms information
         standard_atomic_cell = AtomicCell()
@@ -492,7 +492,7 @@ class Symmetry(ArchiveSection):
         standard_atomic_cell.atomic_numbers = standard_num
         standard_atomic_cell.wyckoff_letters = standard_wyckoff
         standard_atomic_cell.equivalent_atoms = standard_equivalent_atoms
-        standard_atomic_cell.get_real_space_parameters(logger)
+        standard_atomic_cell.get_geometric_space_for_atomic_cell(logger)
 
         # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
         # standarized Wyckoff numbers and the space group number
