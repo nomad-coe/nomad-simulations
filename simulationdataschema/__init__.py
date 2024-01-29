@@ -17,4 +17,3 @@
 # limitations under the License.
 #
 from .general import Simulation
-# from .model_system import ModelSystem, AtomicCell, Symmetry
