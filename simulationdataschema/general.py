@@ -51,12 +51,12 @@
 import numpy as np
 
 from nomad.datamodel.data import EntryData
-from nomad.datamodel.metainfo.basesections import Computation as BaseComputation
+from nomad.datamodel.metainfo.basesections import Simulation as BaseSimulation
 from nomad.metainfo import SubSection
-from . import ModelSystem
+from .model_system import ModelSystem
 
 
-class Computation(BaseComputation, EntryData):
+class Simulation(BaseSimulation, EntryData):
     """ """
 
     # m_def = Section(extends_base_section=True)
@@ -89,11 +89,12 @@ class Computation(BaseComputation, EntryData):
         # Finding which is the representative system of a calculation: typically, we will
         # define it as the last system reported (CHECK THIS!).
         # TODO extend adding the proper representative system extraction using `normalizer.py`
-        if len(self.model_system) == 0:
+        if self.model_system is None:
             logger.error("No system information reported.")
             return
         system_ref = self.model_system[-1]
         system_ref.is_representative = True
+        self.m_cache["system_ref"] = system_ref
 
         # Setting up the `tree_index` in the parent-child tree
         for system_parents in self.model_system:

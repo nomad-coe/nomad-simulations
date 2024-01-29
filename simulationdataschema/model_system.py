@@ -60,6 +60,27 @@ from nomad.datamodel.metainfo.basesections import System, RealSpace
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 
+def check_parent_and_atomic_cell(section, logger):
+    """
+    Checks if the parent of a section exists and whether it has a sub-section atomic_cell.
+    This is useful for other sub-sections under ModelSystem. It returns then the corresponding
+    AtomicCell section.
+
+    Args:
+        section (ArchiveSection): The section to check for its parent and AtomicCell.
+
+    Returns:
+        (AtomicCell): The AtomicCell section resolved from the parent.
+    """
+    if section.m_parent is None and section.m_parent.atomic_cell is None:
+        logger.error(
+            "Could not find m_parent ModelSystem and its AtomicCell section for "
+            "Symmetry analyzer."
+        )
+        return
+    return section.m_parent.atomic_cell[0]
+
+
 class AtomicCell(RealSpace):
     """
     A base section used to specify the atomic cell quantities (labels, positions) of a system
@@ -180,79 +201,97 @@ class AtomicCell(RealSpace):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def to_ase_atoms(self, nomad_atomic_cell, logger):
         """
-        Normalizes the AtomicCell parsed section by:
-            1. Resolving the `labels`, `atomic_numbers`, and `n_atoms` in `self.resolve_labels_and_atomic_numbers()`.
-            2. Returning an ASE Atoms object in `self.resolve_labels_and_atomic_numbers()`.
-            3. Setting the pbc in ASE Atoms from the parsed data.
-            4. Setting the positions in ASE Atoms from the parsed data.
-            5. Resolving the `lattice_vectors_reciprocal` from the parsed data, and setting
-            the `lattice_vectors` in ASE Atoms.
-            6. Storing the ASE Atoms object in `self.m_cache['ase_atoms']` for using it in
-            other upper-level normalizations.
-        """
-        super().normalize(archive, logger)
+        Generates a ASE Atoms object with the most basic information from the parsed AtomicCell
+        section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
 
-        # Check if AtomicCell section exists
-        if self is None:
-            logger.error("Could not find the basic System.atomic_cell information.")
+        Args:
+            nomad_atomic_cell (AtomicCell): The AtomicCell section to convert to ASE Atoms.
+        Returns:
+            ase.Atoms: The ASE Atoms object with the basic information from the AtomicCell.
+        """
+        # Initialize ase.Atoms object with labels
+        ase_atoms = ase.Atoms(symbols=nomad_atomic_cell.labels)
+
+        # PBC
+        if nomad_atomic_cell.periodic_boundary_conditions is None:
+            logger.info("Could not find AtomicCell.periodic_boundary_conditions.")
+            nomad_atomic_cell.periodic_boundary_conditions = [False, False, False]
+        ase_atoms.set_pbc(nomad_atomic_cell.periodic_boundary_conditions)
+
+        # Positions
+        if nomad_atomic_cell.positions is not None:
+            if len(nomad_atomic_cell.positions) != len(nomad_atomic_cell.labels):
+                logger.error(
+                    "Length of AtomicCell.positions does not coincide with the length "
+                    "of the AtomicCell.labels."
+                )
+                return
+            ase_atoms.set_positions(
+                nomad_atomic_cell.positions.to("angstrom").magnitude
+            )
+        else:
+            logger.error("Could not find AtomicCell.positions.")
             return
 
-        if not self.labels or not self.atomic_numbers:
+        # Lattice vectors
+        if nomad_atomic_cell.lattice_vectors is not None:
+            ase_atoms.set_cell(
+                nomad_atomic_cell.lattice_vectors.to("angstrom").magnitude
+            )
+            if nomad_atomic_cell.lattice_vectors_reciprocal is None:
+                nomad_atomic_cell.lattice_vectors_reciprocal = (
+                    2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
+                )
+        else:
+            logger.info("Could not find AtomicCell.lattice_vectors.")
+
+        return ase_atoms
+
+    def normalize(self, archive, logger):
+        # Check if AtomicCell section exists
+        if self is None:
+            logger.error(
+                "Could not find the basic ModelSystem.atomic_cell information."
+            )
+            return
+
+        # If the labels and atomic_numbers are not specified, we return with an error
+        if not self.labels and not self.atomic_numbers:
             logger.error(
                 "Could not read parsed AtomicCell.labels or AtomicCell.atomic_positions."
             )
             return
-
-        # We will use ASE Atoms functionalities to extract information about the AtomicCell
-        ase_atoms = ase.Atoms()
+        atomic_labels = self.labels
+        atomic_numbers = self.atomic_numbers
 
         # Labels
-        if not self.labels:
+        if not atomic_labels and atomic_numbers is not None:
             try:
-                atom_labels = [
-                    ase.data.chemical_symbols[number] for number in self.atomic_numbers
+                atomic_labels = [
+                    ase.data.chemical_symbols[number] for number in atomic_numbers
                 ]
             except IndexError:
                 logger.error(
                     "The AtomicCell.atomic_numbers are out of range of the periodic table."
                 )
                 return
-        self.n_atoms = len(atom_labels)
-        self.labels = atom_labels
-        ase_atoms.set_chemical_symbols(atom_labels)
+        self.labels = atomic_labels
+        self.n_atoms = len(atomic_labels)
+
+        # We will use ASE Atoms functionalities to extract information about the AtomicCell
+        ase_atoms = self.to_ase_atoms(self, logger)
+        # Store temporarily the ase.Atoms object to use in other ModelSystem section normalizers
+        self.m_cache["ase_atoms"] = ase_atoms
+
         # Atomic numbers
-        if not self.atomic_numbers:
+        if atomic_labels is not None and not atomic_numbers:
             atomic_numbers = ase_atoms.get_atomic_numbers()
         self.atomic_numbers = atomic_numbers
 
-        # Periodic boundary conditions
-        if self.periodic_boundary_conditions:
-            self.periodic_boundary_conditions = [False, False, False]
-        ase_atoms.set_pbc(self.periodic_boundary_conditions)
-
-        # Atom positions
-        if not self.positions and len(self.positions) != len(self.labels):
-            logger.error(
-                "Length of AtomicCell.positions does not coincide with the length "
-                "of the AtomicCell.labels."
-            )
-            return
-        ase_atoms.set_positions(self.positions.to("angstrom").magnitude)
-
-        # Lattice vectors and reciprocal lattice vectors
-        if not self.lattice_vectors:
-            logger.info("Could not find AtomicCell.lattice_vectors.")
-        else:
-            ase_atoms.set_cell(self.lattice_vectors.to("angstrom").magnitude)
-            if not self.lattice_vectors_reciprocal:
-                self.lattice_vectors_reciprocal = (
-                    2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
-                )
-
-        # Store temporarily the ase.Atoms object to use in the ModelSystem.normalizer()
-        self.m_cache["ase_atoms"] = ase_atoms
+        # We then normalize `RealSpace`
+        super().normalize(archive, logger)
 
 
 class Symmetry(ArchiveSection):
@@ -362,8 +401,145 @@ class Symmetry(ArchiveSection):
         a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
     )
 
+    def resolve_bulk_symmetry(self, original_atomic_cell, logger):
+        """
+        Resolves the symmetry of the material being simulated using MatID and the
+        originally parsed data under `original_atomic_cell`. It generates two other
+        AtomicCell sections (the primitive and standarized cells), as well as populating
+        the Symmetry section.
+
+        Args:
+            original_atomic_cell (AtomicCell): The AtomicCell section that the symmetry
+            uses to in MatID.SymmetryAnalyzer().
+        Returns:
+            primitive_atomic_cell (AtomicCell): The primitive AtomicCell section.
+            standard_atomic_cell (AtomicCell): The standarized AtomicCell section.
+        """
+        symmetry = {}
+        try:
+            ase_atoms = original_atomic_cell.to_ase_atoms(original_atomic_cell, logger)
+            symmetry_analyzer = SymmetryAnalyzer(
+                ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
+            )
+
+            symmetry["bravais_lattice"] = symmetry_analyzer.get_bravais_lattice()
+            symmetry["hall_symbol"] = symmetry_analyzer.get_hall_symbol()
+            symmetry["point_group_symbol"] = symmetry_analyzer.get_point_group()
+            symmetry["space_group_number"] = symmetry_analyzer.get_space_group_number()
+            symmetry[
+                "space_group_symbol"
+            ] = symmetry_analyzer.get_space_group_international_short()
+            symmetry["origin_shift"] = symmetry_analyzer._get_spglib_origin_shift()
+            symmetry[
+                "transformation_matrix"
+            ] = symmetry_analyzer._get_spglib_transformation_matrix()
+
+            # Originally parsed cell
+            original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()
+            original_equivalent_atoms = (
+                symmetry_analyzer.get_equivalent_atoms_original()
+            )
+
+            # Primitive cell
+            primitive_wyckoff = symmetry_analyzer.get_wyckoff_letters_primitive()
+            primitive_equivalent_atoms = (
+                symmetry_analyzer.get_equivalent_atoms_primitive()
+            )
+            primitive_sys = symmetry_analyzer.get_primitive_system()
+            primitive_pos = primitive_sys.get_scaled_positions()
+            primitive_cell = primitive_sys.get_cell()
+            primitive_num = primitive_sys.get_atomic_numbers()
+            primitive_labels = primitive_sys.get_chemical_symbols()
+
+            # Standarized (or conventional) cell
+            standard_wyckoff = symmetry_analyzer.get_wyckoff_letters_conventional()
+            standard_equivalent_atoms = (
+                symmetry_analyzer.get_equivalent_atoms_conventional()
+            )
+            standard_sys = symmetry_analyzer.get_conventional_system()
+            standard_pos = standard_sys.get_scaled_positions()
+            standard_cell = standard_sys.get_cell()
+            standard_num = standard_sys.get_atomic_numbers()
+            standard_labels = standard_sys.get_chemical_symbols()
+        except ValueError as e:
+            logger.debug(
+                "Symmetry analysis with MatID is not available.", details=str(e)
+            )
+            return
+        except Exception as e:
+            logger.warning("Symmetry analysis with MatID failed.", exc_info=e)
+            return
+
+        # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
+        # sec_original_atoms = self.atomic_cell[0]
+        # sec_original_atoms = original_atomic_cell
+        original_atomic_cell.wyckoff_letters = original_wyckoff
+        original_atomic_cell.equivalent_particles = original_equivalent_atoms
+
+        # Populating the primitive AtomicCell information
+        primitive_atomic_cell = AtomicCell()
+        primitive_atomic_cell.name = "primitive"
+        primitive_atomic_cell.lattice_vectors = primitive_cell * ureg.angstrom
+        primitive_atomic_cell.n_atoms = len(primitive_labels)
+        primitive_atomic_cell.positions = primitive_pos * ureg.angstrom
+        primitive_atomic_cell.labels = primitive_labels
+        primitive_atomic_cell.atomic_numbers = primitive_num
+        primitive_atomic_cell.wyckoff_letters = primitive_wyckoff
+        primitive_atomic_cell.equivalent_atoms = primitive_equivalent_atoms
+        RealSpace().get_real_space_parameters(primitive_atomic_cell, logger)
+
+        # Populating the standarized Atoms information
+        standard_atomic_cell = AtomicCell()
+        standard_atomic_cell.name = "standard"
+        standard_atomic_cell.lattice_vectors = standard_cell * ureg.angstrom
+        standard_atomic_cell.n_atoms = len(standard_labels)
+        standard_atomic_cell.positions = standard_pos * ureg.angstrom
+        standard_atomic_cell.labels = standard_labels
+        standard_atomic_cell.atomic_numbers = standard_num
+        standard_atomic_cell.wyckoff_letters = standard_wyckoff
+        standard_atomic_cell.equivalent_atoms = standard_equivalent_atoms
+        RealSpace().get_real_space_parameters(standard_atomic_cell, logger)
+
+        # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
+        # standarized Wyckoff numbers and the space group number
+        if symmetry.get("space_group_number"):
+            norm_wyckoff = get_normalized_wyckoff(standard_num, standard_wyckoff)
+            aflow_prototype = search_aflow_prototype(
+                symmetry.get("space_group_number"), norm_wyckoff
+            )
+            strukturbericht = aflow_prototype.get("Strukturbericht Designation")
+            if strukturbericht == "None":
+                strukturbericht = None
+            else:
+                strukturbericht = re.sub("[$_{}]", "", strukturbericht)
+            prototype_aflow_id = aflow_prototype.get("aflow_prototype_id")
+            prototype_formula = aflow_prototype.get("Prototype")
+            # Adding these to the symmetry dictionary for later assignement
+            symmetry["strukturbericht_designation"] = strukturbericht
+            symmetry["prototype_aflow_id"] = prototype_aflow_id
+            symmetry["prototype_formula"] = prototype_formula
+
+        # Populating Symmetry section
+        for key, val in self.m_def.all_quantities.items():
+            self.m_set(val, symmetry.get(key))
+
+        return primitive_atomic_cell, standard_atomic_cell
+
     def normalize(self, archive, logger):
-        super().normalize(archive, logger)
+        atomic_cell = check_parent_and_atomic_cell(self, logger)
+        if self.m_parent.type == "bulk":
+            # Adding the newly calculated primitive and standard cells to the ModelSystem
+            primitive_atomic_cell, standard_atomic_cell = self.resolve_bulk_symmetry(
+                atomic_cell, logger
+            )
+            self.m_parent.m_add_sub_section(
+                ModelSystem.atomic_cell, primitive_atomic_cell
+            )
+            self.m_parent.m_add_sub_section(
+                ModelSystem.atomic_cell, standard_atomic_cell
+            )
+            # Reference to the standarized cell, and if not, fallback to the originally parsed one
+            self.atomic_cell_ref = self.m_parent.atomic_cell[-1]
 
 
 class ChemicalFormula(ArchiveSection):
@@ -422,8 +598,36 @@ class ChemicalFormula(ArchiveSection):
         """,
     )
 
+    def resolve_chemical_formulas(self, formula):
+        """
+        Resolves the chemical formulas of the ModelSystem in different formats.
+
+        Args:
+            formula (Formula): The Formula object from NOMAD atomutils containing the
+            chemical formulas.
+        """
+        self.descriptive = formula.format("descriptive")
+        self.reduced = formula.format("reduced")
+        self.iupac = formula.format("iupac")
+        self.hill = formula.format("hill")
+        self.anonymous = formula.format("anonymous")
+
     def normalize(self, archive, logger):
-        super().normalize(archive, logger)
+        atomic_cell = check_parent_and_atomic_cell(self, logger)
+        ase_atoms = atomic_cell.to_ase_atoms(atomic_cell, logger)
+        formula = None
+        try:
+            formula = Formula(ase_atoms.get_chemical_formula())
+            # self.chemical_composition = ase_atoms.get_chemical_formula(mode="all")
+        except ValueError as e:
+            logger.warning(
+                "Could not extract the chemical formulas information.",
+                exc_info=e,
+                error=str(e),
+            )
+        if formula:
+            self.resolve_chemical_formulas(formula)
+            self.m_cache["elemental_composition"] = formula.elemental_composition()
 
 
 class ModelSystem(System):
@@ -467,6 +671,8 @@ class ModelSystem(System):
         sections can be inferred using a combination of example 2 and 3.
     """
 
+    normalizer_level = 0
+
     name = Quantity(
         type=str,
         description="""
@@ -481,12 +687,12 @@ class ModelSystem(System):
     type = Quantity(
         type=MEnum(
             "atom",
+            "active_atom",
             "molecule / cluster",
-            "bulk",
+            "1D",
             "surface",
             "2D",
-            "1D",
-            "active_atom",
+            "bulk",
             "unavailable",
         ),
         description="""
@@ -505,7 +711,7 @@ class ModelSystem(System):
         | Value | Description |
         | --------- | ----------------------- |
         | `'0D'` | Points in the space |
-        | `'1D'` | Periodi in one dimension |
+        | `'1D'` | Periodic in one dimension |
         | `'2D'` | Periodic in two dimensions |
         | `'3D'` | Periodic in three dimensions |
         """,
@@ -576,14 +782,17 @@ class ModelSystem(System):
 
     model_system = SubSection(sub_section=SectionProxy("ModelSystem"), repeats=True)
 
-    def resolve_system_type_and_dimensionality(self, ase_atoms: ase.Atoms) -> str:
+    def resolve_system_type_and_dimensionality(self, ase_atoms):
         """
         Determine the ModelSystem.type and ModelSystem.dimensionality using MatID classification analyzer:
 
             - https://singroup.github.io/matid/tutorials/classification.html
 
         Args:
-            ase.Atoms: The ASE Atoms structure to analyse
+            ase.Atoms: The ASE Atoms structure to analyse.
+        Returns:
+            system_type (str): The system type as determined by MatID.
+            dimensionality (str): The system dimensionality as determined by MatID.
         """
         classification = None
         system_type, dimensionality = self.type, self.dimensionality
@@ -629,122 +838,7 @@ class ModelSystem(System):
 
         return system_type, dimensionality
 
-    def resolve_bulk_symmetry(self, ase_atoms: ase.Atoms) -> None:
-        """
-        Analyze the symmetry of the material being simulated using MatID and the parsed data
-        stored under ModelSystem and AtomicCell. Only available for bulk materials.
-
-        Args:
-            ase.Atoms: The ASE Atoms structure to analyse
-        """
-        symmetry = {}
-        try:
-            symmetry_analyzer = SymmetryAnalyzer(
-                ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
-            )
-
-            symmetry["bravais_lattice"] = symmetry_analyzer.get_bravais_lattice()
-            symmetry["hall_symbol"] = symmetry_analyzer.get_hall_symbol()
-            symmetry["point_group_symbol"] = symmetry_analyzer.get_point_group()
-            symmetry["space_group_number"] = symmetry_analyzer.get_space_group_number()
-            symmetry[
-                "space_group_symbol"
-            ] = symmetry_analyzer.get_space_group_international_short()
-            symmetry["origin_shift"] = symmetry_analyzer._get_spglib_origin_shift()
-            symmetry[
-                "transformation_matrix"
-            ] = symmetry_analyzer._get_spglib_transformation_matrix()
-
-            # Originally parsed cell
-            original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()
-            original_equivalent_atoms = (
-                symmetry_analyzer.get_equivalent_atoms_original()
-            )
-
-            # Primitive cell
-            primitive_wyckoff = symmetry_analyzer.get_wyckoff_letters_primitive()
-            primitive_equivalent_atoms = (
-                symmetry_analyzer.get_equivalent_atoms_primitive()
-            )
-            primitive_sys = symmetry_analyzer.get_primitive_system()
-            primitive_pos = primitive_sys.get_scaled_positions()
-            primitive_cell = primitive_sys.get_cell()
-            primitive_num = primitive_sys.get_atomic_numbers()
-            primitive_labels = primitive_sys.get_chemical_symbols()
-
-            # Standarized (or conventional) cell
-            standard_wyckoff = symmetry_analyzer.get_wyckoff_letters_conventional()
-            standard_equivalent_atoms = (
-                symmetry_analyzer.get_equivalent_atoms_conventional()
-            )
-            standard_sys = symmetry_analyzer.get_conventional_system()
-            standard_pos = standard_sys.get_scaled_positions()
-            standard_cell = standard_sys.get_cell()
-            standard_num = standard_sys.get_atomic_numbers()
-            standard_labels = standard_sys.get_chemical_symbols()
-        except ValueError as e:
-            self.logger.debug(
-                "Symmetry analysis with MatID is not available.", details=str(e)
-            )
-            return
-        except Exception as e:
-            self.logger.warning("Symmetry analysis with MatID failed.", exc_info=e)
-            return
-
-        # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
-        sec_original_atoms = self.atomic_cell[0]
-        sec_original_atoms.wyckoff_letters = original_wyckoff
-        sec_original_atoms.equivalent_particles = original_equivalent_atoms
-
-        # Populating the primitive AtomicCell information
-        sec_primitive_atoms = self.m_create(AtomicCell)
-        sec_primitive_atoms.name = "primitive"
-        sec_primitive_atoms.lattice_vectors = primitive_cell * ureg.angstrom
-        sec_primitive_atoms.n_atoms = len(primitive_labels)
-        sec_primitive_atoms.positions = primitive_pos * ureg.angstrom
-        sec_primitive_atoms.labels = primitive_labels
-        sec_primitive_atoms.atomic_numbers = primitive_num
-        sec_primitive_atoms.wyckoff_letters = primitive_wyckoff
-        sec_primitive_atoms.equivalent_atoms = primitive_equivalent_atoms
-
-        # Populating the standarized Atoms information
-        sec_standard_atoms = self.m_create(AtomicCell)
-        sec_standard_atoms.name = "standard"
-        sec_standard_atoms.lattice_vectors = standard_cell * ureg.angstrom
-        sec_standard_atoms.n_atoms = len(standard_labels)
-        sec_standard_atoms.positions = standard_pos * ureg.angstrom
-        sec_standard_atoms.labels = standard_labels
-        sec_standard_atoms.atomic_numbers = standard_num
-        sec_standard_atoms.wyckoff_letters = standard_wyckoff
-        sec_standard_atoms.equivalent_atoms = standard_equivalent_atoms
-
-        # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
-        # standarized Wyckoff numbers and the space group number
-        if symmetry.get("space_group_number"):
-            norm_wyckoff = get_normalized_wyckoff(standard_num, standard_wyckoff)
-            aflow_prototype = search_aflow_prototype(
-                symmetry.get("space_group_number"), norm_wyckoff
-            )
-            strukturbericht = aflow_prototype.get("Strukturbericht Designation")
-            if strukturbericht == "None":
-                strukturbericht = None
-            else:
-                strukturbericht = re.sub("[$_{}]", "", strukturbericht)
-            prototype_aflow_id = aflow_prototype.get("aflow_prototype_id")
-            prototype_formula = aflow_prototype.get("Prototype")
-            # Adding these to the symmetry dictionary for later assignement
-            symmetry["strukturbericht_designation"] = strukturbericht
-            symmetry["prototype_aflow_id"] = prototype_aflow_id
-            symmetry["prototype_formula"] = prototype_formula
-
-        # Populating Symmetry section (try to reference the standarized cell, and if not,
-        # fallback to the originally parsed one)
-        sec_symmetry = self.m_create(Symmetry)
-        for key, val in sec_symmetry.m_def.all_quantities.items():
-            sec_symmetry.m_set(val, symmetry.get(key))
-        sec_symmetry.atomic_cell_ref = self.atomic_cell[-1]
-
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive, logger):
         super().normalize(archive, logger)
         self.logger = logger
 
@@ -754,7 +848,7 @@ class ModelSystem(System):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
-        if not self.atomic_cell:
+        if self.atomic_cell is None:
             self.logger.warning(
                 "Could not find the originally parsed atomic system. "
                 "Symmetry and ChemicalFormula extraction is thus not run."
@@ -777,32 +871,16 @@ class ModelSystem(System):
                 self.type,
                 self.dimensionality,
             ) = self.resolve_system_type_and_dimensionality(ase_atoms)
-            if self.type == "bulk" and len(self.symmetry) == 0:
-                self.resolve_bulk_symmetry(ase_atoms)
-            # Extracting the cells parameters using the object Cell from ASE
-            for atom_cell in self.atomic_cell:
-                atoms = AtomicCell().to_ase_atoms(atom_cell)
-                cell = atoms.get_cell()
-                atom_cell.a, atom_cell.b, atom_cell.c = cell.lengths() * ureg.angstrom
-                atom_cell.alpha, atom_cell.beta, atom_cell.gamma = (
-                    cell.angles() * ureg.degree
-                )
-                atom_cell.volume = cell.volume * ureg.angstrom**3
+            # Creating and normalizing Symmetry section
+            if self.type == "bulk" and self.symmetry is not None:
+                sec_symmetry = self.m_create(Symmetry)
+                sec_symmetry.normalize(archive, logger)
 
-        # Formulas
+        # Creating and normalizing ChemicalFormula section
         # TODO add support for fractional formulas (possibly add `AtomicCell.concentrations` for each species)
-        try:
-            formula = Formula(ase_atoms.get_chemical_formula())
-            self.chemical_composition = ase_atoms.get_chemical_formula(mode="all")
-            self.chemical_formula_descriptive = formula.format("descriptive")
-            self.chemical_formula_reduced = formula.format("reduced")
-            self.chemical_formula_iupac = formula.format("iupac")
-            self.chemical_formula_hill = formula.format("hill")
-            self.chemical_formula_anonymous = formula.format("anonymous")
-            self.elemental_composition = formula.elemental_composition()
-        except ValueError as e:
-            self.logger.warning(
-                "Could not extract the chemical formulas information.",
-                exc_info=e,
-                error=str(e),
+        sec_chemical_formula = self.m_create(ChemicalFormula)
+        sec_chemical_formula.normalize(archive, logger)
+        if sec_chemical_formula.m_cache:
+            self.elemental_composition = sec_chemical_formula.m_cache.get(
+                "elemental_composition", []
             )
