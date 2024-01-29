@@ -411,7 +411,7 @@ class Symmetry(ArchiveSection):
         """
         symmetry = {}
         try:
-            ase_atoms = original_atomic_cell.to_ase_atoms(original_atomic_cell, logger)
+            ase_atoms = original_atomic_cell.to_ase_atoms(logger)
             symmetry_analyzer = SymmetryAnalyzer(
                 ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
             )
@@ -480,7 +480,7 @@ class Symmetry(ArchiveSection):
         primitive_atomic_cell.atomic_numbers = primitive_num
         primitive_atomic_cell.wyckoff_letters = primitive_wyckoff
         primitive_atomic_cell.equivalent_atoms = primitive_equivalent_atoms
-        RealSpace().get_real_space_parameters(primitive_atomic_cell, logger)
+        primitive_atomic_cell.get_real_space_parameters(logger)
 
         # Populating the standarized Atoms information
         standard_atomic_cell = AtomicCell()
@@ -492,7 +492,7 @@ class Symmetry(ArchiveSection):
         standard_atomic_cell.atomic_numbers = standard_num
         standard_atomic_cell.wyckoff_letters = standard_wyckoff
         standard_atomic_cell.equivalent_atoms = standard_equivalent_atoms
-        RealSpace().get_real_space_parameters(standard_atomic_cell, logger)
+        standard_atomic_cell.get_real_space_parameters(logger)
 
         # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
         # standarized Wyckoff numbers and the space group number
@@ -608,7 +608,7 @@ class ChemicalFormula(ArchiveSection):
 
     def normalize(self, archive, logger):
         atomic_cell = check_parent_and_atomic_cell(self, logger)
-        ase_atoms = atomic_cell.to_ase_atoms(atomic_cell, logger)
+        ase_atoms = atomic_cell.to_ase_atoms(logger)
         formula = None
         try:
             formula = Formula(ase_atoms.get_chemical_formula())
