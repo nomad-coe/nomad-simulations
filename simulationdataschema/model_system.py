@@ -258,7 +258,7 @@ class AtomicCell(RealSpace):
             return
 
         # If the labels and atomic_numbers are not specified, we return with an error
-        if not self.labels and not self.atomic_numbers:
+        if self.labels is None and self.atomic_numbers is None:
             logger.error(
                 "Could not read parsed AtomicCell.labels or AtomicCell.atomic_positions."
             )
@@ -267,7 +267,7 @@ class AtomicCell(RealSpace):
         atomic_numbers = self.atomic_numbers
 
         # Labels
-        if not atomic_labels and atomic_numbers is not None:
+        if atomic_labels is None and atomic_numbers is not None:
             try:
                 atomic_labels = [
                     ase.data.chemical_symbols[number] for number in atomic_numbers
@@ -286,7 +286,7 @@ class AtomicCell(RealSpace):
         self.m_cache["ase_atoms"] = ase_atoms
 
         # Atomic numbers
-        if atomic_labels is not None and not atomic_numbers:
+        if atomic_labels is not None and atomic_numbers is None:
             atomic_numbers = ase_atoms.get_atomic_numbers()
         self.atomic_numbers = atomic_numbers
 
