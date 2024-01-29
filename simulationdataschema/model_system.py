@@ -633,42 +633,55 @@ class ChemicalFormula(ArchiveSection):
 class ModelSystem(System):
     """
     Model system used as an input for the computation. It inherits from `System` where a set
-    of sub-sections for the `elemental_composition` is defined. We also define `name` to
-    refer to all the verbose and user-dependent naming in ModelSystem.
+    of sub-sections for the `elemental_composition` is defined.
 
-    It is composed of the sub-sections: AtomicCell (atomic structure quantities), Symmetry
-    (symmetry of the ModelSystem and which always references the 'standard' AtomicCell).
+    We also defined:
+        - `name` refers to all the verbose and user-dependent naming in ModelSystem,
+        - `type` refers to the type of the ModelSystem (atom, bulk, surface, etc.),
+        - `dimensionality` refers to the dimensionality of the ModelSystem (0D, 1D, 2D, 3D),
+
+    If the ModelSystem `is_representative`, the normalization occurs. The time evolution of
+    the system is encoded on the fact that ModelSystem is a list under Simulation, and for
+    each element of that list, `time_step` can be defined.
+
+    It is composed of the sub-sections:
+        - `AtomicCell` containing the information of the atomic structure,
+        - `Symmetry` containing the information of the (standarized) atomic cell symmetry
+        in bulk ModelSystem,
+        - `ChemicalFormula` containing the information of the chemical formulas in different
+        formats.
 
     This class nest over itself (with the proxy in `model_system`) to define different
-    parent-child system trees.
-
-    The time evolution of the system is encoded on the fact that ModelSystem is a list under
-    computation, and for each element of that list, `time_step` can be defined.
+    parent-child system trees. The quantities `tree_label`, `tree_index`, `atom_indices`,
+    and `bond_list` are used to define the parent-child tree.
 
     The normalization is ran in the following order:
         1. `AtomicCell.normalize()` from `atomic_cell`,
-        2. `ModelSystem.normalize()` in this class.
+        2. `ModelSystem.normalize()` in this class,
+        3. `Symmetry.normalize()` is called within this class normalization,
+        4. `ChemicalFormula.normalize()` is called within this class normalization.
 
     Examples:
 
         - Example 1, a crystal Si has: 3 AtomicCell sections (named 'original', 'primitive',
-        and 'standard'), 1 Symmetry, and 0 nested ModelSystem trees.
+        and 'standard'), 1 Symmetry section, and 0 nested ModelSystem trees.
 
-        - Example 2, an heterostructure Si/GaAs has: 1 parent ModelSystem (for Si/GaAs together)
-        and 2 nested child ModelSystem sections (for Si and GaAs); each child has 3 AtomicCell
-        sections and 1 Symmetry section. The parent ModelSystem could also have 3 AtomicCell
-        and 1 Symmetry section (if it is possible to extract them).
+        - Example 2, an heterostructure Si/GaAs has: 1 parent ModelSystem section (for
+        Si/GaAs together) and 2 nested child ModelSystem sections (for Si and GaAs); each
+        child has 3 AtomicCell sections and 1 Symmetry section. The parent ModelSystem section
+        could also have 3 AtomicCell and 1 Symmetry section (if it is possible to extract them).
 
-        - Example 3, a solution of C800H3200Cu has: 1 parent ModelSystem (for 800*(CH4)+Cu)
-        and 2 nested child ModelSystem sections (for CH4 and Cu); each child has 1 AtomicCell
-        section.
+        - Example 3, a solution of C800H3200Cu has: 1 parent ModelSystem section (for
+        800*(CH4)+Cu) and 2 nested child ModelSystem sections (for CH4 and Cu); each child
+        has 1 AtomicCell section.
 
         - Example 4, a passivated surface GaAs-CO2 has --> similar to the example 2.
 
         - Example 5, a passivated heterostructure Si/(GaAs-CO2) has: 1 parent ModelSystem
-        (for Si/(GaAs-CO2)), 2 child ModelSystems (for Si and GaAs-CO2), and 2 additional
-        children in one of the childs (for GaAs and CO2). The number of AtomicCell and Symmetry
-        sections can be inferred using a combination of example 2 and 3.
+        section (for Si/(GaAs-CO2)), 2 child ModelSystem sections (for Si and GaAs-CO2),
+        and 2 additional children sections in one of the childs (for GaAs and CO2). The number
+        of AtomicCell and Symmetry sections can be inferred using a combination of example
+        2 and 3.
     """
 
     normalizer_level = 0
