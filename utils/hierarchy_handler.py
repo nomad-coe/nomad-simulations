@@ -13,71 +13,80 @@ class ISectionInterface(Protocol):
         ...
 
 
-class SectionHandler(ISectionInterface):
-    def __init__(self, name: str):
-        self.name = name
-
-    def get_name(self) -> str:
-        return self.name
-
-    def __lt__(self, other: "SectionHandler") -> bool:
-        return self.name < other.name
-
-    def __gt__(self, other: "SectionHandler") -> bool:
-        return self.name > other.name
-
-
 class HierarchyFactory:
     def __init__(self):
         self.main_graph = nx.DiGraph()
         self.temp_graph = nx.DiGraph()
-        self.current_path = "/"
-        self.main_graph.add_node("/", data=[])  # Root node with empty section list
+        self._delimiter = "/"  # also acts as the root name
+        self.current_path = self._delimiter
+        self.main_graph.add_node(
+            self._delimiter,
+            section=None,  # TODO: allow for this to be set
+        )  # Root node with empty section list
 
-    def add_node(self, section_handler: ISectionInterface) -> None:
-        """Add `ISectionInterface` to the temporary graph for later construction."""
-        node_name = section_handler.get_name()
-        self.temp_graph.add_node(node_name, data=section_handler)
+    # path formatting
+    def _split_path(self, path: str) -> list[str]:
+        """Split the path into its parts."""
+        return [node for node in path.split(self._delimiter) if node]
 
-    def add_path(self, path: str, section_handler: ISectionInterface) -> None:
-        """Add `ISectionInterface` directly to the main graph under the path."""
-        parts = path.strip("/").split("/")  # clean path and split into parts
-        parent = "/"
-        for part in parts[:-1]:
-            parent = f"{parent}{part}/" if parent != "/" else f"/{part}"
-            if not self.main_graph.has_node(parent):
-                self.main_graph.add_node(parent, data=[])
+    def _formalize_path(self, path: str) -> str:
+        """Formalize the path by adding the delimiter to the beginning and end, as well as pruning any redundant delimiters."""
+        return self._delimiter.join(["", *self._split_path(path), ""])
 
-        # Add the final part with the section_handler
-        final_path = f"{parent}{parts[-1]}" if parent != "/" else f"/{parts[-1]}"
-        if not self.main_graph.has_node(final_path):
-            self.main_graph.add_node(final_path, data=[section_handler])
-        else:
-            self.main_graph.nodes[final_path]["data"].append(section_handler)
+    def _to_absolute_path(self, relative_path: str) -> str:
+        """Converts `relative_path` to an absolute path."""
+        return self._formalize_path(self.current_path + relative_path)
 
-    def get_node(self, path: str) -> Optional[nx.DiGraph]:
-        if path in self.graph:
-            descendants = nx.descendants(self.graph, path) | {path}
-            return self.graph.subgraph(descendants).copy()
-        else:
-            print(f"Path {path} does not exist.")
-            return None
+    def _seg_to_graph(self, path_segments: list[str]) -> nx.DiGraph:
+        """Translate `path_segments` (as produced by `_split_path`) to its graph counter version."""
+        if len(path_segments) == 0:
+            path_segments = [self._delimiter]
+        right_shifted = [self._delimiter] + path_segments[:-1]
+        return nx.DiGraph().add_edges_from(
+            [(n, s) for n, s in zip(path_segments, right_shifted)]
+        )
 
-    def cd(self, path: str) -> None:
+    # setters
+    def set_root_section(self, section_handler: ISectionInterface) -> None:
+        """Set the root node to `section_handler`."""
+        self.main_graph.nodes[self._delimiter]["section"] = section_handler
+
+    def include_section(
+        self, section_handler: ISectionInterface, name: Optional[str]
+    ) -> None:
+        """Add `section_handler` to the temporary graph for later construction."""
+        if name is None:
+            name = section_handler.get_name()
+        self.temp_graph.add_node(name, section=section_handler)
+
+    def add_to_path(
+        self,
+        section_handler: ISectionInterface,
+        parent_path: str,
+        given_name: Optional[str] = None,
+    ) -> None:
+        """Add `section_handler` directly to the main graph under the `parent_path` (relative)."""
+        if given_name is None:
+            given_name = section_handler.get_name()
+
+        path_segments = self._split_path(self._to_absolute_path(parent_path))
+        if self._seg_to_graph(path_segments) in self.main_graph:
+            self.main_graph.add_node(given_name, section=section_handler)
+            self.main_graph.add_edge(given_name, path_segments[-1])
+
+    # navigation
+    def cd(self, path: Optional[str]) -> None:
         """Change the current path to the target path.
         All further path specifications are relative to the current path."""
-        if path == "/":
+        if path is None:
+            self.current_path = self._delimiter
+            return
+
+        path = self._to_absolute_path(path)
+        if self._seg_to_graph(self._split_path(path)) in self.main_graph:
             self.current_path = path
             return
-        elif path.startswith("/"):
-            target_path = path
-        else:
-            target_path = f"{self.current_path}/{path}".replace("//", "/")
-
-        if target_path in self.main_graph:
-            self.current_path = target_path
-        else:
-            print(f"Path {target_path} does not exist.")
+        raise ValueError(f"Path {path} does not exist in `main_graph`.")
 
     def pwd(self) -> str:
         """Print the current path."""
@@ -85,22 +94,9 @@ class HierarchyFactory:
 
     def ls(self, path: Optional[str] = None) -> List[str]:
         """List the contents of the target directory (relative path)."""
-        target_path = path or self.current_path
-        if target_path in self.main_graph:
-            # List the names of sections in the target directory
-            sections = [
-                handler.get_name()
-                for handler in self.main_graph.nodes[target_path]["data"]
-            ]
-            # List subdirectories
-            subdirs = [
-                node.rsplit("/", 1)[-1]
-                for node in self.main_graph.successors(target_path)
-            ]
-            return sorted(sections + subdirs)
-        else:
-            print(f"Path {target_path} does not exist.")
-            return []
+        path = self._to_absolute_path(path)
+        if self._seg_to_graph(self._split_path(path)) in self.main_graph:
+            return list(self.main_graph.successors(path))
 
     def _match_pattern(self, node: str, pattern_parts: List[str], index: int) -> bool:
         """Recursively checks if the node path matches the pattern."""
