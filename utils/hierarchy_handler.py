@@ -2,14 +2,14 @@ from typing import List, Optional, Protocol, Tuple
 import networkx as nx
 
 
-class ISectionInterface(Protocol):
+class PSection(Protocol):
     def get_name(self) -> str:
         ...
 
-    def __lt__(self, other: "ISectionInterface") -> bool:
+    def __lt__(self, other: "PSection") -> bool:
         ...
 
-    def __gt__(self, other: "ISectionInterface") -> bool:
+    def __gt__(self, other: "PSection") -> bool:
         ...
 
 
@@ -47,13 +47,11 @@ class HierarchyFactory:
         )
 
     # setters
-    def set_root_section(self, section_handler: ISectionInterface) -> None:
+    def set_root_section(self, section_handler: PSection) -> None:
         """Set the root node to `section_handler`."""
         self.main_graph.nodes[self._delimiter]["section"] = section_handler
 
-    def include_section(
-        self, section_handler: ISectionInterface, name: Optional[str]
-    ) -> None:
+    def include_section(self, section_handler: PSection, name: Optional[str]) -> None:
         """Add `section_handler` to the temporary graph for later construction."""
         if name is None:
             name = section_handler.get_name()
@@ -61,7 +59,7 @@ class HierarchyFactory:
 
     def add_to_path(
         self,
-        section_handler: ISectionInterface,
+        section_handler: PSection,
         parent_path: str,
         given_name: Optional[str] = None,
     ) -> None:
@@ -73,6 +71,51 @@ class HierarchyFactory:
         if self._seg_to_graph(path_segments) in self.main_graph:
             self.main_graph.add_node(given_name, section=section_handler)
             self.main_graph.add_edge(given_name, path_segments[-1])
+
+    # (automated) construction
+    def _check_branch_consistency(self, branch: str) -> bool:
+        # branches are expected to be internally ordered
+        # raise an error when __lt__ or __gt__ is not implemented
+        pass
+
+    def _get_extremity(self, branch: str, head: bool=True) -> str:
+        pass
+
+    def _move_along_branch(self, branch: str, up: bool=True) -> str:
+        # yield the next node (name) along the branch
+        pass
+
+    def _attach_branch(self, branch_1: str, branch_2_head: str) -> str:
+        # create an edge from branch_2 head to branch_1
+        pass
+
+    def _insert_branch(self, branch_1: str, branch_2_head: str) -> str:
+        # remove the edge between branch_1 and [branch_1 + dn]
+        # link branch_2_head to branch_1
+        # link branch_2_tail to [branch_1 + dn]
+        pass
+
+    def _merge_branch(self, branch_1: str, branch_2: str) -> str:
+        # compare their tail_1 / head_2 (node with no incoming/outgoing edges)
+        # if head_2 < tail_1, add an edge from head_2 to tail_1
+        # if not, repeat the process with head_2 and [tail_1 + 1 * up]
+        # if a hit, check whether head_2 > [tail_1 + 1 * down], decide on attaching or inserting
+        pass
+
+    def _automated_construct(self) -> None:
+        """Automatically constructs the temporary graph into the main graph.
+        This procedure relies on the `PSection` comparison method `__lt__()` and `__gt__()`."""
+        # split the branch space into 2 parts
+        # stop when there is only 1 branch left
+        pass
+
+    def construct(self) -> None:
+        """Constructs the temporary graph into the main graph."""
+        # check if the temporary graph is a valid tree
+        # migrate the temporary graph to the main graph if so
+        # rely on `self._automated_construct` to do the heavy lifting
+        # raise an error indicating missing links and/or cycles if not
+        pass
 
     # navigation
     def cd(self, path: Optional[str]) -> None:
@@ -98,6 +141,8 @@ class HierarchyFactory:
         if self._seg_to_graph(self._split_path(path)) in self.main_graph:
             return list(self.main_graph.successors(path))
 
+
+    # searching
     def _match_pattern(self, node: str, pattern_parts: List[str], index: int) -> bool:
         """Recursively checks if the node path matches the pattern."""
         if index == len(pattern_parts):
