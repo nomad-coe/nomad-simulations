@@ -1,6 +1,7 @@
+from concurrent.futures import Executor
 from copy import deepcopy
 from itertools import groupby
-from typing import Any, List, Optional, Protocol, Tuple
+from typing import Any, Callable, List, Optional, Protocol, Tuple
 import networkx as nx
 
 
@@ -81,94 +82,100 @@ class HierarchyFactory:
             self.main_graph.add_edge(given_name, path_segments[-1])
 
     # (automated) construction
-    def _check_graph_consistency(self, graph: nx.DiGraph) -> None:
-        # branches are expected to be internally ordered
-        # raise an error when __lt__ or __gt__ is not implemented
-        for node in graph.nodes():
-            try:
-                if graph.nodes[node]["section"] < graph.nodes[node]["section"]:
+    def _check_node_consistency(self) -> Optional[ValueError]:
+        for node in self.main_graph.nodes():
+            for operator in ["__lt__", "__gt__", "__eq__"]:
+                if not hasattr(self.main_graph.nodes[node]["section"], operator):
                     raise ValueError(
-                        f"Node {node} does not implement the __lt__ method correctly."
-                    )
-                if graph.nodes[node]["section"] > graph.nodes[node]["section"]:
-                    raise ValueError(
-                        f"Node {node} does not implement the __gt__ method correctly."
-                    )
-                if not (graph.nodes[node]["section"] == graph.nodes[node]["section"]):
-                    raise ValueError(
-                        f"Node {node} does not implement the __eq__ method correctly."
-                    )
-            except TypeError:
-                raise ValueError(f"Node {node} does not implement the comparison methods.")
+                        f"Node {node} does not implement the comparison methods."
+                    )  # Does not check for interoperability between different node types
 
-        for edge in graph.edges():
-            if not (graph.nodes[edge[0]]["section"] < graph.nodes[edge[1]]["section"]):
+    def _check_edge_consistency(self) -> Optional[ValueError]:
+        for edge in self.main_graph.edges():
+            if not (
+                self.main_graph.nodes[edge[0]]["section"]
+                < self.main_graph.nodes[edge[1]]["section"]
+            ):
                 raise ValueError(
                     f"Graph is inconsistently ordered: {edge[0]} is not less than or equal {edge[1]}."
                 )
-        # Note: this does not check for comparison interoperability between different node types
 
     # TODO: consider handler for cycles: splitting them
 
-    def _get_extremities(self, graph: nx.DiGraph, head: bool = True) -> list[str]:
+    def _get_extremities(self, head: bool = True) -> list[str]:
         if head:
-            return [node for node, degree in graph.out_degree() if degree == 0]
-        return [node for node, degree in graph.in_degree() if degree == 0]
+            return [
+                node for node, degree in self.main_graph.out_degree() if degree == 0
+            ]
+        return [node for node, degree in self.main_graph.in_degree() if degree == 0]
 
     def _move_along_branch(self, branch_node_name: str, up: bool = True) -> list[str]:
         if up:
-            return list(self.temp_graph.predecessors(branch_node_name))
-        return list(self.temp_graph.successors(branch_node_name))
+            return list(self.main_graph.predecessors(branch_node_name))
+        return list(self.main_graph.successors(branch_node_name))
 
-    def _attach_branch(
-        self,
-        larger_branch_current: str,
-        larger_branch_prev: Optional[str],
-        smaller_branch_head: str,
-    ) -> None:
-        """Attach the smaller branch to the larger branch, according to the following rules:
-        1. both branches are left structurally intact.
-        2. the smaller branch head is attached at the smallest node that is still larger than itself.
-        The search for the attachment point is done recursively in a depth-first manner.
-        """
-        if larger_branch_prev is not None:
-            if smaller_branch_head >= larger_branch_current:
-                self.main_graph.add_edge(smaller_branch_head, larger_branch_prev)
-                return
-
-        for larger_branch_next in self._move_along_branch(
-            larger_branch_current, up=False
+    def _dispatch_attach(
+        self, attach_branch_node_name: str, target_parent_node_name: str
+    ) -> list[Callable]:
+        futures: list[Callable] = []  # acts as a trampoline for the attach function?
+        for target_node_name in self._move_along_branch(
+            target_parent_node_name, up=False
         ):
-            self._attach_branch(
-                larger_branch_next, larger_branch_current, smaller_branch_head
+            futures.append(
+                Executor.submit(
+                    self._check_attach, attach_branch_node_name, target_node_name
+                )
             )
+        return futures
+
+    def _check_attach(
+        self,
+        attach_branch_node_name: str,
+        target_node_name: str,
+        target_parent_node_name: str,
+    ) -> Optional[list[Callable]]:
+        if (
+            self.main_graph.nodes[attach_branch_node_name]["section"]
+            > self.main_graph.nodes[target_node_name]["section"]
+        ):
+            return self.main_graph.add_edge(attach_branch_node_name, target_node_name)
+        elif (
+            self.main_graph.nodes[attach_branch_node_name]["section"]
+            == self.main_graph.nodes[target_node_name]["section"]
+        ):
+            return self.main_graph.add_edge(
+                attach_branch_node_name, target_parent_node_name
+            )
+        return self._dispatch_attach(
+            attach_branch_node_name,
+            target_node_name,
+        )
 
     def _sort_heads(self, heads: list[str]) -> list[list[str]]:
-        comparison_key = lambda head: self.temp_graph.nodes[head]["section"]
+        comparison_key = lambda head: self.main_graph.nodes[head]["section"]
         return [
             list(group)
             for _, group in groupby(sorted(heads, comparison_key), key=comparison_key)
         ]
 
-    def _automated_construct(self, graph: nx.DiGraph) -> None:
+    def _automated_construct(self) -> None:
         """Automatically constructs the temporary graph into the main graph.
-        This procedure relies on the `PSection` comparison method `__lt__()` and `__gt__()`."""
-        sorted_heads = self._sort_heads(self._get_extremities(graph, head=True))
+        This procedure relies on the `PSection` comparison methods."""
+        sorted_heads = self._sort_heads(self._get_extremities(self.main_graph, head=True))
         for smaller_branch_head, larger_branch_head in zip(
             sorted_heads[:-1], sorted_heads[1:]
         ):
-            self._attach_branch(larger_branch_head, None, smaller_branch_head)
+            self._dispatch_attach(smaller_branch_head, larger_branch_head)
 
     def construct(self) -> None:
         """Constructs the temporary graph into the main graph."""
-        # check if the temporary graph is a valid tree
-        # raise an error indicating missing links and/or cycles if not
         # migrate the temporary graph to the main graph if so
-        # rely on `self._automated_construct` to do the heavy lifting
         self.main_graph = deepcopy(self.temp_graph)
-        if not nx.is_weakly_connected(self.temp_graph):
-            self._check_graph_consistency(self.temp_graph)
-            self._automated_construct(list(nx.weakly_connected_components(self.main_graph)))
+        if not nx.is_weakly_connected(self.main_graph):
+            # check if the temporary graph is a valid tree
+            self._check_graph_consistency(self.main_graph)
+            # rely on `self._automated_construct` to do the heavy lifting
+            return self._automated_construct()
 
     # navigation
     def cd(self, path: Optional[str]) -> None:
