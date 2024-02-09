@@ -59,7 +59,7 @@ from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
 from nomad.datamodel.metainfo.basesections import System, GeometricSpace
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from ..utils import get_sub_section_from_section_parent
+from .utils import get_sub_section_from_section_parent
 
 
 class AtomicCell(GeometricSpace):
@@ -555,7 +555,7 @@ class ChemicalFormula(ArchiveSection):
         """,
     )
 
-    def resolve_chemical_formulas(self, formula):
+    def resolve_chemical_formulas(self, formula: Formula):
         """
         Resolves the chemical formulas of the `ModelSystem` in different formats.
 
@@ -833,15 +833,13 @@ class ModelSystem(System):
             ) = self.resolve_system_type_and_dimensionality(ase_atoms)
             # Creating and normalizing Symmetry section
             if self.type == "bulk" and self.symmetry is not None:
-                sec_symmetry = Symmetry()
+                sec_symmetry = self.m_create(Symmetry)
                 sec_symmetry.normalize(archive, logger)
-                self.symmetry.append(sec_symmetry)
 
         # Creating and normalizing ChemicalFormula section
         # TODO add support for fractional formulas (possibly add `AtomicCell.concentrations` for each species)
-        sec_chemical_formula = ChemicalFormula()
+        sec_chemical_formula = self.m_create(ChemicalFormula)
         sec_chemical_formula.normalize(archive, logger)
-        self.chemical_formula.append(sec_chemical_formula)
         if sec_chemical_formula.m_cache:
             self.elemental_composition = sec_chemical_formula.m_cache.get(
                 "elemental_composition", []
