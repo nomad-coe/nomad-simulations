@@ -53,13 +53,18 @@ def get_sibling_section(
     Returns:
         sibling_section (ArchiveSection): The sibling_section to be returned.
     """
+    # Check if the parent of section exists
     if section.m_parent is None:
         logger.warning("Could not find the parent of the section.")
         return
+
+    # Check if the sibling_section exists in the parent of section
     if not section.m_parent.m_xpath(sibling_section_name):
         logger.warning("Could not find the section.m_parent.sub_section.")
         return
     sibling_section = getattr(section.m_parent, sibling_section_name)
+
+    # If the sibling_section is a list, return the element `index_sibling` of that list
     if isinstance(sibling_section, list):
         if len(sibling_section) == 0:
             logger.warning("The sub_section is empty.")
@@ -68,6 +73,7 @@ def get_sibling_section(
             logger.warning("The index of the sub_section is out of range.")
             return
         return sibling_section[index_sibling]
+    # If the sibling_section is a single section, return the sibling_section itself
     elif isinstance(sibling_section, ArchiveSection):
         return sibling_section
     return
