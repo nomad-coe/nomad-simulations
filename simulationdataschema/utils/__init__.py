@@ -16,4 +16,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .utils import get_sub_section_from_section_parent
+from .utils import get_sibling_section

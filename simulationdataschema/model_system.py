@@ -61,7 +61,7 @@ from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
 from nomad.datamodel.metainfo.basesections import System, GeometricSpace
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .utils import get_sub_section_from_section_parent
+from .utils import get_sibling_section
 
 
 class AtomicCell(GeometricSpace):
@@ -109,6 +109,16 @@ class AtomicCell(GeometricSpace):
         """,
     )
 
+    velocities = Quantity(
+        type=np.float64,
+        shape=["*", 3],
+        unit="meter / second",
+        description="""
+        Velocities of the atoms. It is the change in cartesian coordinates of the atom position
+        with time.
+        """,
+    )  # ? what about forces, stress
+
     lattice_vectors = Quantity(
         type=np.float64,
         shape=[3, 3],
@@ -136,16 +146,6 @@ class AtomicCell(GeometricSpace):
         shape=[3],
         description="""
         If periodic boundary conditions are applied to each direction of the crystal axes.
-        """,
-    )
-
-    velocities = Quantity(
-        type=np.float64,
-        shape=["*", 3],
-        unit="meter / second",
-        description="""
-        Velocities of the atoms. It is the change in cartesian coordinates of the atom position
-        with time.
         """,
     )
 
@@ -185,6 +185,9 @@ class AtomicCell(GeometricSpace):
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
         section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
 
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
         Returns:
             Union[ase.Atoms, None]: The ASE Atoms object with the basic information from the `AtomicCell`.
         """
@@ -199,7 +202,7 @@ class AtomicCell(GeometricSpace):
             self.periodic_boundary_conditions = [False, False, False]
         ase_atoms.set_pbc(self.periodic_boundary_conditions)
 
-        # Positions
+        # Positions (ensure they are parsed)
         if self.positions is not None:
             if len(self.positions) != len(self.labels):
                 logger.error(
@@ -375,6 +378,7 @@ class Symmetry(ArchiveSection):
         Args:
             symmetry_analyzer (SymmetryAnalyzer): The `SymmetryAnalyzer` object used to resolve.
             cell_type (str): The type of cell to resolve, either 'primitive' or 'conventional'.
+            logger (BoundLogger): The logger to log messages.
 
         Returns:
             Union[AtomicCell, None]: The resolved `AtomicCell` section or None if the cell_type
@@ -418,6 +422,7 @@ class Symmetry(ArchiveSection):
         Args:
             original_atomic_cell (AtomicCell): The `AtomicCell` section that the symmetry
             uses to in MatID.SymmetryAnalyzer().
+            logger (BoundLogger): The logger to log messages.
         Returns:
             primitive_atomic_cell (AtomicCell): The primitive `AtomicCell` section.
             conventional_atomic_cell (AtomicCell): The standarized `AtomicCell` section.
@@ -454,7 +459,7 @@ class Symmetry(ArchiveSection):
         original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()
         original_equivalent_atoms = symmetry_analyzer.get_equivalent_atoms_original()
         original_atomic_cell.wyckoff_letters = original_wyckoff
-        original_atomic_cell.equivalent_particles = original_equivalent_atoms
+        original_atomic_cell.equivalent_atoms = original_equivalent_atoms
 
         # Populating the primitive AtomicCell information
         primitive_atomic_cell = self.resolve_analyzed_atomic_cell(
@@ -498,7 +503,9 @@ class Symmetry(ArchiveSection):
         return primitive_atomic_cell, conventional_atomic_cell
 
     def normalize(self, archive, logger):
-        atomic_cell = get_sub_section_from_section_parent(self, "atomic_cell", logger)
+        atomic_cell = get_sibling_section(
+            section=self, sibling_section_name="atomic_cell", logger=logger
+        )
         if self.m_parent.type == "bulk":
             # Adding the newly calculated primitive and conventional cells to the ModelSystem
             (
@@ -585,7 +592,9 @@ class ChemicalFormula(ArchiveSection):
         self.anonymous = formula.format("anonymous")
 
     def normalize(self, archive, logger):
-        atomic_cell = get_sub_section_from_section_parent(self, "atomic_cell", logger)
+        atomic_cell = get_sibling_section(
+            section=self, sibling_section_name="atomic_cell", logger=logger
+        )
         ase_atoms = atomic_cell.to_ase_atoms(logger)
         formula = None
         try:
