@@ -24,7 +24,10 @@ from nomad.datamodel.data import ArchiveSection
 
 
 def get_sibling_section(
-    section: ArchiveSection, sibling_section_name: str, logger: BoundLogger
+    section: ArchiveSection,
+    sibling_section_name: str,
+    index_sibling: int = 0,
+    logger: BoundLogger = None,
 ) -> ArchiveSection:
     """
     Gets the sibling section of a section by performing a seesaw move by going to the parent
@@ -38,12 +41,13 @@ def get_sibling_section(
           |__ sibling_section
 
 
-    If the sibling_section is a list, it returns the first element of the list. If the sibling_section is
-    a single section, it returns the sibling_section itself.
+    If the sibling_section is a list, it returns the element `index_sibling` of that list. If
+    the sibling_section is a single section, it returns the sibling_section itself.
 
     Args:
         section (ArchiveSection): The section to check for its parent and retrieve the sibling_section.
         sibling_section (str): The name of the sibling_section to retrieve from the parent.
+        index_sibling (int): The index of the sibling_section to retrieve if it is a list.
         logger (BoundLogger): The logger to log messages.
 
     Returns:
@@ -60,7 +64,10 @@ def get_sibling_section(
         if len(sibling_section) == 0:
             logger.warning("The sub_section is empty.")
             return
-        return sibling_section[0]  # ? extend for any section targeted as input
+        if index_sibling >= len(sibling_section):
+            logger.warning("The index of the sub_section is out of range.")
+            return
+        return sibling_section[index_sibling]
     elif isinstance(sibling_section, ArchiveSection):
         return sibling_section
     return
