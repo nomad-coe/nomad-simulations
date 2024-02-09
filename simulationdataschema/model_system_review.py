@@ -284,9 +284,9 @@ class Symmetry(ArchiveSection):
     hall_symbol = Quantity(
         type=str,
         description="""
-        Hall symbol for this system describing the minimum number of symmetry operations,
-        in the form of Seitz matrices, needed to uniquely define a space group. See
-        https://cci.lbl.gov/sginfo/hall_symbols.html. Examples:
+        Hall symbol for this system describing the minimum number of symmetry operations
+        needed to uniquely define a space group. See https://cci.lbl.gov/sginfo/hall_symbols.html.
+        Examples:
             - `F -4 2 3`,
             - `-P 4 2`,
             - `-F 4 2 3`.
