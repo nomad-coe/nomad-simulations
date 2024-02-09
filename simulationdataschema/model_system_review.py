@@ -402,7 +402,9 @@ class Symmetry(ArchiveSection):
 
         atomic_cell = AtomicCell(type=cell_type)
         atomic_cell.lattice_vectors = cell * ureg.angstrom
-        atomic_cell.positions = positions * ureg.angstrom
+        atomic_cell.positions = (
+            positions * ureg.angstrom
+        )  # ? why do we need to pass units
         atomic_cell.labels = labels
         atomic_cell.atomic_numbers = atomic_numbers
         atomic_cell.wyckoff_letters = wyckoff
@@ -485,9 +487,7 @@ class Symmetry(ArchiveSection):
                 symmetry.get("space_group_number"), norm_wyckoff
             )
             strukturbericht = aflow_prototype.get("Strukturbericht Designation")
-            if strukturbericht == "None":
-                strukturbericht = None
-            else:
+            if strukturbericht != "None":
                 strukturbericht = re.sub("[$_{}]", "", strukturbericht)
             prototype_aflow_id = aflow_prototype.get("aflow_prototype_id")
             prototype_formula = aflow_prototype.get("Prototype")
