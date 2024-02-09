@@ -69,10 +69,12 @@ class Simulation(BaseSimulation, EntryData):
 
     outputs = SubSection(sub_section=Outputs.m_def, repeats=True)
 
-    def _set_system_tree_index(self, system_parent: ModelSystem, tree_index: int = 0):
+    def _set_system_branch_depth(
+        self, system_parent: ModelSystem, branch_depth: int = 0
+    ):
         for system_child in system_parent.model_system:
-            system_child.tree_index = tree_index + 1
-            self._set_system_tree_index(system_child, tree_index + 1)
+            system_child.branch_depth = branch_depth + 1
+            self._set_system_branch_depth(system_child, branch_depth + 1)
 
     def normalize(self, archive, logger) -> None:
         super(EntryData, self).normalize(archive, logger)
@@ -87,9 +89,9 @@ class Simulation(BaseSimulation, EntryData):
         system_ref.is_representative = True
         self.m_cache["system_ref"] = system_ref
 
-        # Setting up the `tree_index` in the parent-child tree
+        # Setting up the `branch_depth` in the parent-child tree
         for system_parents in self.model_system:
-            system_parents.tree_index = 0
+            system_parents.branch_depth = 0
             if len(system_parents.model_system) == 0:
                 continue
-            self._set_system_tree_index(system_parents)
+            self._set_system_branch_depth(system_parents)
