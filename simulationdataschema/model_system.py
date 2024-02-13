@@ -58,10 +58,159 @@ from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_protot
 from nomad.datamodel.data import ArchiveSection
 
 from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
-from nomad.datamodel.metainfo.basesections import System, GeometricSpace
+from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .utils import get_sibling_section
+
+
+class GeometricSpace(Entity):
+    """
+    A base section to define geometrical space-related entities, as well as their coordinates
+    system of reference information.
+    """
+
+    length_vector_a = Quantity(
+        type=np.float64,
+        unit="meter",
+        description="""
+        Length of the first basis vector.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    length_vector_b = Quantity(
+        type=np.float64,
+        unit="meter",
+        description="""
+        Length of the second basis vector.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    length_vector_c = Quantity(
+        type=np.float64,
+        unit="meter",
+        description="""
+        Length of the third basis vector.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    angle_vectors_b_c = Quantity(
+        type=np.float64,
+        unit="radian",
+        description="""
+        Angle between second and third basis vector.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    angle_vectors_a_c = Quantity(
+        type=np.float64,
+        unit="radian",
+        description="""
+        Angle between first and third basis vector.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    angle_vectors_a_b = Quantity(
+        type=np.float64,
+        unit="radian",
+        description="""
+        Angle between first and second basis vector.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    volume = Quantity(
+        type=np.float64,
+        unit="meter ** 3",
+        description="""
+        Volume of a 3D real space entity.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    surface_area = Quantity(
+        type=np.float64,
+        unit="meter ** 2",
+        description="""
+        Surface area of a 3D real space entity.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    area = Quantity(
+        type=np.float64,
+        unit="meter ** 2",
+        description="""
+        Area of a 2D real space entity.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    length = Quantity(
+        type=np.float64,
+        unit="meter",
+        description="""
+        Total length of a 1D real space entity.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    coordinates_system = Quantity(
+        type=MEnum("cartesian", "polar", "cylindrical", "spherical"),
+        default="cartesian",
+        description="""
+        Coordinate system used to determine the geometrical information of a shape in real
+        space. Default to 'cartesian'.
+        """,
+    )
+
+    origin_shift = Quantity(
+        type=np.float64,
+        shape=[3],
+        description="""
+        Vector `p` from the origin of a custom coordinates system to the origin of the
+        global coordinates system. Together with the matrix `P` (stored in transformation_matrix),
+        the transformation between the custom coordinates `x` and global coordinates `X` is then
+        given by:
+            `x` = `P` `X` + `p`.
+        """,
+    )
+
+    transformation_matrix = Quantity(
+        type=np.float64,
+        shape=[3, 3],
+        description="""
+        Matrix `P` used to transform the custom coordinates system to the global coordinates system.
+        Together with the vector `p` (stored in origin_shift), the transformation between
+        the custom coordinates `x` and global coordinates `X` is then given by:
+            `x` = `P` `X` + `p`.
+        """,
+    )
+
+    def get_geometric_space_for_atomic_cell(self, logger):
+        """
+        Get the real space parameters for the atomic cell using ASE.
+        """
+        atoms = self.to_ase_atoms(logger)
+        cell = atoms.get_cell()
+        self.length_vector_a, self.length_vector_b, self.length_vector_c = (
+            cell.lengths() * ureg.angstrom
+        )
+        self.angle_vectors_b_c, self.angle_vectors_a_c, self.angle_vectors_a_b = (
+            cell.angles() * ureg.degree
+        )
+        self.volume = cell.volume * ureg.angstrom**3
+
+    def normalize(self, archive, logger) -> None:
+        # We try to get ASE atoms from the cache of AtomicCell
+        ase_atoms = self.to_ase_atoms(logger)
+        if ase_atoms is not None:
+            self.get_geometric_space_for_atomic_cell(logger)
 
 
 class AtomicCell(GeometricSpace):
@@ -402,7 +551,9 @@ class Symmetry(ArchiveSection):
 
         atomic_cell = AtomicCell(type=cell_type)
         atomic_cell.lattice_vectors = cell * ureg.angstrom
-        atomic_cell.positions = positions * ureg.angstrom  # ? why do we need to pass units
+        atomic_cell.positions = (
+            positions * ureg.angstrom
+        )  # ? why do we need to pass units
         atomic_cell.labels = labels
         atomic_cell.atomic_numbers = atomic_numbers
         atomic_cell.wyckoff_letters = wyckoff
@@ -794,30 +945,29 @@ class ModelSystem(System):
                     radii="covalent",
                     cluster_threshold=config.normalize.cluster_threshold,
                 )
-                cls = classifier.classify(ase_atoms)
+                classification = classifier.classify(ase_atoms)
             except Exception as e:
                 self.logger.warning(
                     "MatID system classification failed.", exc_info=e, error=str(e)
                 )
                 return system_type, dimensionality
 
-            classification = type(cls)
-            if classification == Class3D:
+            if isinstance(classification, Class3D):
                 system_type = "bulk"
                 dimensionality = 3
-            elif classification == Atom:
+            elif isinstance(classification, Atom):
                 system_type = "atom"
                 dimensionality = 0
-            elif classification == Class0D:
+            elif isinstance(classification, Class0D):
                 system_type = "molecule / cluster"
                 dimensionality = 0
-            elif classification == Class1D:
+            elif isinstance(classification, Class1D):
                 system_type = "1D"
                 dimensionality = 1
-            elif classification == Surface:
+            elif isinstance(classification, Surface):
                 system_type = "surface"
                 dimensionality = 2
-            elif classification == Material2D or classification == Class2D:
+            elif isinstance(classification, (Class2D, Material2D)):
                 system_type = "2D"
                 dimensionality = 2
         else:
