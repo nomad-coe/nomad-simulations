@@ -33,29 +33,136 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# from nomad.metainfo import Environment
-# from .run import Run
-# from .calculation import Calculation
-# from .method import Method
-# from .system import System
-# from . import run
-# from . import method
-# from . import calculation
-# from . import system
 
-# m_env = Environment()
-# m_env.m_add_sub_section(Environment.packages, run.m_package)
-# m_env.m_add_sub_section(Environment.packages, method.m_package)
-# m_env.m_add_sub_section(Environment.packages, calculation.m_package)
-# m_env.m_add_sub_section(Environment.packages, system.m_package)
 import numpy as np
 
+from nomad.units import ureg
+from nomad.metainfo import SubSection, Quantity, MEnum, Section, Datetime
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
-from nomad.datamodel.metainfo.basesections import Simulation as BaseSimulation
-from nomad.metainfo import SubSection
+from nomad.datamodel.metainfo.basesections import Entity, Activity
+
 from .model_system import ModelSystem
 from .model_method import ModelMethod
 from .outputs import Outputs
+
+
+class Program(Entity):
+    """
+    A base section used to specify a well-defined program used for computation.
+
+    Synonyms:
+     - code
+     - software
+    """
+
+    name = Quantity(
+        type=str,
+        description="""
+        The name of the program.
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    version = Quantity(
+        type=str,
+        description="""
+        The version label of the program.
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    link = Quantity(
+        type=str,
+        description="""
+        Website link to the program in published information.
+        """,
+        a_eln=ELNAnnotation(component="URLEditQuantity"),
+    )
+
+    version_internal = Quantity(
+        type=str,
+        description="""
+        Specifies a program version tag used internally for development purposes.
+        Any kind of tagging system is supported, including git commit hashes.
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    compilation_host = Quantity(
+        type=str,
+        description="""
+        Specifies the host on which the program was compiled.
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    def normalize(self, archive, logger) -> None:
+        pass
+
+
+class BaseSimulation(Activity):
+    """
+    A computational simulation that produces output data from a given input model system
+    and methodological parameters.
+
+    Synonyms:
+     - computation
+     - calculation
+    """
+
+    m_def = Section(
+        links=["https://liusemweb.github.io/mdo/core/1.1/index.html#Calculation"]
+    )
+
+    datetime_end = Quantity(
+        type=Datetime,
+        description="""
+        The date and time when this computation ended.
+        """,
+        a_eln=ELNAnnotation(component="DateTimeEditQuantity"),
+    )
+
+    cpu1_start = Quantity(
+        type=np.float64,
+        unit="second",
+        description="""
+        The starting time of the computation on the (first) CPU 1.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    cpu1_end = Quantity(
+        type=np.float64,
+        unit="second",
+        description="""
+        The end time of the computation on the (first) CPU 1.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    wall_start = Quantity(
+        type=np.float64,
+        unit="second",
+        description="""
+        The internal wall-clock time from the starting of the computation.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    wall_end = Quantity(
+        type=np.float64,
+        unit="second",
+        description="""
+        The internal wall-clock time from the end of the computation.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    program = SubSection(sub_section=Program.m_def, repeats=False)
+
+    def normalize(self, archive, logger) -> None:
+        pass
 
 
 class Simulation(BaseSimulation, EntryData):
@@ -80,7 +187,7 @@ class Simulation(BaseSimulation, EntryData):
         super(EntryData, self).normalize(archive, logger)
 
         # Finding which is the representative system of a calculation: typically, we will
-        # define it as the last system reported (CHECK THIS!).
+        # define it as the last system reported (TODO CHECK THIS!).
         # TODO extend adding the proper representative system extraction using `normalizer.py`
         if self.model_system is None:
             logger.error("No system information reported.")
