@@ -59,10 +59,10 @@ def get_sibling_section(
         return
 
     # Check if the sibling_section exists in the parent of section
-    if not hasattr(section.m_parent, sibling_section_name):
+    sibling_section = section.m_parent.m_xpath(sibling_section_name, dict=False)
+    if not sibling_section:
         logger.warning("Could not find the section.m_parent.sibling_section.")
         return
-    sibling_section = getattr(section.m_parent, sibling_section_name)
 
     # If the sibling_section is a list, return the element `index_sibling` of that list
     if isinstance(sibling_section, list):
