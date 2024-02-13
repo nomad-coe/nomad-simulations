@@ -15,5 +15,5 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-from .general import Program, Simulation
+
+from .utils import get_sibling_section

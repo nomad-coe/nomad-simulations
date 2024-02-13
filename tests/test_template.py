@@ -33,3 +33,7 @@ def run_parsing(parser_class, filepath):
     archive = EntryArchive(metadata=EntryMetadata())
     parser_class().parse(filepath, archive, LOGGER)
     return archive
+
+
+def test_dummy():
+    assert True
