@@ -28,7 +28,7 @@ def get_sibling_section(
     sibling_section_name: str,
     index_sibling: int = 0,
     logger: BoundLogger = None,
-) -> ArchiveSection:
+) -> Optional[ArchiveSection]:
     """
     Gets the sibling section of a section by performing a seesaw move by going to the parent
     of the section and then going down to the sibling section. This is used, e.g., to get
@@ -53,27 +53,14 @@ def get_sibling_section(
     Returns:
         sibling_section (ArchiveSection): The sibling_section to be returned.
     """
-    # Check if the parent of section exists
-    if section.m_parent is None:
-        logger.warning("Could not find the parent of the section.")
+    if not sibling_section_name:
+        logger.warning("The sibling_section_name is empty.")
         return
-
-    # Check if the sibling_section exists in the parent of section
-    sibling_section = section.m_parent.m_xpath(sibling_section_name, dict=False)
-    if not sibling_section:
-        logger.warning("Could not find the section.m_parent.sibling_section.")
-        return
-
+    sibling_section = section.m_xpath(f"m_parent.{sibling_section_name}", dict=False)
     # If the sibling_section is a list, return the element `index_sibling` of that list
     if isinstance(sibling_section, list):
-        if len(sibling_section) == 0:
-            logger.warning("The sibling_section is empty.")
-            return
         if index_sibling >= len(sibling_section):
             logger.warning("The index of the sibling_section is out of range.")
             return
         return sibling_section[index_sibling]
-    # If the sibling_section is a single section, return the sibling_section itself
-    elif isinstance(sibling_section, ArchiveSection):
-        return sibling_section
-    return
+    return sibling_section
