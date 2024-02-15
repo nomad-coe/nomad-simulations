@@ -64,10 +64,395 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from .utils import get_sibling_section
 
 
+class OrbitalState(ArchiveSection):
+    """
+    A base section to define the orbital state of an atom.
+
+    It inherits from `ArchiveSection`.It contains the quantum numbers (n, l, ml, ms, j, mj),
+    the occupation, and the degeneracy of the state.
+    """
+
+    # TODO: add the relativistic kappa_quantum_number
+    n_quantum_number = Quantity(
+        type=np.int32,
+        description="""
+        Principal quantum number n of the orbital state.
+        """,
+    )
+
+    l_quantum_number = Quantity(
+        type=np.int32,
+        description="""
+        Azimuthal quantum number l of the orbital state.
+        """,
+    )
+
+    ml_quantum_number = Quantity(
+        type=np.int32,
+        description="""
+        Azimuthal projection of the l vector.
+        """,
+    )
+
+    j_quantum_number = Quantity(
+        type=np.float64,
+        shape=["1..2"],
+        description="""
+        Total angular momentum quantum number $j = |l-s| ... l+s$. Necessary with strong
+        L-S coupling or non-collinear spin systems.
+        """,
+    )
+
+    mj_quantum_number = Quantity(
+        type=np.float64,
+        shape=["*"],
+        description="""
+        Azimuthal projection of the $j$ vector. Necessary with strong L-S coupling or
+        non-collinear spin systems.
+        """,
+    )
+
+    ms_quantum_bool = Quantity(
+        type=bool,
+        description="""
+        True if the state is spin up, False if it is spin down. In non-collinear spin systems,
+        the projection axis $z$ should also be defined.
+        """,
+    )
+
+    degeneracy = Quantity(
+        type=np.int32,
+        description="""
+        The number of states under the filling constraints applied to the orbital set.
+        This implicitly assumes that all orbitals in the set are degenerate.
+        """,
+    )
+
+    occupation = Quantity(
+        type=np.int32,
+        description="""
+        The number of electrons in the orbital state. The state is fully occupied if
+        occupation = degeneracy.
+        """,
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+
+class Pseudopotential(ArchiveSection):
+    """
+    A base section to define the pseudopotential of an atom.
+
+    It inherits from `ArchiveSection`. It contains the name, type, norm_conserving, cutoff,
+    xc_functional_name, l_max, and lm_max of the pseudopotential.
+    """
+
+    name = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Native code name of the pseudopotential.
+        """,
+    )
+
+    type = Quantity(
+        type=MEnum("US V", "US MBK", "PAW"),
+        shape=[],
+        description="""
+        Pseudopotential classification.
+        | abbreviation | description | DOI |
+        | ------------ | ----------- | --------- |
+        | `'US'`       | Ultra-soft  | |
+        | `'PAW'`      | Projector augmented wave | |
+        | `'V'`        | Vanderbilt | https://doi.org/10.1103/PhysRevB.47.6728 |
+        | `'MBK'`      | Morrison-Bylander-Kleinman | https://doi.org/10.1103/PhysRevB.41.7892 |
+        """,
+    )
+
+    norm_conserving = Quantity(
+        type=bool,
+        shape=[],
+        description="""
+        Denotes whether the pseudopotential is norm-conserving.
+        """,
+    )
+
+    cutoff = Quantity(
+        type=np.float64,
+        shape=[],
+        unit="joule",
+        description="""
+        Minimum recommended spherical cutoff energy for any plane-wave basis set
+        using the pseudopotential.
+        """,
+    )
+
+    xc_functional_name = Quantity(
+        type=str,
+        shape=["*"],
+        description="""
+        Name of the exchange-correlation functional used to generate the pseudopotential.
+        Follows the libxc naming convention.
+        """,
+    )
+
+    l_max = Quantity(
+        type=np.int32,
+        shape=[],
+        description="""
+        Maximum angular momentum of the pseudopotential projectors.
+        """,
+    )
+
+    lm_max = Quantity(
+        type=np.int32,
+        shape=[],
+        description="""
+        Maximum magnetic momentum of the pseudopotential projectors.
+        """,
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+
+class CoreHole(ArchiveSection):
+    """
+    Describes the quantum state of a single hole in an open-shell core state. This is the physical interpretation.
+    For modelling purposes, the electron charge excited may lie between 0 and 1. This follows a so-called Janak state.
+    Sometimes, no electron is actually, excited, but just marked for excitation. This is denoted as an `initial` state.
+    Any missing quantum numbers indicate some level of arbitrariness in the choice of the core hole, represented in the degeneracy.
+    """
+
+    # quantities: list[str] = SingleElectronState.quantities + ["n_electrons_excited"]
+
+    n_electrons_excited = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        The electron charge excited for modelling purposes.
+        Choices that deviate from 0 or 1 typically leverage Janak composition.
+        Unless the `initial` state is chosen, the model corresponds to a single electron being excited in physical reality.
+        """,
+    )
+    occupation = Quantity(
+        type=np.float64,
+        description="""
+        The total number of electrons within the state (as defined by degeneracy)
+        after exciting the model charge.
+        """,
+    )
+    dscf_state = Quantity(
+        type=MEnum("initial", "final"),
+        shape=[],
+        description="""
+        The $\\Delta$-SCF state tag, used to identify the role in the workflow of the same name.
+        Allowed values are `initial` (not to be confused with the _initial-state approximation_) and `final`.
+        """,
+    )
+
+    def __setattr__(self, name, value):
+        if name == "n_electrons_excited":
+            if value < 0.0:
+                raise ValueError("Number of excited electrons must be positive.")
+            if value > 1.0:
+                raise ValueError("Number of excited electrons must be less than 1.")
+        elif name == "dscf_state":
+            if value == "initial":
+                self.n_electrons_excited = 0.0
+                self.degeneracy = 1
+        super().__setattr__(name, value)
+
+    def set_occupation(self) -> float:
+        """Set the occupation based on the number of excited electrons."""
+        if not self.occupation:
+            try:
+                self.occupation = self.set_degeneracy() - self.n_electrons_excited
+            except TypeError:
+                raise AttributeError(
+                    "Cannot set occupation without `n_electrons_excited`."
+                )
+        return self.occupation
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+        # self.set_occupation()
+
+
+class HubbardInteractions(ArchiveSection):
+    """
+    A base section to define the Hubbard interactions of the system.
+
+    It inherits from `ArchiveSection`. It contains the local Hubbard interaction matrix $umn$,
+    the intraorbital Hubbard interaction $u$, the interorbital Hund's coupling $jh$, the interorbital
+    Coulomb interaction $up$, the exchange interaction $j$, and the effective U parameter $u_{eff}$.
+    It might also contain the Slater integrals (F0, F2, F4) used to derive the local Hubbard interactions.
+    """
+
+    orbital_ref = Quantity(
+        type=OrbitalState,
+        shape=["*"],
+        description="""
+        Reference to the OrbitalState sections that are used as a basis to obtain the Hubbard
+        interaction matrices.
+        """,
+    )
+
+    umn = Quantity(
+        type=np.float64,
+        shape=["*", "*"],
+        unit="joule",
+        description="""
+        Value of the local Hubbard interaction matrix. The order of the rows and columns coincide
+        with the elements in `orbital_ref`.
+        """,
+    )
+
+    u = Quantity(
+        type=np.float64,
+        unit="joule",
+        description="""
+        Value of the (intraorbital) Hubbard interaction
+        """,
+    )
+
+    jh = Quantity(
+        type=np.float64,
+        unit="joule",
+        description="""
+        Value of the (interorbital) Hund's coupling.
+        """,
+    )
+
+    up = Quantity(
+        type=np.float64,
+        unit="joule",
+        description="""
+        Value of the (interorbital) Coulomb interaction. In rotational invariant systems, up = u - 2 * jh.
+        """,
+    )
+
+    j = Quantity(
+        type=np.float64,
+        unit="joule",
+        description="""
+        Value of the exchange interaction. In rotational invariant systems, j = jh.
+        """,
+    )
+
+    u_effective = Quantity(
+        type=np.float64,
+        unit="joule",
+        description="""
+        Value of the effective U parameter (u - j).
+        """,
+    )
+
+    slater_integrals = Quantity(
+        type=np.float64,
+        shape=[3],
+        unit="joule",
+        description="""
+        Value of the Slater integrals (F0, F2, F4) in spherical harmonics used to derive
+        the local Hubbard interactions:
+
+            u = ((2.0 / 7.0) ** 2) * (F0 + 5.0 * F2 + 9.0 * F4) / (4.0*np.pi)
+
+            up = ((2.0 / 7.0) ** 2) * (F0 - 5.0 * F2 + 3.0 * 0.5 * F4) / (4.0*np.pi)
+
+            jh = ((2.0 / 7.0) ** 2) * (5.0 * F2 + 15.0 * 0.25 * F4) / (4.0*np.pi)
+
+        See e.g., Elbio Dagotto, Nanoscale Phase Separation and Colossal Magnetoresistance,
+        Chapter 4, Springer Berlin (2003).
+        """,
+    )
+
+    double_counting_correction = Quantity(
+        type=str,
+        description="""
+        Name of the double counting correction algorithm applied.
+        """,
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+
+class AtomicState(ArchiveSection):
+    """
+    A base section to define the atomic state information.
+
+    It inherits from `ArchiveSection`. It contains the chemical symbol, atomic number, index,
+    orbital states, charge, pseudopotential, core hole, and Hubbard interactions of the atom.
+    """
+
+    chemical_symbol = Quantity(
+        type=MEnum(ase.data.chemical_symbols[1:]),
+        description="""
+        Symbol of the element, e.g. 'H', 'Pb'. This quantity is equivalent to `atomic_numbers`.
+        """,
+    )
+
+    atomic_number = Quantity(
+        type=np.int32,
+        description="""
+        Atomic number Z. This quantity is equivalent to `chemical_symbol`.
+        """,
+    )
+
+    orbitals = SubSection(sub_section=OrbitalState.m_def, repeats=True)
+
+    charge = Quantity(
+        type=np.int32,
+        description="""
+        Charge of the atom. It is defined as the number of extra electrons or holes in the
+        atom. If the atom is neutral, charge = 0 and the summation of all (if available) the`OrbitalState.occupation`
+        coincides with the `atomic_number`. Otherwise, charge can be any positive integer (+1, +2...)
+        for cations or any negative integer (-1, -2...) for anions.
+
+        Note: for `CoreHole` systems we do not consider the charge of the atom even if
+        we do not store the final `OrbitalState` where the electron was excited to.
+        """,
+    )
+
+    pseudopotential = SubSection(sub_section=Pseudopotential.m_def, repeats=False)
+
+    core_hole = SubSection(sub_section=CoreHole.m_def, repeats=False)
+
+    hubbard_interactions = SubSection(
+        sub_section=HubbardInteractions.m_def, repeats=False
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+        # Get chemical_symbol from atomic_number and viceversa
+        if self.chemical_symbol is None and self.atomic_number is not None:
+            try:
+                self.chemical_symbol = ase.data.chemical_symbols[self.atomic_number]
+            except IndexError:
+                logger.error(
+                    "The `AtomicState.atomic_number` is out of range of the periodic table."
+                )
+                return
+        elif self.chemical_symbol is not None and self.atomic_number is None:
+            try:
+                self.atomic_number = ase.data.atomic_numbers[self.chemical_symbol]
+            except IndexError:
+                logger.error(
+                    "The `AtomicState.chemical_symbol` is not recognized in the periodic table."
+                )
+                return
+
+
 class GeometricSpace(Entity):
     """
-    A base section to define geometrical space-related entities, as well as their coordinates
-    system of reference information.
+    A base section to define geometrical space-related entities.
+
+    It inherits from `Entity`. It contains the length of the basis vectors, the angles between
+    the basis vectors, the volume, the surface area, the area, the length, the coordinate system,
+    the origin shift, and the transformation matrix of the space.
     """
 
     length_vector_a = Quantity(
@@ -207,16 +592,19 @@ class GeometricSpace(Entity):
         self.volume = cell.volume * ureg.angstrom**3
 
     def normalize(self, archive, logger) -> None:
-        # We try to get ASE atoms from the cache of AtomicCell
-        ase_atoms = self.to_ase_atoms(logger)
+        # Skip normalization for `Entity`
+        ase_atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
         if ase_atoms is not None:
             self.get_geometric_space_for_atomic_cell(logger)
 
 
-class AtomicCell(GeometricSpace):
+class Cell(GeometricSpace):
     """
-    A base section used to specify the atomic cell quantities (labels, positions) of a system
-    at a given moment in time.
+    A base section used to specify the cell quantities of a system at a given moment in time.
+
+    It inherits from `GeometricSpace`. It contains the type, positions and velocities of the entities,
+    the lattice vectors, the reciprocal lattice vectors, the periodic boundary conditions, the
+    supercell matrix.
     """
 
     type = Quantity(
@@ -226,26 +614,6 @@ class AtomicCell(GeometricSpace):
             - 'original' as in origanally parsed,
             - 'primitive' as the primitive unit cell,
             - 'conventional' as the conventional cell used for referencing.
-        """,
-    )
-
-    # TODO re-define `labels` and `atomic_numbers` to handle toy-models and real chemical
-    # elements, and also define AtomType for these and AtomParameters
-    labels = Quantity(
-        type=str,
-        shape=["*"],
-        description="""
-        List containing the labels of the atomic species in the system at the different positions
-        of the structure. It refers to a chemical element as defined in the periodic table,
-        e.g., 'H', 'O', 'Pt'. This quantity is equivalent to atomic_numbers.
-        """,
-    )
-
-    atomic_numbers = Quantity(
-        type=np.int32,
-        shape=["*"],
-        description="""
-        List of atomic numbers Z. This quantity is equivalent to labels.
         """,
     )
 
@@ -266,7 +634,7 @@ class AtomicCell(GeometricSpace):
         Velocities of the atoms. It is the change in cartesian coordinates of the atom position
         with time.
         """,
-    )  # ? what about forces, stress
+    )
 
     lattice_vectors = Quantity(
         type=np.float64,
@@ -309,11 +677,25 @@ class AtomicCell(GeometricSpace):
         """,
     )
 
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+
+
+class AtomicCell(Cell):
+    """
+    A base section used to specify the atomic cell information of a system.
+
+    It inherits from `Cell`. It contains the atoms information, the equivalent atoms, and the
+    Wyckoff letters of the atoms
+    """
+
+    atomic_state = SubSection(sub_section=AtomicState.m_def, repeats=True)
+
     equivalent_atoms = Quantity(
         type=np.int32,
         shape=["*"],
         description="""
-        List of equivalent atoms as defined in labels. If no equivalent atoms are found,
+        List of equivalent atoms as defined in `atoms`. If no equivalent atoms are found,
         then the list is simply the index of each element, e.g.:
             - [0, 1, 2, 3] all four atoms are non-equivalent.
             - [0, 0, 0, 3] three equivalent atoms and one non-equivalent.
@@ -325,7 +707,7 @@ class AtomicCell(GeometricSpace):
         shape=["*"],
         # TODO improve description
         description="""
-        Wyckoff letters associated with each atom position.
+        Wyckoff letters associated with each atom.
         """,
     )
 
@@ -341,7 +723,8 @@ class AtomicCell(GeometricSpace):
             Union[ase.Atoms, None]: The ASE Atoms object with the basic information from the `AtomicCell`.
         """
         # Initialize ase.Atoms object with labels
-        ase_atoms = ase.Atoms(symbols=self.labels)
+        atoms_labels = [atom.chemical_symbol for atom in self.atomic_state]
+        ase_atoms = ase.Atoms(symbols=atoms_labels)
 
         # PBC
         if self.periodic_boundary_conditions is None:
@@ -353,9 +736,9 @@ class AtomicCell(GeometricSpace):
 
         # Positions (ensure they are parsed)
         if self.positions is not None:
-            if len(self.positions) != len(self.labels):
+            if len(self.positions) != len(self.atomic_state):
                 logger.error(
-                    "Length of `AtomicCell.positions` does not coincide with the length of the `AtomicCell.labels`."
+                    "Length of `AtomicCell.positions` does not coincide with the length of the `AtomicCell.atomic_state`."
                 )
                 return None
             ase_atoms.set_positions(self.positions.to("angstrom").magnitude)
@@ -376,44 +759,17 @@ class AtomicCell(GeometricSpace):
         return ase_atoms
 
     def normalize(self, archive, logger):
-        # If the labels and atomic_numbers are not specified, return with an error
-        if self.labels is None and self.atomic_numbers is None:
-            logger.error(
-                "Could not read `AtomicCell.labels` or `AtomicCell.atomic_numbers`."
-            )
-            return
-        atomic_labels = self.labels
-        atomic_numbers = self.atomic_numbers
-
-        # Labels
-        if atomic_labels is None and atomic_numbers is not None:
-            try:
-                atomic_labels = [
-                    ase.data.chemical_symbols[number] for number in atomic_numbers
-                ]
-            except IndexError:
-                logger.error(
-                    "The `AtomicCell.atomic_numbers` are out of range of the periodic table."
-                )
-                return
-        self.labels = atomic_labels
-
-        # Use ASE Atoms functionalities to extract information about the AtomicCell
-        ase_atoms = self.to_ase_atoms(logger)
-
-        # Atomic numbers
-        if atomic_labels is not None and atomic_numbers is None:
-            atomic_numbers = ase_atoms.get_atomic_numbers()
-        self.atomic_numbers = atomic_numbers
-
-        # We then normalize `GeometricSpace`
         super().normalize(archive, logger)
 
 
 class Symmetry(ArchiveSection):
     """
-    A base section used to specify the symmetry of the `AtomicCell`. This information can
-    be extracted via normalization using the MatID package, if `AtomicCell` is specified.
+    A base section used to specify the symmetry of the `AtomicCell`.
+
+    It inherits from `ArchiveSection`.
+
+    Note: this information can be extracted via normalization using the MatID package, if `AtomicCell`
+    is specified.
     """
 
     bravais_lattice = Quantity(
@@ -551,11 +907,14 @@ class Symmetry(ArchiveSection):
 
         atomic_cell = AtomicCell(type=cell_type)
         atomic_cell.lattice_vectors = cell * ureg.angstrom
+        for label, atomic_number in zip(labels, atomic_numbers):
+            atomic_state = AtomicState(
+                chemical_symbol=label, atomic_number=atomic_number
+            )
+            atomic_cell.m_add_sub_section(AtomicCell.atomic_state, atomic_state)
         atomic_cell.positions = (
             positions * ureg.angstrom
         )  # ? why do we need to pass units
-        atomic_cell.labels = labels
-        atomic_cell.atomic_numbers = atomic_numbers
         atomic_cell.wyckoff_letters = wyckoff
         atomic_cell.equivalent_atoms = equivalent_atoms
         atomic_cell.get_geometric_space_for_atomic_cell(logger)
@@ -612,21 +971,27 @@ class Symmetry(ArchiveSection):
         original_atomic_cell.wyckoff_letters = original_wyckoff
         original_atomic_cell.equivalent_atoms = original_equivalent_atoms
 
-        # Populating the primitive AtomicCell information
+        # Populating the primitive AtomicState information
         primitive_atomic_cell = self.resolve_analyzed_atomic_cell(
             symmetry_analyzer, "primitive", logger
         )
 
-        # Populating the conventional Atoms information
+        # Populating the conventional AtomicState information
         conventional_atomic_cell = self.resolve_analyzed_atomic_cell(
             symmetry_analyzer, "conventional", logger
         )
 
         # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
         # standarized Wyckoff numbers and the space group number
-        if symmetry.get("space_group_number"):
+        if (
+            symmetry.get("space_group_number")
+            and conventional_atomic_cell.atomic_state is not None
+        ):
             # Resolve atomic_numbers and wyckoff letters from the conventional cell
-            conventional_num = conventional_atomic_cell.atomic_numbers
+            conventional_num = [
+                atom_state.atomic_number
+                for atom_state in conventional_atomic_cell.atomic_state
+            ]
             conventional_wyckoff = conventional_atomic_cell.wyckoff_letters
             # Normalize wyckoff letters
             norm_wyckoff = get_normalized_wyckoff(
@@ -674,6 +1039,9 @@ class Symmetry(ArchiveSection):
 class ChemicalFormula(ArchiveSection):
     """
     A base section used to store the chemical formulas of a `ModelSystem` in different formats.
+
+    It inherits from `ArchiveSection`. It contains the descriptive, reduced, IUPAC, Hill, and
+    anonymous chemical formulas.
     """
 
     descriptive = Quantity(
