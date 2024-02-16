@@ -60,7 +60,7 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .atom_state import AtomState
+from .atoms_state import AtomsState
 from .utils import get_sibling_section
 
 
@@ -296,7 +296,7 @@ class AtomicCell(Cell):
     A base section used to specify the atomic cell information of a system.
     """
 
-    atoms_state = SubSection(sub_section=AtomState.m_def, repeats=True)
+    atoms_state = SubSection(sub_section=AtomsState.m_def, repeats=True)
 
     equivalent_atoms = Quantity(
         type=np.int32,
@@ -513,7 +513,7 @@ class Symmetry(ArchiveSection):
         atomic_cell = AtomicCell(type=cell_type)
         atomic_cell.lattice_vectors = cell * ureg.angstrom
         for label, atomic_number in zip(labels, atomic_numbers):
-            atom_state = AtomState(chemical_symbol=label, atomic_number=atomic_number)
+            atom_state = AtomsState(chemical_symbol=label, atomic_number=atomic_number)
             atomic_cell.m_add_sub_section(AtomicCell.atoms_state, atom_state)
         atomic_cell.positions = (
             positions * ureg.angstrom

@@ -505,7 +505,7 @@ class HubbardInteractions(ArchiveSection):
             self.u_effective = self.resolve_u_effective(logger)
 
 
-class AtomState(ArchiveSection):
+class AtomsState(ArchiveSection):
     """
     A base section to define each atom state information.
     """
