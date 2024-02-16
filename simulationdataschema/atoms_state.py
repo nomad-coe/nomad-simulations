@@ -45,49 +45,45 @@ from nomad.metainfo import Quantity, SubSection, MEnum
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .utils import RussellSaundersState
+
+orbitals = {
+    -1: dict(zip(range(4), ("s", "p", "d", "f"))),
+    0: {0: ""},
+    1: dict(zip(range(-1, 2), ("x", "z", "y"))),
+    2: dict(zip(range(-2, 3), ("xy", "xz", "z^2", "yz", "x^2-y^2"))),
+    3: dict(
+        zip(
+            range(-3, 4),
+            ("x(x^2-3y^2)", "xyz", "xz^2", "z^3", "yz^2", "z(x^2-y^2)", "y(3x^2-y^2)"),
+        )
+    ),
+}
 
 
-class OrbitalsState(ArchiveSection):
+class OrbitalState(ArchiveSection):
     """
-    A base section used to define the orbital state of an atom.
+    A base section to define the orbital state of an atom.
     """
 
     # TODO: add the relativistic kappa_quantum_number
     n_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Principal quantum number of the orbital state.
+        Principal quantum number n of the orbital state.
         """,
     )
 
     l_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Azimuthal quantum number of the orbital state. This quantity is equivalent to `l_quantum_symbol`.
-        """,
-    )
-
-    l_quantum_symbol = Quantity(
-        type=str,
-        description="""
-        Azimuthal quantum symbol of the orbital state, "s", "p", "d", "f", etc. This
-        quantity is equivalent to `l_quantum_number`.
+        Azimuthal quantum number l of the orbital state.
         """,
     )
 
     ml_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Azimuthal projection number of the `l` vector. This quantity is equivalent to `ml_quantum_symbol`.
-        """,
-    )
-
-    ml_quantum_symbol = Quantity(
-        type=str,
-        description="""
-        Azimuthal projection symbol of the `l` vector, "x", "y", "z", etc. This quantity is equivalent
-        to `ml_quantum_number`.
+        Azimuthal projection of the l vector.
         """,
     )
 
@@ -104,7 +100,7 @@ class OrbitalsState(ArchiveSection):
         type=np.float64,
         shape=["*"],
         description="""
-        Azimuthal projection of the `j` vector. Necessary with strong L-S coupling or
+        Azimuthal projection of the $j$ vector. Necessary with strong L-S coupling or
         non-collinear spin systems.
         """,
     )
@@ -112,136 +108,39 @@ class OrbitalsState(ArchiveSection):
     ms_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Spin quantum number. Set to -1 for spin down and +1 for spin up. In non-collinear spin
-        systems, the projection axis $z$ should also be defined.
-        """,
-    )
-
-    ms_quantum_symbol = Quantity(
-        type=str,
-        description="""
-        Spin quantum symbol. Set to 'down' for spin down and 'up' for spin up. In non-collinear
-        spin systems, the projection axis $z$ should also be defined.
+        Spin quantum number. Set to -1 for spin down and +1 for spin up. In non-collinear spin systems,
+        the projection axis $z$ should also be defined.
         """,
     )
 
     degeneracy = Quantity(
         type=np.int32,
         description="""
-        The degeneracy of the orbital state. The degeneracy is the number of states with the same
-        energy. It is equal to 2 * l + 1 for non-relativistic systems and 2 * j + 1 for
-        relativistic systems, if ms_quantum_number is defined (otherwise a factor of 2 is included).
+        The number of states under the filling constraints applied to the orbital set.
+        This implicitly assumes that all orbitals in the set are degenerate.
         """,
     )
 
     occupation = Quantity(
-        type=np.float64,
+        type=np.int32,
         description="""
         The number of electrons in the orbital state. The state is fully occupied if
         occupation = degeneracy.
         """,
     )
 
-    def __init__(self):
-        self._orbitals = {
-            -1: dict(zip(range(4), ("s", "p", "d", "f"))),
-            0: {0: ""},
-            1: dict(zip(range(-1, 2), ("x", "z", "y"))),
-            2: dict(zip(range(-2, 3), ("xy", "xz", "z^2", "yz", "x^2-y^2"))),
-            3: dict(
-                zip(
-                    range(-3, 4),
-                    (
-                        "x(x^2-3y^2)",
-                        "xyz",
-                        "xz^2",
-                        "z^3",
-                        "yz^2",
-                        "z(x^2-y^2)",
-                        "y(3x^2-y^2)",
-                    ),
-                )
-            ),
-        }
-        self._orbitals_map = {
-            "l_symbols": self._orbitals[-1],
-            "ml_symbols": {i: self._orbitals[i] for i in range(4)},
-            "ms_symbols": dict((zip((False, True), ("down", "up")))),
-            "l_numbers": {v: k for k, v in self._orbitals[-1].items()},
-            "ml_numbers": {
-                k: {v: k for k, v in self._orbitals[k].items()} for k in range(4)
-            },
-            "ms_numbers": dict((zip((False, True), (-0.5, 0.5)))),
-        }
+    def multiplicity(self, quantum_number):
+        return 2 * quantum_number + 1
 
-    def resolve_number_and_symbol(
-        self, quantum_number: str, type: str, logger: BoundLogger
-    ) -> None:
-        """
-        Resolves the quantum number from the `self._orbitals_map` on the passed type. `type` can be either
-        'number' or 'symbol'. If the quantum type is not found, then the countertype
-        (e.g., type = 'number' => countertype = 'symbol') is used to resolve it.
-
-        Args:
-            quantum_number (str): The quantum number to resolve. Can be 'l', 'ml' or 'ms'.
-            type (str): The type of the quantum number. Can be 'number' or 'symbol'.
-            logger (BoundLogger): The logger to log messages.
-        """
-        if quantum_number not in ["l", "ml", "ms"]:
-            logger.warning(
-                "The quantum number is not recognized. Try 'l', 'ml' or 'ms'."
-            )
-            return
-        if type not in ["number", "symbol"]:
-            logger.warning("The type is not recognized. Try 'number' or 'symbol'.")
-            return
-
-        _countertype_map = {
-            "number": "symbol",
-            "symbol": "number",
-        }
-        # Check if quantity already exists
-        quantity = getattr(self, f"{quantum_number}_quantum_{type}")
-        if quantity or quantity is None:
-            return
-
-        # If not, check whether the countertype exists
-        other_quantity = getattr(
-            self, f"{quantum_number}_quantum_{_countertype_map[type]}"
-        )
-        if not other_quantity:
-            logger.warning(
-                f"Could not find the {quantum_number}_quantum_{type} countertype {_countertype_map[type]}."
-            )
-            return
-
-        # If the counterpart exists, then resolve the quantity from the orbitals_map
-        quantity = self._orbitals_map.get(f"{quantum_number}_{type}s", {}).get(
-            other_quantity
-        )
-        setattr(self, f"{quantum_number}_quantum_{type}", quantity)
-
-    def resolve_degeneracy(self) -> Optional[int]:
-        """
-        Resolves the degeneracy of the orbital state. If `j_quantum_number` is not defined, then the
-        degeneracy is computed from the `l_quantum_number` and `ml_quantum_number`. If `j_quantum_number`
-        is defined, then the degeneracy is computed from the `j_quantum_number` and `mj_quantum_number`.
-        There is a factor of 2 included if `ms_quantum_number` is not defined (for orbitals which
-        are spin-degenerated).
-
-        Returns:
-            (Optional[int]): The degeneracy of the orbital state.
-        """
-        if self.l_quantum_number and self.ml_quantum_number is None:
-            if self.ms_quantum_number:
-                degeneracy = 2 * self.l_quantum_number + 1
+    def set_degeneracy(self) -> int:
+        """Set the degeneracy based on how specifically determined the quantum state is.
+        This function can be triggered anytime to update the degeneracy."""
+        # TODO: there are certain j (mj) specifications that may straddle just one l value
+        if self.ml_quantum_number is not None:
+            if self.ms_quantum_bool is not None:
+                self.degeneracy = 1
             else:
-                degeneracy = 2 * (2 * self.l_quantum_number + 1)
-        elif self.l_quantum_number and self.ml_quantum_number:
-            if self.ms_quantum_number:
-                degeneracy = 1
-            else:
-                degeneracy = 2
+                self.degeneracy = 2
         elif self.j_quantum_number is not None:
             degeneracy = 0
             for jj in self.j_quantum_number:
@@ -254,89 +153,194 @@ class OrbitalsState(ArchiveSection):
                     )
                 else:
                     degeneracy += RussellSaundersState(jj, 1).degeneracy
-        return degeneracy
+            if self.ms_quantum_bool is not None:
+                self.degeneracy = degeneracy / 2
+            else:
+                self.degeneracy = degeneracy
+        elif self.l_quantum_number is not None:
+            if self.ms_quantum_bool is not None:
+                self.degeneracy = self.get_l_degeneracy() / 2
+            else:
+                self.degeneracy = self.get_l_degeneracy()
+        return self.degeneracy
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
-        # Resolving the quantum numbers and symbols if not available
-        for quantum_number in ["l", "ml", "ms"]:
-            for type in ["number", "symbol"]:
-                self.resolve_number_and_symbol(quantum_number, type, logger)
 
-        # Resolve the degeneracy
-        self.degeneracy = self.resolve_degeneracy()
+# class Pseudopotential(ArchiveSection):
+#     """
+#     A base section to define the pseudopotential of an atom.
+#     """
+
+#     name = Quantity(
+#         type=str,
+#         shape=[],
+#         description="""
+#         Native code name of the pseudopotential.
+#         """,
+#     )
+
+#     type = Quantity(
+#         type=MEnum("US V", "US MBK", "PAW"),
+#         shape=[],
+#         description="""
+#         Pseudopotential classification.
+#         | abbreviation | description | DOI |
+#         | ------------ | ----------- | --------- |
+#         | `'US'`       | Ultra-soft  | |
+#         | `'PAW'`      | Projector augmented wave | |
+#         | `'V'`        | Vanderbilt | https://doi.org/10.1103/PhysRevB.47.6728 |
+#         | `'MBK'`      | Morrison-Bylander-Kleinman | https://doi.org/10.1103/PhysRevB.41.7892 |
+#         """,
+#     )
+
+#     norm_conserving = Quantity(
+#         type=bool,
+#         shape=[],
+#         description="""
+#         Denotes whether the pseudopotential is norm-conserving.
+#         """,
+#     )
+
+#     cutoff = Quantity(
+#         type=np.float64,
+#         shape=[],
+#         unit="joule",
+#         description="""
+#         Minimum recommended spherical cutoff energy for any plane-wave basis set
+#         using the pseudopotential.
+#         """,
+#     )
+
+#     xc_functional_name = Quantity(
+#         type=str,
+#         shape=["*"],
+#         description="""
+#         Name of the exchange-correlation functional used to generate the pseudopotential.
+#         Follows the libxc naming convention.
+#         """,
+#     )
+
+#     l_max = Quantity(
+#         type=np.int32,
+#         shape=[],
+#         description="""
+#         Maximum angular momentum of the pseudopotential projectors.
+#         """,
+#     )
+
+#     lm_max = Quantity(
+#         type=np.int32,
+#         shape=[],
+#         description="""
+#         Maximum magnetic momentum of the pseudopotential projectors.
+#         """,
+#     )
+
+#     def normalize(self, archive, logger):
+#         super().normalize(archive, logger)
 
 
 class CoreHole(ArchiveSection):
     """
-    A base section used to define the core-hole state of an atom by referencing the `OrbitalsState`
-    section where the core-hole was generated.
+    Describes the quantum state of a single hole in an open-shell core state. This is the physical interpretation.
+    For modelling purposes, the electron charge excited may lie between 0 and 1. This follows a so-called Janak state.
+    Sometimes, no electron is actually, excited, but just marked for excitation. This is denoted as an `initial` state.
+    Any missing quantum numbers indicate some level of arbitrariness in the choice of the core hole, represented in the degeneracy.
     """
 
-    orbital_ref = Quantity(
-        type=OrbitalsState,
-        description="""
-        Reference to the OrbitalsState section that is used as a basis to obtain the `CoreHole` section.
-        """,
-        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
-    )
+    # quantities: list[str] = SingleElectronState.quantities + ["n_electrons_excited"]
 
-    n_excited_electrons = Quantity(
+    n_electrons_excited = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        The electron charge excited for modelling purposes.
+        Choices that deviate from 0 or 1 typically leverage Janak composition.
+        Unless the `initial` state is chosen, the model corresponds to a single electron being excited in physical reality.
+        """,
+    )
+    occupation = Quantity(
         type=np.float64,
         description="""
-        The electron charge excited for modelling purposes. This is a number between 0 and 1 (Janak state).
-        If `dscf_state` is set to 'initial', then this quantity is set to None (but assumed to be excited
-        to an excited state).
+        The total number of electrons within the state (as defined by degeneracy)
+        after exciting the model charge.
         """,
     )
-
     dscf_state = Quantity(
         type=MEnum("initial", "final"),
+        shape=[],
         description="""
-        Tag used to identify the role in the workflow of the same name. Allowed values are 'initial'
-        (not to be confused with the _initial-state approximation_) and 'final'. If 'initial'
-        is used, then `n_excited_electrons` is set to None and the `orbital_ref.degeneracy` is
-        set to 1.
+        The $\\Delta$-SCF state tag, used to identify the role in the workflow of the same name.
+        Allowed values are `initial` (not to be confused with the _initial-state approximation_) and `final`.
         """,
     )
 
-    def resolve_occupation(self, logger: BoundLogger) -> None:
-        """
-        Resolves the occupation of the orbital state. The occupation is resolved from the degeneracy
-        and the number of excited electrons.
+    def __setattr__(self, name, value):
+        if name == "n_electrons_excited":
+            if value < 0.0:
+                raise ValueError("Number of excited electrons must be positive.")
+            if value > 1.0:
+                raise ValueError("Number of excited electrons must be less than 1.")
+        elif name == "dscf_state":
+            if value == "initial":
+                self.n_electrons_excited = 0.0
+                self.degeneracy = 1
+        super().__setattr__(name, value)
 
-        Args:
-            logger (BoundLogger): The logger to log messages.
+    def _extract_orbital(self):
         """
-        if self.orbital_ref is None or self.n_excited_electrons is None:
-            logger.warning(
-                "Cannot resolve occupation without `orbital_ref` or `n_excited_electrons`."
+        Gather atomic orbitals from `run.method.atom_parameters.core_hole`.
+        Also apply normalization in the process.
+        """
+        # Collect the active orbitals from method
+        methods = self.entry_archive.run[-1].method
+        if not methods:
+            return []
+        atom_params = getattr(methods[-1], "atom_parameters", [])
+        active_orbitals_run = []
+        for param in atom_params:
+            core_hole = param.core_hole
+            if core_hole:
+                active_orbitals_run.append(core_hole)
+        if (
+            len(active_orbitals_run) > 1
+        ):  # FIXME: currently only one set of active orbitals is supported, remove for multiple
+            self.logger.warn(
+                """Multiple sets of active orbitals found.
+                Currently, the topology only supports 1, so only the first set is used."""
             )
-            return
-        if self.orbital_ref.occupation is None:
-            degeneracy = self.orbital_ref.resolve_degeneracy()
-            if degeneracy is None:
-                logger.warning("Cannot resolve occupation without `degeneracy`.")
-                return
-            self.orbital_ref.occupation = degeneracy - self.n_excited_electrons
+        # Map the active orbitals to the topology
+        active_orbitals_results = []
+        for active_orbitals in active_orbitals_run:
+            active_orbitals.normalize(None, None)
+            active_orbitals_new = CoreHole()
+            for quantity_name in active_orbitals.quantities:
+                setattr(
+                    active_orbitals_new,
+                    quantity_name,
+                    getattr(active_orbitals, quantity_name),
+                )
+            active_orbitals_new.normalize(None, None)
+            active_orbitals_results.append(active_orbitals_new)
+            break  # FIXME: currently only one set of active orbitals is supported, remove for multiple
+        return active_orbitals_results
 
-    def normalize(self, archive, logger) -> None:
+    def set_occupation(self) -> float:
+        """Set the occupation based on the number of excited electrons."""
+        if not self.occupation:
+            try:
+                self.occupation = self.set_degeneracy() - self.n_electrons_excited
+            except TypeError:
+                raise AttributeError(
+                    "Cannot set occupation without `n_electrons_excited`."
+                )
+        return self.occupation
+
+    def normalize(self, archive, logger):
         super().normalize(archive, logger)
-
-        # Check if n_excited_electrons is between 0 and 1
-        if 0.0 <= self.n_excited_electrons <= 1.0:
-            logger.error("Number of excited electrons must be between 0 and 1.")
-
-        # If dscf_state is 'initial', then n_excited_electrons is set to 0
-        if self.dscf_state == "initial":
-            self.n_excited_electrons = None
-            self.degeneracy = 1
-
-        # Resolve the occupation of the active orbital state
-        if self.orbital_ref is not None and self.n_excited_electrons:
-            if self.orbital_ref.occupation is None:
-                self.resolve_occupation(logger)
+        # self.set_occupation()
 
 
 class HubbardInteractions(ArchiveSection):
@@ -344,25 +348,18 @@ class HubbardInteractions(ArchiveSection):
     A base section to define the Hubbard interactions of the system.
     """
 
-    n_orbitals = Quantity(
-        type=np.int32,
+    orbital_ref = Quantity(
+        type=OrbitalState,
+        shape=["*"],
         description="""
-        Number of orbitals used to define the Hubbard interactions.
-        """,
-    )
-
-    orbitals_ref = Quantity(
-        type=OrbitalsState,
-        shape=["n_orbitals"],
-        description="""
-        Reference to the `OrbitalsState` sections that are used as a basis to obtain the Hubbard
+        Reference to the OrbitalState sections that are used as a basis to obtain the Hubbard
         interaction matrices.
         """,
     )
 
-    u_matrix = Quantity(
+    umn = Quantity(
         type=np.float64,
-        shape=["n_orbitals", "n_orbitals"],
+        shape=["*", "*"],
         unit="joule",
         description="""
         Value of the local Hubbard interaction matrix. The order of the rows and columns coincide
@@ -370,7 +367,7 @@ class HubbardInteractions(ArchiveSection):
         """,
     )
 
-    u_interaction = Quantity(
+    u = Quantity(
         type=np.float64,
         unit="joule",
         description="""
@@ -379,7 +376,7 @@ class HubbardInteractions(ArchiveSection):
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
-    j_hunds_coupling = Quantity(
+    jh = Quantity(
         type=np.float64,
         unit="joule",
         description="""
@@ -388,21 +385,20 @@ class HubbardInteractions(ArchiveSection):
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
-    u_interorbital_interaction = Quantity(
+    up = Quantity(
         type=np.float64,
         unit="joule",
         description="""
-        Value of the (interorbital) Coulomb interaction. In rotational invariant systems,
-        u_interorbital_interaction = u_interaction - 2 * j_hunds_coupling.
+        Value of the (interorbital) Coulomb interaction. In rotational invariant systems, up = u - 2 * jh.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
-    j_local_exchange_interaction = Quantity(
+    j = Quantity(
         type=np.float64,
         unit="joule",
         description="""
-        Value of the exchange interaction. In rotational invariant systems, j_local_exchange_interaction = j_hunds_coupling.
+        Value of the exchange interaction. In rotational invariant systems, j = jh.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
@@ -411,7 +407,7 @@ class HubbardInteractions(ArchiveSection):
         type=np.float64,
         unit="joule",
         description="""
-        Value of the effective U parameter (u_interaction - j_local_exchange_interaction).
+        Value of the effective U parameter (u - j).
         """,
     )
 
@@ -423,11 +419,11 @@ class HubbardInteractions(ArchiveSection):
         Value of the Slater integrals [F0, F2, F4] in spherical harmonics used to derive
         the local Hubbard interactions:
 
-            u_interaction = ((2.0 / 7.0) ** 2) * (F0 + 5.0 * F2 + 9.0 * F4) / (4.0*np.pi)
+            u = ((2.0 / 7.0) ** 2) * (F0 + 5.0 * F2 + 9.0 * F4) / (4.0*np.pi)
 
-            u_interorbital_interaction = ((2.0 / 7.0) ** 2) * (F0 - 5.0 * F2 + 3.0 * 0.5 * F4) / (4.0*np.pi)
+            up = ((2.0 / 7.0) ** 2) * (F0 - 5.0 * F2 + 3.0 * 0.5 * F4) / (4.0*np.pi)
 
-            j_hunds_coupling = ((2.0 / 7.0) ** 2) * (5.0 * F2 + 15.0 * 0.25 * F4) / (4.0*np.pi)
+            jh = ((2.0 / 7.0) ** 2) * (5.0 * F2 + 15.0 * 0.25 * F4) / (4.0*np.pi)
 
         See e.g., Elbio Dagotto, Nanoscale Phase Separation and Colossal Magnetoresistance,
         Chapter 4, Springer Berlin (2003).
@@ -444,18 +440,17 @@ class HubbardInteractions(ArchiveSection):
 
     def resolve_u_interactions(self, logger: BoundLogger) -> Optional[tuple]:
         """
-        Resolves the Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling)
-        from the Slater integrals (F0, F2, F4).
+        Resolves the Hubbard interactions (u, up, jh) from the Slater integrals (F0, F2, F4).
 
         Args:
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[tuple]): The Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling).
+            (Optional[tuple]): The Hubbard interactions (u, up, jh).
         """
         if self.slater_integrals is None or len(self.slater_integrals) == 3:
             logger.warning(
-                "Could not find `slater_integrals` or the length is not three."
+                "Could not find `HubbardInteractions.slater_integrals` or the length is not three."
             )
             return None
         f0 = self.slater_integrals[0]
@@ -467,23 +462,23 @@ class HubbardInteractions(ArchiveSection):
             / (4.0 * np.pi)
             * ureg("joule")
         )
-        u_interorbital_interaction = (
+        up_interaction = (
             ((2.0 / 7.0) ** 2)
             * (f0 - 5.0 * f2 + 3.0 * f4 / 2.0)
             / (4.0 * np.pi)
             * ureg("joule")
         )
-        j_hunds_coupling = (
+        jh_interaction = (
             ((2.0 / 7.0) ** 2)
             * (5.0 * f2 + 15.0 * f4 / 4.0)
             / (4.0 * np.pi)
             * ureg("joule")
         )
-        return u_interaction, u_interorbital_interaction, j_hunds_coupling
+        return u_interaction, up_interaction, jh_interaction
 
     def resolve_u_effective(self, logger: BoundLogger) -> Optional[np.float64]:
         """
-        Resolves the effective U parameter (u_interaction - j_local_exchange_interaction).
+        Resolves the effective U parameter (u - j).
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -491,38 +486,23 @@ class HubbardInteractions(ArchiveSection):
         Returns:
             (Optional[np.float64]): The effective U parameter.
         """
-        if self.u_interaction is None or self.j_local_exchange_interaction is None:
+        if self.u is None or self.j is None:
             logger.warning(
-                "Could not find `HubbardInteractions.u_interaction` or `HubbardInteractions.j_local_exchange_interaction`."
+                "Could not find `HubbardInteractions.u` or `HubbardInteractions.j`."
             )
             return None
-        return self.u_interaction - self.j_local_exchange_interaction
+        return self.u - self.j
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
-        # Obtain (u, up, j_hunds_coupling) from slater_integrals
-        if (
-            self.u_interaction is None
-            and self.u_interorbital_interaction is None
-            and self.j_hunds_coupling is None
-        ):
-            (
-                self.u_interaction,
-                self.u_interorbital_interaction,
-                self.j_hunds_coupling,
-            ) = self.resolve_u_interactions(logger)
+        # Obtain (u, up, jh) from slater_integrals
+        if self.u is None and self.up is None and self.jh is None:
+            self.u, self.up, self.jh = self.resolve_u_interactions(logger)
 
         # If u_effective is not available, calculate it
         if self.u_effective is None:
             self.u_effective = self.resolve_u_effective(logger)
-
-        # Check if length of `orbitals_ref` is the same as the length of `umn`:
-        if self.u_matrix is not None and self.orbitals_ref is not None:
-            if len(self.u_matrix) != len(self.orbitals_ref):
-                logger.error(
-                    "The length of `HubbardInteractions.u_matrix` does not coincide with length of `HubbardInteractions.orbitals_ref`."
-                )
 
 
 class AtomsState(ArchiveSection):
@@ -530,7 +510,7 @@ class AtomsState(ArchiveSection):
     A base section to define each atom state information.
     """
 
-    # TODO check what happens with ghost atoms that can have `chemical_symbol='X'`
+    # ? constraint to the normal chemical elements (no 'X' as defined in ASE included)
     chemical_symbol = Quantity(
         type=MEnum(ase.data.chemical_symbols[1:]),
         description="""
@@ -545,22 +525,24 @@ class AtomsState(ArchiveSection):
         """,
     )
 
-    orbitals_state = SubSection(sub_section=OrbitalsState.m_def, repeats=True)
+    orbitals = SubSection(sub_section=OrbitalState.m_def, repeats=True)
 
     charge = Quantity(
         type=np.int32,
         default=0,
         description="""
         Charge of the atom. It is defined as the number of extra electrons or holes in the
-        atom. If the atom is neutral, charge = 0 and the summation of all (if available) the`OrbitalsState.occupation`
+        atom. If the atom is neutral, charge = 0 and the summation of all (if available) the`OrbitalState.occupation`
         coincides with the `atomic_number`. Otherwise, charge can be any positive integer (+1, +2...)
         for cations or any negative integer (-1, -2...) for anions.
 
         Note: for `CoreHole` systems we do not consider the charge of the atom even if
-        we do not store the final `OrbitalsState` where the electron was excited to.
+        we do not store the final `OrbitalState` where the electron was excited to.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
+
+    # pseudopotential = SubSection(sub_section=Pseudopotential.m_def, repeats=False)
 
     core_hole = SubSection(sub_section=CoreHole.m_def, repeats=False)
 
@@ -575,23 +557,24 @@ class AtomsState(ArchiveSection):
         Args:
             logger (BoundLogger): The logger to log messages.
         """
-        f = lambda x: tuple(map(bool, x))
-        if f((self.chemical_symbol, self.atomic_number)) == f((None, not None)):
+        if self.chemical_symbol is None and self.atomic_number is not None:
             try:
                 self.chemical_symbol = ase.data.chemical_symbols[self.atomic_number]
             except IndexError:
                 logger.error(
-                    "The `AtomsState.atomic_number` is out of range of the periodic table."
+                    "The `AtomicState.atomic_number` is out of range of the periodic table."
                 )
-        elif f((self.chemical_symbol, self.atomic_number)) == f((not None, None)):
+                return
+        elif self.chemical_symbol is not None and self.atomic_number is None:
             try:
                 self.atomic_number = ase.data.atomic_numbers[self.chemical_symbol]
             except IndexError:
                 logger.error(
-                    "The `AtomsState.chemical_symbol` is not recognized in the periodic table."
+                    "The `AtomicState.chemical_symbol` is not recognized in the periodic table."
                 )
+                return
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
         # Get chemical_symbol from atomic_number and viceversa
