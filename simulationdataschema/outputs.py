@@ -47,6 +47,6 @@ class Outputs(ArchiveSection):
 
     normalizer_level = 2
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.logger = logger

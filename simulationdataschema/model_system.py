@@ -191,9 +191,12 @@ class GeometricSpace(Entity):
         """,
     )
 
-    def get_geometric_space_for_atomic_cell(self, logger: BoundLogger):
+    def get_geometric_space_for_atomic_cell(self, logger: BoundLogger) -> None:
         """
         Get the real space parameters for the atomic cell using ASE.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
         """
         atoms = self.to_ase_atoms(logger)
         cell = atoms.get_cell()
@@ -207,9 +210,14 @@ class GeometricSpace(Entity):
 
     def normalize(self, archive, logger) -> None:
         # Skip normalization for `Entity`
-        ase_atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
-        if ase_atoms is not None:
+        try:
+            ase_atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
             self.get_geometric_space_for_atomic_cell(logger)
+        except Exception as e:
+            logger.warning(
+                "Could not extract the geometric space information from ASE Atoms object.",
+            )
+            return
 
 
 class Cell(GeometricSpace):
@@ -287,7 +295,7 @@ class Cell(GeometricSpace):
         """,
     )
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
 
@@ -365,7 +373,7 @@ class AtomicCell(Cell):
 
         return ase_atoms
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
 
@@ -622,7 +630,7 @@ class Symmetry(ArchiveSection):
 
         return primitive_atomic_cell, conventional_atomic_cell
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name="atomic_cell", logger=logger
         )
@@ -645,9 +653,6 @@ class Symmetry(ArchiveSection):
 class ChemicalFormula(ArchiveSection):
     """
     A base section used to store the chemical formulas of a `ModelSystem` in different formats.
-
-    It inherits from `ArchiveSection`. It contains the descriptive, reduced, IUPAC, Hill, and
-    anonymous chemical formulas.
     """
 
     descriptive = Quantity(
@@ -714,7 +719,7 @@ class ChemicalFormula(ArchiveSection):
         self.hill = formula.format("hill")
         self.anonymous = formula.format("anonymous")
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name="atomic_cell", logger=logger
         )
@@ -899,7 +904,7 @@ class ModelSystem(System):
         self, ase_atoms: ase.Atoms
     ) -> Tuple[str, int]:
         """
-        Determine the ModelSystem.type and ModelSystem.dimensionality using MatID classification analyzer:
+        Resolves the `ModelSystem.type` and `ModelSystem.dimensionality` using MatID classification analyzer:
 
             - https://singroup.github.io/matid/tutorials/classification.html
 
@@ -952,7 +957,7 @@ class ModelSystem(System):
 
         return system_type, dimensionality
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.logger = logger
 
@@ -963,8 +968,7 @@ class ModelSystem(System):
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
         if self.atomic_cell is None:
             self.logger.warning(
-                "Could not find the originally parsed atomic system. "
-                "Symmetry and ChemicalFormula extraction is thus not run."
+                "Could not find the originally parsed atomic system. `Symmetry` and `ChemicalFormula` extraction is thus not run."
             )
             return
         self.atomic_cell[0].type = "original"
