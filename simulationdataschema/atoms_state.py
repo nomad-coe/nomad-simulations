@@ -92,7 +92,7 @@ class OrbitalsState(ArchiveSection):
     )
 
     l_quantum_symbol = Quantity(
-        type=np.int32,
+        type=str,
         description="""
         Azimuthal quantum symbol of the orbital state, "s", "p", "d", "f", etc. This
         quantity is equivalent to `l_quantum_number`.
@@ -107,7 +107,7 @@ class OrbitalsState(ArchiveSection):
     )
 
     ml_quantum_symbol = Quantity(
-        type=np.int32,
+        type=str,
         description="""
         Azimuthal projection symbol of the `l` vector, "x", "y", "z", etc. This quantity is equivalent
         to `ml_quantum_number`.
@@ -141,7 +141,7 @@ class OrbitalsState(ArchiveSection):
     )
 
     ms_quantum_symbol = Quantity(
-        type=np.int32,
+        type=str,
         description="""
         Spin quantum symbol. Set to 'down' for spin down and 'up' for spin up. In non-collinear
         spin systems, the projection axis $z$ should also be defined.
@@ -193,7 +193,7 @@ class OrbitalsState(ArchiveSection):
         }
         # Check if quantity already exists
         quantity = getattr(self, f"{quantum_number}_quantum_{type}")
-        if quantity:
+        if quantity or quantity is None:
             return
 
         # If not, check whether the countertype exists
@@ -207,7 +207,7 @@ class OrbitalsState(ArchiveSection):
             return
 
         # If the counterpart exists, then resolve the quantity from the orbitals_map
-        quantity = getattr(orbitals_map, f"{quantum_number}_{type}s")
+        quantity = orbitals_map.get(f"{quantum_number}_{type}s", {}).get(other_quantity)
         setattr(self, f"{quantum_number}_quantum_{type}", quantity)
 
     def resolve_degeneracy(self) -> Optional[int]:
