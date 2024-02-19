@@ -245,7 +245,7 @@ class OrbitalState(ArchiveSection):
                     degeneracy += RussellSaundersState(jj, 1).degeneracy
         return degeneracy
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Resolving the quantum numbers and symbols if not available
@@ -310,7 +310,7 @@ class CoreHole(ArchiveSection):
                 return
             self.orbital_ref.occupation = degeneracy - self.n_excited_electrons
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Check if n_excited_electrons is between 0 and 1
@@ -478,7 +478,7 @@ class HubbardInteractions(ArchiveSection):
             return None
         return self.u - self.j
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Obtain (u, up, jh) from slater_integrals
@@ -557,7 +557,7 @@ class AtomsState(ArchiveSection):
                 )
                 return
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Get chemical_symbol from atomic_number and viceversa

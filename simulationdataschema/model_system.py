@@ -210,8 +210,8 @@ class GeometricSpace(Entity):
 
     def normalize(self, archive, logger) -> None:
         # Skip normalization for `Entity`
-        ase_atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
-        if ase_atoms is not None:
+        try:
+            ase_atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
             self.get_geometric_space_for_atomic_cell(logger)
         except Exception:
             logger.warning(
@@ -295,7 +295,7 @@ class Cell(GeometricSpace):
         """,
     )
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
 
@@ -373,7 +373,7 @@ class AtomicCell(Cell):
 
         return ase_atoms
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
 
@@ -653,9 +653,6 @@ class Symmetry(ArchiveSection):
 class ChemicalFormula(ArchiveSection):
     """
     A base section used to store the chemical formulas of a `ModelSystem` in different formats.
-
-    It inherits from `ArchiveSection`. It contains the descriptive, reduced, IUPAC, Hill, and
-    anonymous chemical formulas.
     """
 
     descriptive = Quantity(
