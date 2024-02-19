@@ -73,28 +73,28 @@ orbitals_map = {
 
 class OrbitalState(ArchiveSection):
     """
-    A base section to define the orbital state of an atom.
+    A base section used to define the orbital state of an atom.
     """
 
     # TODO: add the relativistic kappa_quantum_number
     n_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Principal quantum number n of the orbital state.
+        Principal quantum number of the orbital state.
         """,
     )
 
     l_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Azimuthal quantum number l of the orbital state. This quantity is equivalent to `l_quantum_symbol`.
+        Azimuthal quantum number of the orbital state. This quantity is equivalent to `l_quantum_symbol`.
         """,
     )
 
     l_quantum_symbol = Quantity(
         type=np.int32,
         description="""
-        Azimuthal quantum symbol l of the orbital state, "s", "p", "d", "f", etc. This
+        Azimuthal quantum symbol of the orbital state, "s", "p", "d", "f", etc. This
         quantity is equivalent to `l_quantum_number`.
         """,
     )
@@ -102,14 +102,14 @@ class OrbitalState(ArchiveSection):
     ml_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Azimuthal projection number of the l vector. This quantity is equivalent to `ml_quantum_symbol`.
+        Azimuthal projection number of the `l` vector. This quantity is equivalent to `ml_quantum_symbol`.
         """,
     )
 
     ml_quantum_symbol = Quantity(
         type=np.int32,
         description="""
-        Azimuthal projection symbol of the l vector, "x", "y", "z", etc. This quantity is equivalent
+        Azimuthal projection symbol of the `l` vector, "x", "y", "z", etc. This quantity is equivalent
         to `ml_quantum_number`.
         """,
     )
@@ -127,7 +127,7 @@ class OrbitalState(ArchiveSection):
         type=np.float64,
         shape=["*"],
         description="""
-        Azimuthal projection of the $j$ vector. Necessary with strong L-S coupling or
+        Azimuthal projection of the `j` vector. Necessary with strong L-S coupling or
         non-collinear spin systems.
         """,
     )
@@ -135,29 +135,30 @@ class OrbitalState(ArchiveSection):
     ms_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Spin quantum number. Set to -1 for spin down and +1 for spin up. In non-collinear spin systems,
-        the projection axis $z$ should also be defined.
+        Spin quantum number. Set to -1 for spin down and +1 for spin up. In non-collinear spin
+        systems, the projection axis $z$ should also be defined.
         """,
     )
 
     ms_quantum_symbol = Quantity(
         type=np.int32,
         description="""
-        Spin quantum symbol. Set to 'down' for spin down and 'up' for spin up. In non-collinear spin systems,
-        the projection axis $z$ should also be defined.
+        Spin quantum symbol. Set to 'down' for spin down and 'up' for spin up. In non-collinear
+        spin systems, the projection axis $z$ should also be defined.
         """,
     )
 
     degeneracy = Quantity(
         type=np.int32,
         description="""
-        The number of states under the filling constraints applied to the orbital set.
-        This implicitly assumes that all orbitals in the set are degenerate.
+        The degeneracy of the orbital state. The degeneracy is the number of states with the same
+        energy. It is equal to 2 * l + 1 for non-relativistic systems and 2 * j + 1 for
+        relativistic systems, if ms_quantum_number is defined (otherwise a factor of 2 is included).
         """,
     )
 
     occupation = Quantity(
-        type=np.int32,
+        type=np.float64,
         description="""
         The number of electrons in the orbital state. The state is fully occupied if
         occupation = degeneracy.
@@ -168,10 +169,9 @@ class OrbitalState(ArchiveSection):
         self, quantum_number: str, type: str, logger: BoundLogger
     ) -> None:
         """
-        Resolve the quantum number from the orbitals_map on the passed type. Type can be either
-        'number' or 'symbol'. If the quantum number for type is not found, then the countertype
-        (e.g., type = 'number' => countertype = 'symbol') is resolved and the quantum number is
-        is derived from the countertype.
+        Resolves the quantum number from the `orbitals_map` on the passed type. `type` can be either
+        'number' or 'symbol'. If the quantum type is not found, then the countertype
+        (e.g., type = 'number' => countertype = 'symbol') is used to resolve it.
 
         Args:
             quantum_number (str): The quantum number to resolve. Can be 'l', 'ml' or 'ms'.
@@ -196,7 +196,7 @@ class OrbitalState(ArchiveSection):
         if quantity:
             return
 
-        # If not, we check whether the countertype exists
+        # If not, check whether the countertype exists
         other_quantity = getattr(
             self, f"{quantum_number}_quantum_{_countertype_map[type]}"
         )
@@ -206,11 +206,21 @@ class OrbitalState(ArchiveSection):
             )
             return
 
-        # If the counterpart exists, then we resolve the quantity from the orbitals_map
+        # If the counterpart exists, then resolve the quantity from the orbitals_map
         quantity = getattr(orbitals_map, f"{quantum_number}_{type}s")
         setattr(self, f"{quantum_number}_quantum_{type}", quantity)
 
     def resolve_degeneracy(self) -> Optional[int]:
+        """
+        Resolves the degeneracy of the orbital state. If `j_quantum_number` is not defined, then the
+        degeneracy is computed from the `l_quantum_number` and `ml_quantum_number`. If `j_quantum_number`
+        is defined, then the degeneracy is computed from the `j_quantum_number` and `mj_quantum_number`.
+        There is a factor of 2 included if `ms_quantum_number` is not defined (for orbitals which
+        are spin-degenerated).
+
+        Returns:
+            (Optional[int]): The degeneracy of the orbital state.
+        """
         if self.l_quantum_number and self.ml_quantum_number is None:
             if self.ms_quantum_number:
                 degeneracy = 2 * self.l_quantum_number + 1
@@ -238,105 +248,84 @@ class OrbitalState(ArchiveSection):
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
+        # Resolving the quantum numbers and symbols if not available
         for quantum_number in ["l", "ml", "ms"]:
             for type in ["number", "symbol"]:
                 self.resolve_number_and_symbol(quantum_number, type, logger)
 
-        # ! Is this necessary? Degeneracy might be too complicated and case-dependent (it should be parsed)
+        # Resolve the degeneracy
         self.degeneracy = self.resolve_degeneracy()
 
 
 class CoreHole(ArchiveSection):
     """
-    Describes the quantum state of a single hole in an open-shell core state. This is the physical interpretation.
-    For modelling purposes, the electron charge excited may lie between 0 and 1. This follows a so-called Janak state.
-    Sometimes, no electron is actually, excited, but just marked for excitation. This is denoted as an `initial` state.
-    Any missing quantum numbers indicate some level of arbitrariness in the choice of the core hole, represented in the degeneracy.
+    A base section used to define the core-hole state of an atom by referencing the `OrbitalState`
+    section where the core-hole was generated.
     """
 
-    n_electrons_excited = Quantity(
-        type=np.float64,
-        shape=[],
+    orbital_ref = Quantity(
+        type=OrbitalState,
         description="""
-        The electron charge excited for modelling purposes.
-        Choices that deviate from 0 or 1 typically leverage Janak composition.
-        Unless the `initial` state is chosen, the model corresponds to a single electron being excited in physical reality.
+        Reference to the OrbitalState section that is used as a basis to obtain the `CoreHole` section.
+        """,
+        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
+    )
+
+    n_excited_electrons = Quantity(
+        type=np.float64,
+        description="""
+        The electron charge excited for modelling purposes. This is a number between 0 and 1 (Janak state).
+        If `dscf_state` is set to 'initial', then this quantity is set to None (but assumed to be excited
+        to an excited state).
         """,
     )
 
     dscf_state = Quantity(
         type=MEnum("initial", "final"),
-        shape=[],
         description="""
-        The $\\Delta$-SCF state tag, used to identify the role in the workflow of the same name.
-        Allowed values are `initial` (not to be confused with the _initial-state approximation_) and `final`.
+        Tag used to identify the role in the workflow of the same name. Allowed values are 'initial'
+        (not to be confused with the _initial-state approximation_) and 'final'. If 'initial'
+        is used, then `n_excited_electrons` is set to None and the `orbital_ref.degeneracy` is
+        set to 1.
         """,
     )
 
-    def __setattr__(self, name, value):
-        if name == "n_electrons_excited":
-            if value < 0.0:
-                raise ValueError("Number of excited electrons must be positive.")
-            if value > 1.0:
-                raise ValueError("Number of excited electrons must be less than 1.")
-        elif name == "dscf_state":
-            if value == "initial":
-                self.n_electrons_excited = 0.0
-                self.degeneracy = 1
-        super().__setattr__(name, value)
+    def resolve_occupation(self, logger: BoundLogger) -> None:
+        """
+        Resolves the occupation of the orbital state. The occupation is resolved from the degeneracy
+        and the number of excited electrons.
 
-    def _extract_orbital(self):
+        Args:
+            logger (BoundLogger): The logger to log messages.
         """
-        Gather atomic orbitals from `run.method.atom_parameters.core_hole`.
-        Also apply normalization in the process.
-        """
-        # Collect the active orbitals from method
-        methods = self.entry_archive.run[-1].method
-        if not methods:
-            return []
-        atom_params = getattr(methods[-1], "atom_parameters", [])
-        active_orbitals_run = []
-        for param in atom_params:
-            core_hole = param.core_hole
-            if core_hole:
-                active_orbitals_run.append(core_hole)
-        if (
-            len(active_orbitals_run) > 1
-        ):  # FIXME: currently only one set of active orbitals is supported, remove for multiple
-            self.logger.warn(
-                """Multiple sets of active orbitals found.
-                Currently, the topology only supports 1, so only the first set is used."""
+        if self.orbital_ref is None or self.n_excited_electrons is None:
+            logger.warning(
+                "Cannot resolve occupation without `orbital_ref` or `n_excited_electrons`."
             )
-        # Map the active orbitals to the topology
-        active_orbitals_results = []
-        for active_orbitals in active_orbitals_run:
-            active_orbitals.normalize(None, None)
-            active_orbitals_new = CoreHole()
-            for quantity_name in active_orbitals.quantities:
-                setattr(
-                    active_orbitals_new,
-                    quantity_name,
-                    getattr(active_orbitals, quantity_name),
-                )
-            active_orbitals_new.normalize(None, None)
-            active_orbitals_results.append(active_orbitals_new)
-            break  # FIXME: currently only one set of active orbitals is supported, remove for multiple
-        return active_orbitals_results
-
-    def set_occupation(self) -> float:
-        """Set the occupation based on the number of excited electrons."""
-        if not self.occupation:
-            try:
-                self.occupation = self.set_degeneracy() - self.n_electrons_excited
-            except TypeError:
-                raise AttributeError(
-                    "Cannot set occupation without `n_electrons_excited`."
-                )
-        return self.occupation
+            return
+        if self.orbital_ref.occupation is None:
+            degeneracy = self.orbital_ref.resolve_degeneracy()
+            if degeneracy is None:
+                logger.warning("Cannot resolve occupation without `degeneracy`.")
+                return
+            self.orbital_ref.occupation = degeneracy - self.n_excited_electrons
 
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
-        # self.set_occupation()
+
+        # Check if n_excited_electrons is between 0 and 1
+        if 0.0 <= self.n_excited_electrons <= 1.0:
+            logger.error("Number of excited electrons must be between 0 and 1.")
+
+        # If dscf_state is 'initial', then n_excited_electrons is set to 0
+        if self.dscf_state == "initial":
+            self.n_excited_electrons = None
+            self.degeneracy = 1
+
+        # Resolve the occupation of the active orbital state
+        if self.orbital_ref is not None and self.n_excited_electrons:
+            if self.orbital_ref.occupation is None:
+                self.resolve_occupation(logger)
 
 
 class HubbardInteractions(ArchiveSection):
@@ -344,7 +333,7 @@ class HubbardInteractions(ArchiveSection):
     A base section to define the Hubbard interactions of the system.
     """
 
-    orbital_ref = Quantity(
+    orbitals_ref = Quantity(
         type=OrbitalState,
         shape=["*"],
         description="""
@@ -446,7 +435,7 @@ class HubbardInteractions(ArchiveSection):
         """
         if self.slater_integrals is None or len(self.slater_integrals) == 3:
             logger.warning(
-                "Could not find `HubbardInteractions.slater_integrals` or the length is not three."
+                "Could not find `slater_integrals` or the length is not three."
             )
             return None
         f0 = self.slater_integrals[0]
@@ -556,7 +545,7 @@ class AtomsState(ArchiveSection):
                 self.chemical_symbol = ase.data.chemical_symbols[self.atomic_number]
             except IndexError:
                 logger.error(
-                    "The `AtomicState.atomic_number` is out of range of the periodic table."
+                    "The `AtomsState.atomic_number` is out of range of the periodic table."
                 )
                 return
         elif self.chemical_symbol is not None and self.atomic_number is None:
@@ -564,7 +553,7 @@ class AtomsState(ArchiveSection):
                 self.atomic_number = ase.data.atomic_numbers[self.chemical_symbol]
             except IndexError:
                 logger.error(
-                    "The `AtomicState.chemical_symbol` is not recognized in the periodic table."
+                    "The `AtomsState.chemical_symbol` is not recognized in the periodic table."
                 )
                 return
 
