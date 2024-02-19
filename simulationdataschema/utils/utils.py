@@ -67,6 +67,7 @@ def get_sibling_section(
     return sibling_section
 
 
+# ? Check if this utils deserves its own file after extending it
 class RussellSaundersState:
     @classmethod
     def generate_Js(cls, J1: float, J2: float, rising=True):

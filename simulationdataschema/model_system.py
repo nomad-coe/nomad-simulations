@@ -198,7 +198,7 @@ class GeometricSpace(Entity):
         Args:
             logger (BoundLogger): The logger to log messages.
         """
-        atoms = self.to_ase_atoms(logger)
+        atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
         cell = atoms.get_cell()
         self.length_vector_a, self.length_vector_b, self.length_vector_c = (
             cell.lengths() * ureg.angstrom
@@ -211,9 +211,8 @@ class GeometricSpace(Entity):
     def normalize(self, archive, logger) -> None:
         # Skip normalization for `Entity`
         try:
-            ase_atoms = self.to_ase_atoms(logger)  # function defined in AtomicCell
             self.get_geometric_space_for_atomic_cell(logger)
-        except Exception as e:
+        except Exception:
             logger.warning(
                 "Could not extract the geometric space information from ASE Atoms object.",
             )
@@ -317,10 +316,10 @@ class AtomicCell(Cell):
         """,
     )
 
+    # ! improve description and clarify whether this belongs to `Symmetry` with @lauri-codes
     wyckoff_letters = Quantity(
         type=str,
         shape=["*"],
-        # TODO improve description
         description="""
         Wyckoff letters associated with each atom.
         """,
@@ -749,9 +748,9 @@ class ModelSystem(System):
         - `type` refers to the type of the ModelSystem (atom, bulk, surface, etc.),
         - `dimensionality` refers to the dimensionality of the ModelSystem (0, 1, 2, 3),
 
-    If the ModelSystem `is_representative`, normalization occurs. The time evolution of the
-    ModelSystem is encoded on the fact that it is a list under `Simulation`, and for each element
-    of that list, `time_step` can be defined.
+    If the ModelSystem `is_representative`, proceeds with normalization. The time evolution of the
+    ModelSystem is stored in a `list` format under `Simulation`, and for each element of that list,
+    `time_step` can be defined.
 
     It is composed of the sub-sections:
         - `AtomicCell` containing the information of the atomic structure,
@@ -852,6 +851,7 @@ class ModelSystem(System):
         """,
     )
 
+    # ? Check later when implementing `Outputs` if this quantity needs to be extended
     time_step = Quantity(
         type=np.int32,
         description="""
@@ -907,10 +907,10 @@ class ModelSystem(System):
     model_system = SubSection(sub_section=SectionProxy("ModelSystem"), repeats=True)
 
     def resolve_system_type_and_dimensionality(
-        self, ase_atoms: ase.Atoms
+        self, ase_atoms: ase.Atoms, logger: BoundLogger
     ) -> Tuple[str, int]:
         """
-        Resolves the `ModelSystem.type` and `ModelSystem.dimensionality` using MatID classification analyzer:
+        Resolves the `ModelSystem.type` and `ModelSystem.dimensionality` using `MatID` classification analyzer:
 
             - https://singroup.github.io/matid/tutorials/classification.html
 
@@ -933,7 +933,7 @@ class ModelSystem(System):
                 )
                 classification = classifier.classify(ase_atoms)
             except Exception as e:
-                self.logger.warning(
+                logger.warning(
                     "MatID system classification failed.", exc_info=e, error=str(e)
                 )
                 return system_type, dimensionality
@@ -957,7 +957,7 @@ class ModelSystem(System):
                 system_type = "2D"
                 dimensionality = 2
         else:
-            self.logger.info(
+            logger.info(
                 "ModelSystem.type and dimensionality analysis not run due to large system size."
             )
 
@@ -965,7 +965,6 @@ class ModelSystem(System):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-        self.logger = logger
 
         # We don't need to normalize if the system is not representative
         if not self.is_representative:

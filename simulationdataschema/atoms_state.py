@@ -48,29 +48,6 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from .utils import RussellSaundersState
 
 
-orbitals = {
-    -1: dict(zip(range(4), ("s", "p", "d", "f"))),
-    0: {0: ""},
-    1: dict(zip(range(-1, 2), ("x", "z", "y"))),
-    2: dict(zip(range(-2, 3), ("xy", "xz", "z^2", "yz", "x^2-y^2"))),
-    3: dict(
-        zip(
-            range(-3, 4),
-            ("x(x^2-3y^2)", "xyz", "xz^2", "z^3", "yz^2", "z(x^2-y^2)", "y(3x^2-y^2)"),
-        )
-    ),
-}
-
-orbitals_map = {
-    "l_symbols": orbitals[-1],
-    "ml_symbols": {i: orbitals[i] for i in range(4)},
-    "ms_symbols": dict((zip((False, True), ("down", "up")))),
-    "l_numbers": {v: k for k, v in orbitals[-1].items()},
-    "ml_numbers": {k: {v: k for k, v in orbitals[k].items()} for k in range(4)},
-    "ms_numbers": dict((zip((False, True), (-0.5, 0.5)))),
-}
-
-
 class OrbitalsState(ArchiveSection):
     """
     A base section used to define the orbital state of an atom.
@@ -165,11 +142,43 @@ class OrbitalsState(ArchiveSection):
         """,
     )
 
+    def __init__(self):
+        self._orbitals = {
+            -1: dict(zip(range(4), ("s", "p", "d", "f"))),
+            0: {0: ""},
+            1: dict(zip(range(-1, 2), ("x", "z", "y"))),
+            2: dict(zip(range(-2, 3), ("xy", "xz", "z^2", "yz", "x^2-y^2"))),
+            3: dict(
+                zip(
+                    range(-3, 4),
+                    (
+                        "x(x^2-3y^2)",
+                        "xyz",
+                        "xz^2",
+                        "z^3",
+                        "yz^2",
+                        "z(x^2-y^2)",
+                        "y(3x^2-y^2)",
+                    ),
+                )
+            ),
+        }
+        self._orbitals_map = {
+            "l_symbols": self._orbitals[-1],
+            "ml_symbols": {i: self._orbitals[i] for i in range(4)},
+            "ms_symbols": dict((zip((False, True), ("down", "up")))),
+            "l_numbers": {v: k for k, v in self._orbitals[-1].items()},
+            "ml_numbers": {
+                k: {v: k for k, v in self._orbitals[k].items()} for k in range(4)
+            },
+            "ms_numbers": dict((zip((False, True), (-0.5, 0.5)))),
+        }
+
     def resolve_number_and_symbol(
         self, quantum_number: str, type: str, logger: BoundLogger
     ) -> None:
         """
-        Resolves the quantum number from the `orbitals_map` on the passed type. `type` can be either
+        Resolves the quantum number from the `self._orbitals_map` on the passed type. `type` can be either
         'number' or 'symbol'. If the quantum type is not found, then the countertype
         (e.g., type = 'number' => countertype = 'symbol') is used to resolve it.
 
@@ -207,7 +216,9 @@ class OrbitalsState(ArchiveSection):
             return
 
         # If the counterpart exists, then resolve the quantity from the orbitals_map
-        quantity = orbitals_map.get(f"{quantum_number}_{type}s", {}).get(other_quantity)
+        quantity = self._orbitals_map.get(f"{quantum_number}_{type}s", {}).get(
+            other_quantity
+        )
         setattr(self, f"{quantum_number}_quantum_{type}", quantity)
 
     def resolve_degeneracy(self) -> Optional[int]:
@@ -342,7 +353,7 @@ class HubbardInteractions(ArchiveSection):
         """,
     )
 
-    umn = Quantity(
+    u_matrix = Quantity(
         type=np.float64,
         shape=["*", "*"],
         unit="joule",
@@ -352,7 +363,7 @@ class HubbardInteractions(ArchiveSection):
         """,
     )
 
-    u = Quantity(
+    u_interaction = Quantity(
         type=np.float64,
         unit="joule",
         description="""
@@ -361,7 +372,7 @@ class HubbardInteractions(ArchiveSection):
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
-    jh = Quantity(
+    j_hunds_coupling = Quantity(
         type=np.float64,
         unit="joule",
         description="""
@@ -370,20 +381,21 @@ class HubbardInteractions(ArchiveSection):
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
-    up = Quantity(
+    u_interorbital_interaction = Quantity(
         type=np.float64,
         unit="joule",
         description="""
-        Value of the (interorbital) Coulomb interaction. In rotational invariant systems, up = u - 2 * jh.
+        Value of the (interorbital) Coulomb interaction. In rotational invariant systems,
+        u_interorbital_interaction = u_interaction - 2 * j_hunds_coupling.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
-    j = Quantity(
+    j_local_exchange_interaction = Quantity(
         type=np.float64,
         unit="joule",
         description="""
-        Value of the exchange interaction. In rotational invariant systems, j = jh.
+        Value of the exchange interaction. In rotational invariant systems, j_local_exchange_interaction = j_hunds_coupling.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
@@ -392,7 +404,7 @@ class HubbardInteractions(ArchiveSection):
         type=np.float64,
         unit="joule",
         description="""
-        Value of the effective U parameter (u - j).
+        Value of the effective U parameter (u_interaction - j_local_exchange_interaction).
         """,
     )
 
@@ -404,11 +416,11 @@ class HubbardInteractions(ArchiveSection):
         Value of the Slater integrals [F0, F2, F4] in spherical harmonics used to derive
         the local Hubbard interactions:
 
-            u = ((2.0 / 7.0) ** 2) * (F0 + 5.0 * F2 + 9.0 * F4) / (4.0*np.pi)
+            u_interaction = ((2.0 / 7.0) ** 2) * (F0 + 5.0 * F2 + 9.0 * F4) / (4.0*np.pi)
 
-            up = ((2.0 / 7.0) ** 2) * (F0 - 5.0 * F2 + 3.0 * 0.5 * F4) / (4.0*np.pi)
+            u_interorbital_interaction = ((2.0 / 7.0) ** 2) * (F0 - 5.0 * F2 + 3.0 * 0.5 * F4) / (4.0*np.pi)
 
-            jh = ((2.0 / 7.0) ** 2) * (5.0 * F2 + 15.0 * 0.25 * F4) / (4.0*np.pi)
+            j_hunds_coupling = ((2.0 / 7.0) ** 2) * (5.0 * F2 + 15.0 * 0.25 * F4) / (4.0*np.pi)
 
         See e.g., Elbio Dagotto, Nanoscale Phase Separation and Colossal Magnetoresistance,
         Chapter 4, Springer Berlin (2003).
@@ -425,13 +437,14 @@ class HubbardInteractions(ArchiveSection):
 
     def resolve_u_interactions(self, logger: BoundLogger) -> Optional[tuple]:
         """
-        Resolves the Hubbard interactions (u, up, jh) from the Slater integrals (F0, F2, F4).
+        Resolves the Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling)
+        from the Slater integrals (F0, F2, F4).
 
         Args:
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[tuple]): The Hubbard interactions (u, up, jh).
+            (Optional[tuple]): The Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling).
         """
         if self.slater_integrals is None or len(self.slater_integrals) == 3:
             logger.warning(
@@ -447,23 +460,23 @@ class HubbardInteractions(ArchiveSection):
             / (4.0 * np.pi)
             * ureg("joule")
         )
-        up_interaction = (
+        u_interorbital_interaction = (
             ((2.0 / 7.0) ** 2)
             * (f0 - 5.0 * f2 + 3.0 * f4 / 2.0)
             / (4.0 * np.pi)
             * ureg("joule")
         )
-        jh_interaction = (
+        j_hunds_coupling = (
             ((2.0 / 7.0) ** 2)
             * (5.0 * f2 + 15.0 * f4 / 4.0)
             / (4.0 * np.pi)
             * ureg("joule")
         )
-        return u_interaction, up_interaction, jh_interaction
+        return u_interaction, u_interorbital_interaction, j_hunds_coupling
 
     def resolve_u_effective(self, logger: BoundLogger) -> Optional[np.float64]:
         """
-        Resolves the effective U parameter (u - j).
+        Resolves the effective U parameter (u_interaction - j_local_exchange_interaction).
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -471,29 +484,37 @@ class HubbardInteractions(ArchiveSection):
         Returns:
             (Optional[np.float64]): The effective U parameter.
         """
-        if self.u is None or self.j is None:
+        if self.u_interaction is None or self.j_local_exchange_interaction is None:
             logger.warning(
-                "Could not find `HubbardInteractions.u` or `HubbardInteractions.j`."
+                "Could not find `HubbardInteractions.u_interaction` or `HubbardInteractions.j_local_exchange_interaction`."
             )
             return None
-        return self.u - self.j
+        return self.u_interaction - self.j_local_exchange_interaction
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Obtain (u, up, jh) from slater_integrals
-        if self.u is None and self.up is None and self.jh is None:
-            self.u, self.up, self.jh = self.resolve_u_interactions(logger)
+        # Obtain (u, up, j_hunds_coupling) from slater_integrals
+        if (
+            self.u_interaction is None
+            and self.u_interorbital_interaction is None
+            and self.j_hunds_coupling is None
+        ):
+            (
+                self.u_interaction,
+                self.u_interorbital_interaction,
+                self.j_hunds_coupling,
+            ) = self.resolve_u_interactions(logger)
 
         # If u_effective is not available, calculate it
         if self.u_effective is None:
             self.u_effective = self.resolve_u_effective(logger)
 
         # Check if length of `orbitals_ref` is the same as the length of `umn`:
-        if self.umn is not None and self.orbitals_ref is not None:
-            if len(self.umn) != len(self.orbitals_ref):
+        if self.u_matrix is not None and self.orbitals_ref is not None:
+            if len(self.u_matrix) != len(self.orbitals_ref):
                 logger.error(
-                    "The length of `HubbardInteractions.umn` does not coincide with length of `HubbardInteractions.orbitals_ref`."
+                    "The length of `HubbardInteractions.u_matrix` does not coincide with length of `HubbardInteractions.orbitals_ref`."
                 )
 
 
@@ -502,7 +523,7 @@ class AtomsState(ArchiveSection):
     A base section to define each atom state information.
     """
 
-    # ? constraint to the normal chemical elements (no 'X' as defined in ASE included)
+    # TODO check what happens with ghost atoms that can have `chemical_symbol='X'`
     chemical_symbol = Quantity(
         type=MEnum(ase.data.chemical_symbols[1:]),
         description="""
@@ -547,22 +568,21 @@ class AtomsState(ArchiveSection):
         Args:
             logger (BoundLogger): The logger to log messages.
         """
-        if self.chemical_symbol is None and self.atomic_number is not None:
+        f = lambda x: tuple(map(bool, x))
+        if f((self.chemical_symbol, self.atomic_number)) == f((None, not None)):
             try:
                 self.chemical_symbol = ase.data.chemical_symbols[self.atomic_number]
             except IndexError:
                 logger.error(
                     "The `AtomsState.atomic_number` is out of range of the periodic table."
                 )
-                return
-        elif self.chemical_symbol is not None and self.atomic_number is None:
+        elif f((self.chemical_symbol, self.atomic_number)) == f((not None, None)):
             try:
                 self.atomic_number = ase.data.atomic_numbers[self.chemical_symbol]
             except IndexError:
                 logger.error(
                     "The `AtomsState.chemical_symbol` is not recognized in the periodic table."
                 )
-                return
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
