@@ -45,6 +45,8 @@ from nomad.metainfo import Quantity, SubSection, MEnum
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
+from .utils import RussellSaundersState
+
 
 orbitals = {
     -1: dict(zip(range(4), ("s", "p", "d", "f"))),
@@ -57,6 +59,15 @@ orbitals = {
             ("x(x^2-3y^2)", "xyz", "xz^2", "z^3", "yz^2", "z(x^2-y^2)", "y(3x^2-y^2)"),
         )
     ),
+}
+
+orbitals_map = {
+    "l_symbols": orbitals[-1],
+    "ml_symbols": {i: orbitals[i] for i in range(4)},
+    "ms_symbols": dict((zip((False, True), ("down", "up")))),
+    "l_numbers": {v: k for k, v in orbitals[-1].items()},
+    "ml_numbers": {k: {v: k for k, v in orbitals[k].items()} for k in range(4)},
+    "ms_numbers": dict((zip((False, True), (-0.5, 0.5)))),
 }
 
 
@@ -76,14 +87,30 @@ class OrbitalState(ArchiveSection):
     l_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Azimuthal quantum number l of the orbital state.
+        Azimuthal quantum number l of the orbital state. This quantity is equivalent to `l_quantum_symbol`.
+        """,
+    )
+
+    l_quantum_symbol = Quantity(
+        type=np.int32,
+        description="""
+        Azimuthal quantum symbol l of the orbital state, "s", "p", "d", "f", etc. This
+        quantity is equivalent to `l_quantum_number`.
         """,
     )
 
     ml_quantum_number = Quantity(
         type=np.int32,
         description="""
-        Azimuthal projection of the l vector.
+        Azimuthal projection number of the l vector. This quantity is equivalent to `ml_quantum_symbol`.
+        """,
+    )
+
+    ml_quantum_symbol = Quantity(
+        type=np.int32,
+        description="""
+        Azimuthal projection symbol of the l vector, "x", "y", "z", etc. This quantity is equivalent
+        to `ml_quantum_number`.
         """,
     )
 
@@ -113,6 +140,14 @@ class OrbitalState(ArchiveSection):
         """,
     )
 
+    ms_quantum_symbol = Quantity(
+        type=np.int32,
+        description="""
+        Spin quantum symbol. Set to 'down' for spin down and 'up' for spin up. In non-collinear spin systems,
+        the projection axis $z$ should also be defined.
+        """,
+    )
+
     degeneracy = Quantity(
         type=np.int32,
         description="""
@@ -129,18 +164,63 @@ class OrbitalState(ArchiveSection):
         """,
     )
 
-    def multiplicity(self, quantum_number):
-        return 2 * quantum_number + 1
+    def resolve_number_and_symbol(
+        self, quantum_number: str, type: str, logger: BoundLogger
+    ) -> None:
+        """
+        Resolve the quantum number from the orbitals_map on the passed type. Type can be either
+        'number' or 'symbol'. If the quantum number for type is not found, then the countertype
+        (e.g., type = 'number' => countertype = 'symbol') is resolved and the quantum number is
+        is derived from the countertype.
 
-    def set_degeneracy(self) -> int:
-        """Set the degeneracy based on how specifically determined the quantum state is.
-        This function can be triggered anytime to update the degeneracy."""
-        # TODO: there are certain j (mj) specifications that may straddle just one l value
-        if self.ml_quantum_number is not None:
-            if self.ms_quantum_bool is not None:
-                self.degeneracy = 1
+        Args:
+            quantum_number (str): The quantum number to resolve. Can be 'l', 'ml' or 'ms'.
+            type (str): The type of the quantum number. Can be 'number' or 'symbol'.
+            logger (BoundLogger): The logger to log messages.
+        """
+        if quantum_number not in ["l", "ml", "ms"]:
+            logger.warning(
+                "The quantum number is not recognized. Try 'l', 'ml' or 'ms'."
+            )
+            return
+        if type not in ["number", "symbol"]:
+            logger.warning("The type is not recognized. Try 'number' or 'symbol'.")
+            return
+
+        _countertype_map = {
+            "number": "symbol",
+            "symbol": "number",
+        }
+        # Check if quantity already exists
+        quantity = getattr(self, f"{quantum_number}_quantum_{type}")
+        if quantity:
+            return
+
+        # If not, we check whether the countertype exists
+        other_quantity = getattr(
+            self, f"{quantum_number}_quantum_{_countertype_map[type]}"
+        )
+        if not other_quantity:
+            logger.warning(
+                f"Could not find the {quantum_number}_quantum_{type} countertype {_countertype_map[type]}."
+            )
+            return
+
+        # If the counterpart exists, then we resolve the quantity from the orbitals_map
+        quantity = getattr(orbitals_map, f"{quantum_number}_{type}s")
+        setattr(self, f"{quantum_number}_quantum_{type}", quantity)
+
+    def resolve_degeneracy(self) -> Optional[int]:
+        if self.l_quantum_number and self.ml_quantum_number is None:
+            if self.ms_quantum_number:
+                degeneracy = 2 * self.l_quantum_number + 1
             else:
-                self.degeneracy = 2
+                degeneracy = 2 * (2 * self.l_quantum_number + 1)
+        elif self.l_quantum_number and self.ml_quantum_number:
+            if self.ms_quantum_number:
+                degeneracy = 1
+            else:
+                degeneracy = 2
         elif self.j_quantum_number is not None:
             degeneracy = 0
             for jj in self.j_quantum_number:
@@ -153,93 +233,17 @@ class OrbitalState(ArchiveSection):
                     )
                 else:
                     degeneracy += RussellSaundersState(jj, 1).degeneracy
-            if self.ms_quantum_bool is not None:
-                self.degeneracy = degeneracy / 2
-            else:
-                self.degeneracy = degeneracy
-        elif self.l_quantum_number is not None:
-            if self.ms_quantum_bool is not None:
-                self.degeneracy = self.get_l_degeneracy() / 2
-            else:
-                self.degeneracy = self.get_l_degeneracy()
-        return self.degeneracy
+        return degeneracy
 
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
+        for quantum_number in ["l", "ml", "ms"]:
+            for type in ["number", "symbol"]:
+                self.resolve_number_and_symbol(quantum_number, type, logger)
 
-# class Pseudopotential(ArchiveSection):
-#     """
-#     A base section to define the pseudopotential of an atom.
-#     """
-
-#     name = Quantity(
-#         type=str,
-#         shape=[],
-#         description="""
-#         Native code name of the pseudopotential.
-#         """,
-#     )
-
-#     type = Quantity(
-#         type=MEnum("US V", "US MBK", "PAW"),
-#         shape=[],
-#         description="""
-#         Pseudopotential classification.
-#         | abbreviation | description | DOI |
-#         | ------------ | ----------- | --------- |
-#         | `'US'`       | Ultra-soft  | |
-#         | `'PAW'`      | Projector augmented wave | |
-#         | `'V'`        | Vanderbilt | https://doi.org/10.1103/PhysRevB.47.6728 |
-#         | `'MBK'`      | Morrison-Bylander-Kleinman | https://doi.org/10.1103/PhysRevB.41.7892 |
-#         """,
-#     )
-
-#     norm_conserving = Quantity(
-#         type=bool,
-#         shape=[],
-#         description="""
-#         Denotes whether the pseudopotential is norm-conserving.
-#         """,
-#     )
-
-#     cutoff = Quantity(
-#         type=np.float64,
-#         shape=[],
-#         unit="joule",
-#         description="""
-#         Minimum recommended spherical cutoff energy for any plane-wave basis set
-#         using the pseudopotential.
-#         """,
-#     )
-
-#     xc_functional_name = Quantity(
-#         type=str,
-#         shape=["*"],
-#         description="""
-#         Name of the exchange-correlation functional used to generate the pseudopotential.
-#         Follows the libxc naming convention.
-#         """,
-#     )
-
-#     l_max = Quantity(
-#         type=np.int32,
-#         shape=[],
-#         description="""
-#         Maximum angular momentum of the pseudopotential projectors.
-#         """,
-#     )
-
-#     lm_max = Quantity(
-#         type=np.int32,
-#         shape=[],
-#         description="""
-#         Maximum magnetic momentum of the pseudopotential projectors.
-#         """,
-#     )
-
-#     def normalize(self, archive, logger):
-#         super().normalize(archive, logger)
+        # ! Is this necessary? Degeneracy might be too complicated and case-dependent (it should be parsed)
+        self.degeneracy = self.resolve_degeneracy()
 
 
 class CoreHole(ArchiveSection):
@@ -250,8 +254,6 @@ class CoreHole(ArchiveSection):
     Any missing quantum numbers indicate some level of arbitrariness in the choice of the core hole, represented in the degeneracy.
     """
 
-    # quantities: list[str] = SingleElectronState.quantities + ["n_electrons_excited"]
-
     n_electrons_excited = Quantity(
         type=np.float64,
         shape=[],
@@ -261,13 +263,7 @@ class CoreHole(ArchiveSection):
         Unless the `initial` state is chosen, the model corresponds to a single electron being excited in physical reality.
         """,
     )
-    occupation = Quantity(
-        type=np.float64,
-        description="""
-        The total number of electrons within the state (as defined by degeneracy)
-        after exciting the model charge.
-        """,
-    )
+
     dscf_state = Quantity(
         type=MEnum("initial", "final"),
         shape=[],
@@ -541,8 +537,6 @@ class AtomsState(ArchiveSection):
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
-
-    # pseudopotential = SubSection(sub_section=Pseudopotential.m_def, repeats=False)
 
     core_hole = SubSection(sub_section=CoreHole.m_def, repeats=False)
 
