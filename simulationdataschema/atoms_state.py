@@ -71,7 +71,7 @@ orbitals_map = {
 }
 
 
-class OrbitalState(ArchiveSection):
+class OrbitalsState(ArchiveSection):
     """
     A base section used to define the orbital state of an atom.
     """
@@ -259,14 +259,14 @@ class OrbitalState(ArchiveSection):
 
 class CoreHole(ArchiveSection):
     """
-    A base section used to define the core-hole state of an atom by referencing the `OrbitalState`
+    A base section used to define the core-hole state of an atom by referencing the `OrbitalsState`
     section where the core-hole was generated.
     """
 
     orbital_ref = Quantity(
-        type=OrbitalState,
+        type=OrbitalsState,
         description="""
-        Reference to the OrbitalState section that is used as a basis to obtain the `CoreHole` section.
+        Reference to the OrbitalsState section that is used as a basis to obtain the `CoreHole` section.
         """,
         a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
     )
@@ -334,10 +334,10 @@ class HubbardInteractions(ArchiveSection):
     """
 
     orbitals_ref = Quantity(
-        type=OrbitalState,
+        type=OrbitalsState,
         shape=["*"],
         description="""
-        Reference to the OrbitalState sections that are used as a basis to obtain the Hubbard
+        Reference to the `OrbitalsState` sections that are used as a basis to obtain the Hubbard
         interaction matrices.
         """,
     )
@@ -510,19 +510,19 @@ class AtomsState(ArchiveSection):
         """,
     )
 
-    orbitals = SubSection(sub_section=OrbitalState.m_def, repeats=True)
+    orbitals_state = SubSection(sub_section=OrbitalsState.m_def, repeats=True)
 
     charge = Quantity(
         type=np.int32,
         default=0,
         description="""
         Charge of the atom. It is defined as the number of extra electrons or holes in the
-        atom. If the atom is neutral, charge = 0 and the summation of all (if available) the`OrbitalState.occupation`
+        atom. If the atom is neutral, charge = 0 and the summation of all (if available) the`OrbitalsState.occupation`
         coincides with the `atomic_number`. Otherwise, charge can be any positive integer (+1, +2...)
         for cations or any negative integer (-1, -2...) for anions.
 
         Note: for `CoreHole` systems we do not consider the charge of the atom even if
-        we do not store the final `OrbitalState` where the electron was excited to.
+        we do not store the final `OrbitalsState` where the electron was excited to.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
