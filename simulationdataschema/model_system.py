@@ -234,9 +234,16 @@ class Cell(GeometricSpace):
         """,
     )
 
+    n_cell_points = Quantity(
+        type=np.int32,
+        description="""
+        Number of cell points.
+        """,
+    )
+
     positions = Quantity(
         type=np.float64,
-        shape=["*", 3],
+        shape=["n_cell_points", 3],
         unit="meter",
         description="""
         Positions of all the atoms in Cartesian coordinates.
@@ -245,7 +252,7 @@ class Cell(GeometricSpace):
 
     velocities = Quantity(
         type=np.float64,
-        shape=["*", 3],
+        shape=["n_cell_points", 3],
         unit="meter / second",
         description="""
         Velocities of the atoms. It is the change in cartesian coordinates of the atom position
@@ -305,9 +312,16 @@ class AtomicCell(Cell):
 
     atoms_state = SubSection(sub_section=AtomsState.m_def, repeats=True)
 
+    n_atoms = Quantity(
+        type=np.int32,
+        description="""
+        Number of atoms in the atomic cell.
+        """,
+    )
+
     equivalent_atoms = Quantity(
         type=np.int32,
-        shape=["*"],
+        shape=["n_atoms"],
         description="""
         List of equivalent atoms as defined in `atoms`. If no equivalent atoms are found,
         then the list is simply the index of each element, e.g.:
@@ -319,7 +333,7 @@ class AtomicCell(Cell):
     # ! improve description and clarify whether this belongs to `Symmetry` with @lauri-codes
     wyckoff_letters = Quantity(
         type=str,
-        shape=["*"],
+        shape=["n_atoms"],
         description="""
         Wyckoff letters associated with each atom.
         """,
@@ -869,7 +883,6 @@ class ModelSystem(System):
 
     branch_label = Quantity(
         type=str,
-        shape=[],
         description="""
         Label of the specific branch in the hierarchical `ModelSystem` tree.
         """,
@@ -895,9 +908,9 @@ class ModelSystem(System):
         """,
     )
 
+    # TODO improve description and add an example using the case in atom_indices
     bond_list = Quantity(
         type=np.int32,
-        # TODO improve description and add an example using the case in atom_indices
         description="""
         List of pairs of atom indices corresponding to bonds (e.g., as defined by a force field)
         within this atoms_group.

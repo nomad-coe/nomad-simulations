@@ -344,9 +344,16 @@ class HubbardInteractions(ArchiveSection):
     A base section to define the Hubbard interactions of the system.
     """
 
+    n_orbitals = Quantity(
+        type=np.int32,
+        description="""
+        Number of orbitals used to define the Hubbard interactions.
+        """,
+    )
+
     orbitals_ref = Quantity(
         type=OrbitalsState,
-        shape=["*"],
+        shape=["n_orbitals"],
         description="""
         Reference to the `OrbitalsState` sections that are used as a basis to obtain the Hubbard
         interaction matrices.
@@ -355,7 +362,7 @@ class HubbardInteractions(ArchiveSection):
 
     u_matrix = Quantity(
         type=np.float64,
-        shape=["*", "*"],
+        shape=["n_orbitals", "n_orbitals"],
         unit="joule",
         description="""
         Value of the local Hubbard interaction matrix. The order of the rows and columns coincide
