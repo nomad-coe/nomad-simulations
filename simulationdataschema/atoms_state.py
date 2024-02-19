@@ -489,6 +489,13 @@ class HubbardInteractions(ArchiveSection):
         if self.u_effective is None:
             self.u_effective = self.resolve_u_effective(logger)
 
+        # Check if length of `orbitals_ref` is the same as the length of `umn`:
+        if self.umn is not None and self.orbitals_ref is not None:
+            if len(self.umn) != len(self.orbitals_ref):
+                logger.error(
+                    "The length of `HubbardInteractions.umn` does not coincide with length of `HubbardInteractions.orbitals_ref`."
+                )
+
 
 class AtomsState(ArchiveSection):
     """
