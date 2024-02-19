@@ -989,7 +989,7 @@ class ModelSystem(System):
             (
                 self.type,
                 self.dimensionality,
-            ) = self.resolve_system_type_and_dimensionality(ase_atoms)
+            ) = self.resolve_system_type_and_dimensionality(ase_atoms, logger)
             # Creating and normalizing Symmetry section
             if self.type == "bulk" and self.symmetry is not None:
                 sec_symmetry = self.m_create(Symmetry)
