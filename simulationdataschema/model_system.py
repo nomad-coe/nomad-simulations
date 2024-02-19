@@ -742,36 +742,42 @@ class ChemicalFormula(ArchiveSection):
 class ModelSystem(System):
     # ! Work in this description with new `AtomState`
     """
-    Model system used as an input for the computation. It inherits from `System` where a set
-    of sub-sections for the `elemental_composition` is defined.
+    Model system used as an input for the computation.
 
-    We also defined:
+    We define:
         - `name` refers to all the verbose and user-dependent naming in ModelSystem,
         - `type` refers to the type of the ModelSystem (atom, bulk, surface, etc.),
-        - `dimensionality` refers to the dimensionality of the ModelSystem (0D, 1D, 2D, 3D),
+        - `dimensionality` refers to the dimensionality of the ModelSystem (0, 1, 2, 3),
 
-    If the ModelSystem `is_representative`, the normalization occurs. The time evolution of
-    the system is encoded on the fact that ModelSystem is a list under Simulation, and for
-    each element of that list, `time_step` can be defined.
+    If the ModelSystem `is_representative`, normalization occurs. The time evolution of the
+    ModelSystem is encoded on the fact that it is a list under `Simulation`, and for each element
+    of that list, `time_step` can be defined.
 
     It is composed of the sub-sections:
         - `AtomicCell` containing the information of the atomic structure,
-        - `Symmetry` containing the information of the (standarized) atomic cell symmetry
+        - `Symmetry` containing the information of the (conventional) atomic cell symmetry
         in bulk ModelSystem,
         - `ChemicalFormula` containing the information of the chemical formulas in different
         formats.
 
-    This class nest over itself (with the proxy in `model_system`) to define different
+    This class nest over itself (with the section proxy in `model_system`) to define different
     parent-child system trees. The quantities `branch_label`, `branch_depth`, `atom_indices`,
     and `bond_list` are used to define the parent-child tree.
 
     The normalization is ran in the following order:
-        1. `AtomicCell.normalize()` from `atomic_cell`,
-        2. `ModelSystem.normalize()` in this class,
-        3. `Symmetry.normalize()` is called within this class normalization,
-        4. `ChemicalFormula.normalize()` is called within this class normalization.
+        1. `OrbitalsState.normalize()` in atoms_state.py under `AtomsState`
+        2. `CoreHoleState.normalize()` in atoms_state.py under `AtomsState`
+        3. `HubbardInteractions.normalize()` in atoms_state.py under `AtomsState`
+        4. `AtomsState.normalize()` in atoms_state.py
+        5. `AtomicCell.normalize()` in atomic_cell.py
+        6. `Symmetry.normalize()` in this class
+        7. `ChemicalFormula.normalize()` in this class
+        8. `ModelSystem.normalize()` in this class
 
-    Examples:
+    Note: `normalize()` can be called at any time for each of the classes without being re-triggered
+    by the NOMAD normalization.
+
+    Examples for the parent-child hierarchical trees:
 
         - Example 1, a crystal Si has: 3 AtomicCell sections (named 'original', 'primitive',
         and 'conventional'), 1 Symmetry section, and 0 nested ModelSystem trees.
