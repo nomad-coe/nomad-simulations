@@ -895,7 +895,6 @@ class ModelSystem(System):
         """,
     )
 
-    # TODO add method to resolve labels and positions from the parent AtomicCell
     atom_indices = Quantity(
         type=np.int32,
         shape=["*"],
