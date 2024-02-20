@@ -37,7 +37,7 @@
 import numpy as np
 import pint
 from structlog.stdlib import BoundLogger
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from ase.dft.kpoints import monkhorst_pack
 
 from nomad.units import ureg
@@ -550,36 +550,33 @@ class ModelMethod(ArchiveSection):
         """,
     )
 
-    def resolve_model_method_name(self, logger: BoundLogger) -> None:
+    def resolve_methods_ref(
+        self, logger: BoundLogger
+    ) -> Tuple[np.int32, List[ArchiveSection]]:
         """
-        Resolves the `name` of the `ModelMethod` section if it is not already defined from the
-        section inheriting from this one.
+        Resolves the list of other `ModelMethod` sections that the current `ModelMethod` section will be referencing
+        to from the parent section.
 
         Args:
             logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (List[ArchiveSection]): The list of referenced `ModelMethod` sections.
         """
-        if self.m_def.inherited_sections is None:
-            logger.warning(
-                "Could not find if the `ModelMethod` section used is inheriting from another section."
-            )
-            return
-        inherited_section = self.m_def.inherited_sections[2]
-        if inherited_section.name == "TB":
-            self.name = inherited_section.name
+        n_method_references = self.m_parent_index - 1
+        methods_ref = []
+        for index in range(n_method_references):
+            methods_ref.append(self.m_parent.model_method[index])
+        return n_method_references, methods_ref
 
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
-        # We go 2 levels down with respect to ArchiveSection to extract `name` if it is not already defined
-        if self.name is None or self.name == "unavailable":
-            self.resolve_model_method_name(logger)
-
         # If `methods_ref` does not exist but there are multiple `ModelMethod` sections in the parent, we define refs to them.
         if self.methods_ref is None and self.m_parent_index > 0:
-            methods_ref = []
-            for index in range(self.m_parent_index - 1):
-                methods_ref.append(self.m_parent.model_method[index])
-            self.methods_ref = methods_ref
+            self.n_method_references, self.methods_ref = self.resolve_methods_ref(
+                logger
+            )
 
 
 class TB(ModelMethod):
@@ -630,6 +627,9 @@ class TB(ModelMethod):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Set `name` to "TB"
+        self.name = "TB"
 
         # Resolve `type` to be defined by the lower level class (Wannier, DFTB, xTB or SlaterKoster) if it is not already defined
         self.type = self.resolve_type(logger)
