@@ -232,6 +232,7 @@ class OrbitalsState(ArchiveSection):
         Returns:
             (Optional[int]): The degeneracy of the orbital state.
         """
+        degeneracy = None
         if self.l_quantum_number and self.ml_quantum_number is None:
             if self.ms_quantum_number:
                 degeneracy = 2 * self.l_quantum_number + 1
@@ -265,7 +266,8 @@ class OrbitalsState(ArchiveSection):
                 self.resolve_number_and_symbol(quantum_number, type, logger)
 
         # Resolve the degeneracy
-        self.degeneracy = self.resolve_degeneracy()
+        if self.resolve_degeneracy() is not None:
+            self.degeneracy = self.resolve_degeneracy()
 
 
 class CoreHole(ArchiveSection):
