@@ -974,8 +974,9 @@ class Photon(ArchiveSection):
     A base section used to define parameters of a photon, typically used for optical responses.
     """
 
+    # TODO check other options and add specific refs
     multipole_type = Quantity(
-        type=str,
+        type=MEnum("dipolar", "quadrupolar", "NRIXS", "Raman"),
         description="""
         Type used for the multipolar expansion: dipole, quadrupole, NRIXS, Raman, etc.
         """,
@@ -1002,9 +1003,18 @@ class Photon(ArchiveSection):
         shape=[3],
         description="""
         Momentum transfer to the lattice. This quanitity is important for inelastic scatterings, like
-        the ones happening in Raman or NRIXS.
+        the ones happening in quadrupolar, Raman, or NRIXS processes.
         """,
     )
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Add warning in case `multipole_type` and `momentum_transfer` are not consistent
+        if (
+            self.multipole_type in ["quadrupolar", "NRIXS", "Raman"]
+            and self.momentum_transfer is None
+        ):
+            logger.warning(
+                "The `Photon.momentum_transfer` is not defined but the `Photon.multipole_type` describes inelastic scattering processes."
+            )
