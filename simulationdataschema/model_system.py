@@ -66,7 +66,7 @@ from .utils import get_sibling_section
 
 class GeometricSpace(Entity):
     """
-    A base section to define geometrical space-related entities.
+    A base section used to define geometrical space-related entities.
     """
 
     length_vector_a = Quantity(
@@ -270,18 +270,6 @@ class Cell(GeometricSpace):
         """,
     )
 
-    # TODO move to KMesh
-    lattice_vectors_reciprocal = Quantity(
-        type=np.float64,
-        shape=[3, 3],
-        unit="1/meter",
-        description="""
-        Reciprocal lattice vectors of the simulated cell, in Cartesian coordinates and
-        including the $2 pi$ pre-factor. The first index runs over each lattice vector. The
-        second index runs over the $x, y, z$ Cartesian coordinates.
-        """,
-    )
-
     periodic_boundary_conditions = Quantity(
         type=bool,
         shape=[3],
@@ -377,10 +365,6 @@ class AtomicCell(Cell):
         # Lattice vectors
         if self.lattice_vectors is not None:
             ase_atoms.set_cell(self.lattice_vectors.to("angstrom").magnitude)
-            if self.lattice_vectors_reciprocal is None:
-                self.lattice_vectors_reciprocal = (
-                    2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
-                )
         else:
             logger.info("Could not find `AtomicCell.lattice_vectors`.")
 
@@ -753,11 +737,10 @@ class ChemicalFormula(ArchiveSection):
 
 
 class ModelSystem(System):
-    # ! Work in this description with new `AtomState`
     """
-    Model system used as an input for the computation.
+    Model system used as an input for simulate the material.
 
-    We define:
+    Definitions:
         - `name` refers to all the verbose and user-dependent naming in ModelSystem,
         - `type` refers to the type of the ModelSystem (atom, bulk, surface, etc.),
         - `dimensionality` refers to the dimensionality of the ModelSystem (0, 1, 2, 3),
