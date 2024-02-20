@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+from math import factorial
 from typing import Optional
 from structlog.stdlib import BoundLogger
 
@@ -64,3 +65,47 @@ def get_sibling_section(
             return None
         return sibling_section[index_sibling]
     return sibling_section
+
+
+# ? Check if this utils deserves its own file after extending it
+class RussellSaundersState:
+    @classmethod
+    def generate_Js(cls, J1: float, J2: float, rising=True):
+        J_min, J_max = sorted([abs(J1), abs(J2)])
+        generator = range(
+            int(J_max - J_min) + 1
+        )  # works for both for fermions and bosons
+        if rising:
+            for jj in generator:
+                yield J_min + jj
+        else:
+            for jj in generator:
+                yield J_max - jj
+
+    @classmethod
+    def generate_MJs(cls, J, rising=True):
+        generator = range(int(2 * J + 1))
+        if rising:
+            for m in generator:
+                yield -J + m
+        else:
+            for m in generator:
+                yield J - m
+
+    def __init__(self, *args, **kwargs):
+        self.J = kwargs.get("J")
+        if self.J is None:
+            raise TypeError
+        self.occupation = kwargs.get("occ")
+        if self.occupation is None:
+            raise TypeError
+
+    @property
+    def multiplicity(self):
+        return 2 * self.J + 1
+
+    @property
+    def degeneracy(self):
+        return factorial(self.multiplicity) / (
+            factorial(self.multiplicity - self.occupation) * factorial(self.occupation)
+        )

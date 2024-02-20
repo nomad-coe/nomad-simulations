@@ -193,7 +193,8 @@ class Simulation(BaseSimulation, EntryData):
             logger.error("No system information reported.")
             return
         system_ref = self.model_system[-1]
-        system_ref.is_representative = True
+        # * We define is_representative in the parser
+        # system_ref.is_representative = True
         self.m_cache["system_ref"] = system_ref
 
         # Setting up the `branch_depth` in the parent-child tree

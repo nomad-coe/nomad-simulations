@@ -47,6 +47,6 @@ class ModelMethod(ArchiveSection):
 
     normalizer_level = 1
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.logger = logger
