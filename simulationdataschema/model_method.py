@@ -46,6 +46,7 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import Quantity, SubSection, MEnum, SectionProxy, Reference
 
 from .model_system import ModelSystem
+from .atoms_state import AtomsState, OrbitalsState
 
 
 class Mesh(ArchiveSection):
@@ -241,6 +242,7 @@ class KMesh(Mesh):
         Returns:
             (Optional[pint.Quantity]): The resolved `points` of the `KMesh`.
         """
+        points = None
         if self.sampling_method == "Gamma-centered":
             points = np.meshgrid(*[np.linspace(0, 1, n) for n in self.grid])
         elif self.sampling_method == "Monkhorst-Pack":
@@ -520,7 +522,7 @@ class ModelMethod(ArchiveSection):
         """,
     )
 
-    # ? What about this quantity?
+    # ? What about this quantity
     relativity_method = Quantity(
         type=MEnum(
             "scalar_relativistic",
@@ -533,7 +535,7 @@ class ModelMethod(ArchiveSection):
         """,
     )
 
-    # ? What about this quantity?
+    # ? What about this quantity
     van_der_waals_method = Quantity(
         type=MEnum("TS", "OBS", "G06", "JCHS", "MDB", "XC"),
         description="""
@@ -601,10 +603,61 @@ class TB(ModelMethod):
         a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
 
-    n_orbitals = Quantity(
+    n_atoms = Quantity(
         type=np.int32,
         description="""
-        Number of orbitals used as a basis to obtain the tight-binding model Hamiltonian.
+        Number of atoms used as a basis to obtain the `TB` model.
+        """,
+    )
+
+    atoms_ref = Quantity(
+        type=AtomsState,
+        shape=["n_atoms"],
+        description="""
+        References to the `AtomsState` sections that contains the atom and orbitals information
+        which are relevant for the `TB` model.
+
+        Example: hydrogenated graphene with 3 atoms in the unit cell. The full list of `AtomsState` would
+        be
+            [
+                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
+                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
+                AtomsState(chemical_symbol='H', orbitals_state=[OrbitalsState('s')]),
+            ]
+
+        If our model is only for the 2 'C' atoms and considering 'pz` orbitals, then:
+
+            atoms_ref = [
+                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
+                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
+            ]
+
+        See `orbitals_ref` for the continuation of this example.
+        """,
+    )
+
+    n_atoms_orbitals = Quantity(
+        type=np.int32,
+        shape=["n_atoms"],
+        description="""
+        Number of orbitals of each atom referenced in `atoms_ref` used as a basis to obtain the `TB` model.
+        """,
+    )
+
+    orbitals_ref = Quantity(
+        type=OrbitalsState,
+        shape=["n_atoms", "n_atoms_orbitals"],
+        description="""
+        References to the `OrbitalsState` sections for each referenced `AtomsState` section that contains
+        the orbitals information which are relevant for the `TB` model.
+
+        Example (see `atoms_ref` for the beginning of this example): to reference now each 'pz' orbital,
+        we create:
+
+            orbitals_ref= [[OrbitalState('pz')], [OrbitalsState('pz')]]
+
+        The first element of this list refers to the first `AtomState` defined in `atoms_ref`, and the second
+        element refers to the second `AtomState` defined in `atoms_ref`.
         """,
     )
 
@@ -633,6 +686,35 @@ class TB(ModelMethod):
 
         # Resolve `type` to be defined by the lower level class (Wannier, DFTB, xTB or SlaterKoster) if it is not already defined
         self.type = self.resolve_type(logger)
+
+        model_systems = self.m_xpath("m_parent.model_system", dict=False)
+        for model_system in model_systems:
+            if not model_system.is_representative:
+                continue
+            atomic_cell = model_system.atomic_cell[0]
+            if atomic_cell is None:
+                continue
+            atoms_state = atomic_cell.atoms_state
+            active_atoms = model_system.model_system
+            if active_atoms is None:
+                continue
+            for active_atom in active_atoms:
+                indices = active_atom.atom_indices
+                atoms_ref = []
+                atoms_orbitals_ref = []
+                for index in indices:
+                    active_atoms_state = atoms_state[index]
+                    atoms_ref.append(active_atoms_state)
+                    orbitals = active_atoms_state.orbitals_state
+                    if active_atoms_state.orbitals_state is not None:
+                        orbitals_ref = []
+                        for orb in orbitals:
+                            orbitals_ref.append(orb)
+                        atoms_orbitals_ref.append(orbitals_ref)
+            if atoms_ref is not None:
+                self.atoms_ref = atoms_ref
+            if atoms_orbitals_ref is not None:
+                self.orbitals_ref = atoms_orbitals_ref
 
 
 class Wannier(TB):
