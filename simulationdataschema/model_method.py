@@ -605,6 +605,7 @@ class TB(ModelMethod):
         a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
 
+    # ? Maybe this can be simplified to a flat list of `OrbitalsState` and then use the m_parent ot understand the provenance
     n_atoms = Quantity(
         type=np.int32,
         description="""
@@ -886,54 +887,71 @@ class Wannier(TB):
 
 class SlaterKosterBond(ArchiveSection):
     """
-    A base section used to define the Slater-Koster integrals for two orbitals between two atoms.
+    A base section used to define the Slater-Koster bond information betwee two orbitals.
     """
-
-    # TODO work on the parser, descriptions, and `resolve_name_from_references`
 
     orbital_1 = Quantity(
         type=OrbitalsState,
-        description="""""",
+        description="""
+        Reference to the first `OrbitalsState` section.
+        """,
     )
 
     orbital_2 = Quantity(
         type=OrbitalsState,
-        description="""""",
+        description="""
+        Reference to the first `OrbitalsState` section.
+        """,
     )
 
-    cell_index = Quantity(
+    # ? is this the best naming
+    bravais_vector = Quantity(
         type=np.int32,
         default=[0, 0, 0],
         shape=[3],
         description="""
-        The index of the cell in 3 dimensional.
+        The Bravais vector of the cell in 3 dimensional. This is defined as the vector that connects the
+        two atoms that define the Slater-Koster bond. A bond can be defined between orbitals in the
+        same unit cell (bravais_vector = [0, 0, 0]) or in neighboring cells (bravais_vector = [m, n, p] with m, n, p are integers).
+        Default is [0, 0, 0].
         """,
     )
 
+    # TODO add more names and in the table
     name = Quantity(
         type=MEnum("sss", "sps"),
-        description="""""",
+        description="""
+        The name of the Slater-Koster bond. The name is composed by the `l_quantum_symbol` of the orbitals
+        and the cell index. Table of possible values:
+
+        | Value   | `orbital_1.l_quantum_symbol` | `orbital_2.l_quantum_symbol` | `cell_index` |
+        | ------- | ---------------------------- | ---------------------------- | ------------ |
+        | `'sss'` | 's' | 's' | [0, 0, 0] |
+        | `'sps'` | 's' | 'p' | [0, 0, 0] |
+        """,
     )
 
+    # ? units
     integral_value = Quantity(
         type=np.float64,
         description="""
-        The Slater-Koster integral of type sigma between two s orbitals.
+        The Slater-Koster bond integral value.
         """,
     )
 
     def __init__(self):
         super().__init__()
-        # TODO extend this to cover all integral names
+        # TODO extend this to cover all bond names
         self._bond_name_map = {
-            "sss": ["s", "s", [0, 0, 0]],
+            "sss": ["s", "s", (0, 0, 0)],
+            "sps": ["s", "p", (0, 0, 0)],
         }
 
     def resolve_bond_name_from_references(
         self,
         orbital_1: OrbitalsState,
         orbital_2: OrbitalsState,
-        cell_index: tuple,
+        bravais_vector: tuple,
         logger: BoundLogger,
     ) -> Optional[str]:
         """
@@ -942,19 +960,19 @@ class SlaterKosterBond(ArchiveSection):
         Args:
             orbital_1 (OrbitalsState): The first `OrbitalsState` section.
             orbital_2 (OrbitalsState): The second `OrbitalsState` section.
-            cell_index (tuple): The index of the cell in 3 dimensional.
+            bravais_vector (tuple): The bravais vector of the cell.
             logger (BoundLogger): The logger to log messages.
 
         Returns:
             (Optional[str]): The resolved `name` of the `SlaterKosterBond`.
         """
         bond_name = None
-        if orbital_1.l_quantum_number is None or orbital_2.l_quantum_number is None:
+        if orbital_1.l_quantum_symbol is None or orbital_2.l_quantum_symbol is None:
             logger.warning(
-                "The `l_quantum_number` of the `OrbitalsState` bonds are not defined."
+                "The `l_quantum_symbol` of the `OrbitalsState` bonds are not defined."
             )
             return None
-        value = [orbital_1.l_quantum_number, orbital_2.l_quantum_number, cell_index]
+        value = [orbital_1.l_quantum_symbol, orbital_2.l_quantum_symbol, bravais_vector]
         # Check if `value` is found in the `self._bond_name_map` and return the key
         for key, val in self._bond_name_map.items():
             if val == value:
@@ -965,11 +983,11 @@ class SlaterKosterBond(ArchiveSection):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if self.orbital_1 and self.orbital_2 and self.cell_index is not None:
-            cell_index = tuple(self.cell_index)
+        if self.orbital_1 and self.orbital_2 and self.bravais_vector is not None:
+            bravais_vector = tuple(self.bravais_vector)  # transformed for comparing
             self.name = (
                 self.resolve_bond_name_from_references(
-                    self.orbital_1, self.orbital_2, cell_index, logger
+                    self.orbital_1, self.orbital_2, bravais_vector, logger
                 )
                 if self.name is None
                 else self.name
