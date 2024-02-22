@@ -143,6 +143,7 @@ class OrbitalsState(ArchiveSection):
     )
 
     def __init__(self):
+        super().__init__()
         self._orbitals = {
             -1: dict(zip(range(4), ("s", "p", "d", "f"))),
             0: {0: ""},
@@ -266,8 +267,9 @@ class OrbitalsState(ArchiveSection):
                 self.resolve_number_and_symbol(quantum_number, type, logger)
 
         # Resolve the degeneracy
-        if self.resolve_degeneracy() is not None:
-            self.degeneracy = self.resolve_degeneracy()
+        self.degeneracy = (
+            self.resolve_degeneracy() if self.degeneracy is None else self.degeneracy
+        )
 
 
 class CoreHole(ArchiveSection):
@@ -516,8 +518,11 @@ class HubbardInteractions(ArchiveSection):
             ) = self.resolve_u_interactions(logger)
 
         # If u_effective is not available, calculate it
-        if self.u_effective is None:
-            self.u_effective = self.resolve_u_effective(logger)
+        self.u_effective = (
+            self.resolve_u_effective(logger)
+            if self.u_effective is None
+            else self.u_effective
+        )
 
         # Check if length of `orbitals_ref` is the same as the length of `umn`:
         if self.u_matrix is not None and self.orbitals_ref is not None:
