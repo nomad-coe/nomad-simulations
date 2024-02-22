@@ -335,15 +335,17 @@ class KMesh(Mesh):
             return
 
         # Normalize k mesh from grid sampling
-        points = self.resolve_points(logger)
-        if self.points is None and points is not None:
-            self.points = points
+        self.points = (
+            self.resolve_points(logger) if self.points is None else self.points
+        )
 
         # Calculate k_line_density for data quality measures
         model_systems = self.m_xpath("m_parent.m_parent.model_system", dict=False)
-        k_line_density = self.resolve_k_line_density(model_systems, logger)
-        if self.k_line_density is None and k_line_density is not None:
-            self.k_line_density = k_line_density
+        self.k_line_density = (
+            self.resolve_k_line_density(model_systems, logger)
+            if self.k_line_density is None
+            else self.k_line_density
+        )
 
 
 class FrequencyMesh(Mesh):
@@ -675,8 +677,97 @@ class TB(ModelMethod):
         return (
             self.m_def.name
             if self.m_def.name in ["DFTB", "xTB", "Wannier", "SlaterKoster"]
-            else self.type
+            else None
         )
+
+    def reference_to_orbitals_state(
+        self, indices: np.ndarray, atoms_state: List[AtomsState], logger: BoundLogger
+    ) -> Optional[List[List[OrbitalsState]]]:
+        """
+        Resolves the references to the `OrbitalsState` for `AtomsState` sections defined by the `indices`.
+
+        Args:
+            indices (np.ndarray): The indices of the `AtomsState` sections to reference.
+            atoms_state (List[AtomsState]): The list of `AtomsState` sections to reference.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[List[List[OrbitalsState]]]): The resolved references to the `OrbitalsState` sections.
+        """
+        atoms_orbitals_ref = []
+        for index in indices:
+            active_atoms_state = atoms_state[index]
+            orbitals = active_atoms_state.orbitals_state
+            if orbitals is not None:
+                orbitals_ref = [orb for orb in orbitals]
+            atoms_orbitals_ref.append(orbitals_ref)
+        return atoms_orbitals_ref
+
+    def reference_to_atoms_state(
+        self, indices: np.ndarray, atoms_state: List[AtomsState], logger: BoundLogger
+    ) -> Optional[List[AtomsState]]:
+        """
+        Resolves the references to the `AtomsState` for `AtomsState` sections defined by the `indices`.
+
+        Args:
+            indices (np.ndarray): The indices of the `AtomsState` sections to reference.
+            atoms_state (List[AtomsState]): The list of `AtomsState` sections to reference.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[List[AtomsState]]): The resolved references to the `AtomsState` sections.
+        """
+        atoms_ref = []
+        for index in indices:
+            active_atoms_state = atoms_state[index]
+            atoms_ref.append(active_atoms_state)
+        return atoms_ref
+
+    def resolve_references_to_states(
+        self,
+        model_systems: List[ModelSystem],
+        logger: BoundLogger,
+        model_index: int = -1,
+    ) -> Tuple[List[AtomsState], List[List[OrbitalsState]]]:
+        """
+        Resolves the references to the `AtomsState` and `OrbitalsState` sections from the child `ModelSystem` section.
+
+        Args:
+            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            logger (BoundLogger): The logger to log messages.
+            model_index (int, optional): The `ModelSystem` section index from which resolve the references. Defaults to -1.
+
+        Returns:
+            Tuple[List[AtomsState], List[List[OrbitalsState]]]: The resolved references to the `AtomsState` and `OrbitalsState` sections.
+        """
+        model_system = model_systems[model_index]
+        # If ModelSystem is not representative, the normalization will not run
+        if not model_system.is_representative:
+            logger.warning(
+                f"`ModelSystem`[{model_index}] section was not found to be representative."
+            )
+            return [], [[]]
+        # If AtomicCell is not found, the normalization will not run
+        atomic_cell = model_system.atomic_cell[0]
+        if atomic_cell is None:
+            logger.warning("`AtomicCell` section was not found.")
+            return [], [[]]
+        # If there is no child ModelSystem, the normalization will not run
+        atoms_state = atomic_cell.atoms_state
+        model_system_child = model_system.model_system
+        if model_system_child is None:
+            logger.warning("No child `ModelSystem` section was found.")
+            return [], [[]]
+        for active_atom in model_system_child:
+            # If the child is not an "active_atom", the normalization will not run
+            if active_atom.type != "active_atom":
+                continue
+            indices = active_atom.atom_indices
+            atoms_ref = self.reference_to_atoms_state(indices, atoms_state, logger)
+            atoms_orbitals_ref = self.reference_to_orbitals_state(
+                indices, atoms_state, logger
+            )
+        return atoms_ref, atoms_orbitals_ref
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -685,36 +776,33 @@ class TB(ModelMethod):
         self.name = "TB"
 
         # Resolve `type` to be defined by the lower level class (Wannier, DFTB, xTB or SlaterKoster) if it is not already defined
-        self.type = self.resolve_type(logger)
+        self.type = (
+            self.resolve_type(logger)
+            if (self.type is None or self.type == "unavailable")
+            else self.type
+        )
 
+        # Resolve `atoms_ref` and `orbitals_ref` from the info in the child `ModelSystem` section and the `AtomsState` and `OrbitalsState` sections
         model_systems = self.m_xpath("m_parent.model_system", dict=False)
-        for model_system in model_systems:
-            if not model_system.is_representative:
-                continue
-            atomic_cell = model_system.atomic_cell[0]
-            if atomic_cell is None:
-                continue
-            atoms_state = atomic_cell.atoms_state
-            active_atoms = model_system.model_system
-            if active_atoms is None:
-                continue
-            for active_atom in active_atoms:
-                indices = active_atom.atom_indices
-                atoms_ref = []
-                atoms_orbitals_ref = []
-                for index in indices:
-                    active_atoms_state = atoms_state[index]
-                    atoms_ref.append(active_atoms_state)
-                    orbitals = active_atoms_state.orbitals_state
-                    if active_atoms_state.orbitals_state is not None:
-                        orbitals_ref = []
-                        for orb in orbitals:
-                            orbitals_ref.append(orb)
-                        atoms_orbitals_ref.append(orbitals_ref)
-            if atoms_ref is not None:
-                self.atoms_ref = atoms_ref
-            if atoms_orbitals_ref is not None:
-                self.orbitals_ref = atoms_orbitals_ref
+        if model_systems is None:
+            logger.warning(
+                "Could not find the `ModelSystem` sections. References to `AtomsState` and `OrbitalsState` will not be resolved."
+            )
+            return
+        # This normalization only considers the last `ModelSystem` (default `model_index` argument set to -1)
+        atoms_ref, atoms_orbitals_ref = self.resolve_references_to_states(
+            model_systems, logger
+        )
+        self.atoms_ref = (
+            atoms_ref
+            if (self.atoms_ref is None and atoms_ref is not None)
+            else self.atoms_ref
+        )
+        self.orbitals_ref = (
+            atoms_orbitals_ref
+            if (self.orbitals_ref is None and atoms_orbitals_ref is not None)
+            else self.orbitals_ref
+        )
 
 
 class Wannier(TB):
@@ -796,241 +884,102 @@ class Wannier(TB):
         self.localization_type = self.resolve_localization_type(logger)
 
 
-class TightBindingOrbital(ArchiveSection):
+class SlaterKosterBond(ArchiveSection):
     """
-    A base section used to define an orbital paramters, including the name of orbital, shell number and the on-site energy.
+    A base section used to define the Slater-Koster integrals for two orbitals between two atoms.
     """
 
-    orbital_name = Quantity(
-        type=str,
-        description="""
-        The name of the orbital.
-        """,
+    # TODO work on the parser, descriptions, and `resolve_name_from_references`
+
+    orbital_1 = Quantity(
+        type=OrbitalsState,
+        description="""""",
+    )
+
+    orbital_2 = Quantity(
+        type=OrbitalsState,
+        description="""""",
     )
 
     cell_index = Quantity(
         type=np.int32,
+        default=[0, 0, 0],
         shape=[3],
         description="""
         The index of the cell in 3 dimensional.
         """,
     )
 
-    atom_index = Quantity(
-        type=np.int32,
-        description="""
-        The index of the atom.
-        """,
+    name = Quantity(
+        type=MEnum("sss", "sps"),
+        description="""""",
     )
 
-    shell = Quantity(
-        type=np.int32,
-        description="""
-        The shell number.
-        """,
-    )
-
-    onsite_energy = Quantity(
-        type=np.float64,
-        description="""
-        On-site energy of the orbital.
-        """,
-    )
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class TwoCenterBond(ArchiveSection):
-    """
-    A base section used to define the two-center-approximation bonds between two atoms.
-    """
-
-    # TODO add examples
-    bond_label = Quantity(
-        type=str,
-        description="""
-        Label to identify the Slater-Koster bond.
-        """,
-    )
-
-    # ! Improve naming
-    center1 = SubSection(
-        sub_section=TightBindingOrbital.m_def,
-        repeats=False,
-        description="""
-        Name of the Slater-Koster bond to identify the bond.
-        """,
-    )
-
-    # ! Improve naming
-    center2 = SubSection(
-        sub_section=TightBindingOrbital.m_def,
-        repeats=False,
-        description="""
-        Name of the Slater-Koster bond to identify the bond.
-        """,
-    )
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class SlaterKosterBond(TwoCenterBond):
-    """
-    A base section used to define the Slater-Koster integrals for two orbitals between two atoms.
-    """
-
-    sss = Quantity(
+    integral_value = Quantity(
         type=np.float64,
         description="""
         The Slater-Koster integral of type sigma between two s orbitals.
         """,
     )
 
-    sps = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between s and p orbitals.
-        """,
-    )
+    def __init__(self):
+        super().__init__()
+        # TODO extend this to cover all integral names
+        self._bond_name_map = {
+            "sss": ["s", "s", [0, 0, 0]],
+        }
 
-    sds = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between s and d orbitals.
-        """,
-    )
+    def resolve_bond_name_from_references(
+        self,
+        orbital_1: OrbitalsState,
+        orbital_2: OrbitalsState,
+        cell_index: tuple,
+        logger: BoundLogger,
+    ) -> Optional[str]:
+        """
+        Resolves the `name` of the `SlaterKosterBond` from the references to the `OrbitalsState` sections.
 
-    sfs = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between s and f orbitals.
-        """,
-    )
+        Args:
+            orbital_1 (OrbitalsState): The first `OrbitalsState` section.
+            orbital_2 (OrbitalsState): The second `OrbitalsState` section.
+            cell_index (tuple): The index of the cell in 3 dimensional.
+            logger (BoundLogger): The logger to log messages.
 
-    pps = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between two p orbitals.
-        """,
-    )
-
-    ppp = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type pi between two p orbitals.
-        """,
-    )
-
-    pds = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between p and d orbitals.
-        """,
-    )
-
-    pdp = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type pi between p and d orbitals.
-        """,
-    )
-
-    pfs = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between p and f orbitals.
-        """,
-    )
-
-    pfp = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type pi between p and f orbitals.
-        """,
-    )
-
-    dds = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between two d orbitals.
-        """,
-    )
-
-    ddp = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type pi between two d orbitals.
-        """,
-    )
-
-    ddd = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type delta between two d orbitals.
-        """,
-    )
-
-    dfs = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between d and f orbitals.
-        """,
-    )
-
-    dfp = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type pi between d and f orbitals.
-        """,
-    )
-
-    dfd = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type delta between d and f orbitals.
-        """,
-    )
-
-    ffs = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type sigma between two f orbitals.
-        """,
-    )
-
-    ffp = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type pi between two f orbitals.
-        """,
-    )
-
-    ffd = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type delta between two f orbitals.
-        """,
-    )
-
-    fff = Quantity(
-        type=np.float64,
-        description="""
-        The Slater-Koster integral of type phi between two f orbitals.
-        """,
-    )
+        Returns:
+            (Optional[str]): The resolved `name` of the `SlaterKosterBond`.
+        """
+        bond_name = None
+        if orbital_1.l_quantum_number is None or orbital_2.l_quantum_number is None:
+            logger.warning(
+                "The `l_quantum_number` of the `OrbitalsState` bonds are not defined."
+            )
+            return None
+        value = [orbital_1.l_quantum_number, orbital_2.l_quantum_number, cell_index]
+        # Check if `value` is found in the `self._bond_name_map` and return the key
+        for key, val in self._bond_name_map.items():
+            if val == value:
+                bond_name = key
+                break
+        return bond_name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        if self.orbital_1 and self.orbital_2 and self.cell_index is not None:
+            cell_index = tuple(self.cell_index)
+            self.name = (
+                self.resolve_bond_name_from_references(
+                    self.orbital_1, self.orbital_2, cell_index, logger
+                )
+                if self.name is None
+                else self.name
+            )
 
 
 class SlaterKoster(TB):
     """
     A base section used to define the parameters used in a Slater-Koster tight-binding fitting.
     """
-
-    orbitals = SubSection(sub_section=TightBindingOrbital.m_def, repeats=True)
 
     bonds = SubSection(sub_section=SlaterKosterBond.m_def, repeats=True)
 
