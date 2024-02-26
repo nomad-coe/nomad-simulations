@@ -1,6 +1,6 @@
-site_name: "NOMAD Documentation: Schema for Simulation Data"
+site_name: "Documentation: Schema for Simulation Data"
 site_description: |
-  NOMAD Documentation for the schema of Simulation data.
+  Documentation for the schema of Simulation data.
 site_author: FAIRmat consortium
 repo_url: https://github.com/nomad-coe/nomad-schema-plugin-simulation-data
 nav:
