@@ -37,19 +37,47 @@
 import numpy as np
 import pint
 from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple
+from typing import Optional, List
 from ase.dft.kpoints import monkhorst_pack
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import Quantity, SubSection, MEnum, SectionProxy, Reference
+from nomad.metainfo import (
+    Quantity,
+    SubSection,
+    MEnum,
+    SectionProxy,
+    Reference,
+    Section,
+    Context,
+)
 
 from .model_system import ModelSystem
-from .atoms_state import AtomsState, OrbitalsState
+from .atoms_state import OrbitalsState
 
 
-class Mesh(ArchiveSection):
+class NumericalSettings(ArchiveSection):
+    """
+    A base section used to define the numerical settings used in a simulation. These are meshes,
+    self-consistency parameters, and algebraic basis sets.
+    """
+
+    name = Quantity(
+        type=str,
+        description="""
+        Name of the numerical settings section. This is typically used to easy identification of the
+        `NumericalSettings` section. Possible values: "KMesh", "FrequencyMesh", "TimeMesh",
+        "SelfConsistency", "BasisSet".
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class Mesh(NumericalSettings):
     """
     A base section used to specify the settings of a sampling mesh. It supports uniformly-spaced
     meshes and symmetry-reduced representations.
@@ -330,8 +358,12 @@ class KMesh(Mesh):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # Set the name of the section
+        self.name = self.m_def.name if self.name is None else self.name
+
         # If `grid` is not defined, we do not normalize the KMesh
         if self.grid is None:
+            logger.warning("Could not find `KMesh.grid`.")
             return
 
         # Normalize k mesh from grid sampling
@@ -350,7 +382,7 @@ class KMesh(Mesh):
 
 class FrequencyMesh(Mesh):
     """
-    A base section used to specify the settings of a sampling mesh in the 1D frequency real or imaginary space.
+    A base section used to specify the settings of a sampling mesh in the frequency real or imaginary space.
     """
 
     points = Quantity(
@@ -362,40 +394,32 @@ class FrequencyMesh(Mesh):
         """,
     )
 
-    smearing_width = Quantity(
-        type=np.float64,
-        description="""
-        Numerical smearing parameter used for convolutions.
-        """,
-    )
-
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Set the name of the section
+        self.name = self.m_def.name if self.name is None else self.name
 
 
 class TimeMesh(Mesh):
     """
-    A base section used to specify the settings of a sampling mesh in the 1D time real or imaginary space.
+    A base section used to specify the settings of a sampling mesh in the time real or imaginary space.
     """
-
-    smearing_width = Quantity(
-        type=np.float64,
-        description="""
-        Numerical smearing parameter used for convolutions.
-        """,
-    )
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # Set the name of the section
+        self.name = self.m_def.name if self.name is None else self.name
 
-class SelfConsistency(ArchiveSection):
+
+class SelfConsistency(NumericalSettings):
     """
     A base section used to define the parameters used in the self-consistent field (SCF) simulations.
     This section is useful to determine if a simulation `is_converged` or not (see outputs.py) and if
     the simulation fulfills:
 
-        1. The number of iteractions is not larger or equal than `n_max_iterations`.
+        1. The number of iterations is not larger or equal than `n_max_iterations`.
 
     and one of the following:
 
@@ -421,6 +445,7 @@ class SelfConsistency(ArchiveSection):
         """,
     )
 
+    # ? define class `Tolerance` for the different Scf tolerances types?
     threshold_energy_change = Quantity(
         type=np.float64,
         unit="joule",
@@ -431,7 +456,6 @@ class SelfConsistency(ArchiveSection):
         """,
     )
 
-    # ? add unit
     threshold_charge_density_change = Quantity(
         type=np.float64,
         description="""
@@ -444,10 +468,24 @@ class SelfConsistency(ArchiveSection):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # Set the name of the section
+        self.name = self.m_def.name if self.name is None else self.name
+
+
+class BasisSet(NumericalSettings):
+    """"""
+
+    # TODO work on this base section (@ndaelman-hu)
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        # Set the name of the section
+        self.name = self.m_def.name if self.name is None else self.name
+
 
 class ModelMethod(ArchiveSection):
     """
-    Model method input parameters and settings used to simulate the materials properties.
+    Model method input parameters and numerical settings used to simulate the materials properties.
 
     # ! add more description once section is finished
     """
@@ -455,22 +493,12 @@ class ModelMethod(ArchiveSection):
     normalizer_level = 1
 
     name = Quantity(
-        type=MEnum("DFT", "TB", "GW", "DMFT", "BSE", "kMC", "NMR", "unavailable"),
-        default="unavailable",
+        type=str,
         description="""
-        Name of the model used to simulate the materials properties.
-
-        | Value | Reference |
-        | --------- | ----------------------- |
-        | `'DFT'` | https://en.wikipedia.org/wiki/Density_functional_theory |
-        | `'TB'` | https://en.wikipedia.org/wiki/Tight_binding |
-        | `'GW'` | https://en.wikipedia.org/wiki/GW_approximation |
-        | `'DMFT'` | https://en.wikipedia.org/wiki/Dynamical_mean-field_theory |
-        | `'BSE'` | https://en.wikipedia.org/wiki/Bethe-Salpeter_equation |
-        | `'kMC'` | https://en.wikipedia.org/wiki/Kinetic_Monte_Carlo |
-        | `'NMR'` | https://en.wikipedia.org/wiki/Nuclear_magnetic_resonance |
+        Name of the model method. This is typically used to easy identification of the `ModelMethod` section.
+        Possible values: "DFT", "TB", "BSE", "GW", "DMFT".
         """,
-        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
     )
 
     type = Quantity(
@@ -508,14 +536,19 @@ class ModelMethod(ArchiveSection):
         """,
     )
 
-    k_mesh = SubSection(sub_section=KMesh.m_def)
+    numerical_settings = SubSection(sub_section=NumericalSettings.m_def, repeats=True)
 
-    frequency_mesh = SubSection(sub_section=FrequencyMesh.m_def, repeats=True)
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
 
-    time_mesh = SubSection(sub_section=TimeMesh.m_def, repeats=True)
 
-    self_consistency = SubSection(sub_section=SelfConsistency.m_def)
+class ModelMethodElectronic(ModelMethod):
+    """
+    A base section containing the parameters pertaining to an model Hamiltonian used in electronic structure
+    calculations (TB, DFT, GW, BSE, DMFT, etc).
+    """
 
+    # ? Is this necessary or will it be defined in another way?
     is_spin_polarized = Quantity(
         type=bool,
         description="""
@@ -554,36 +587,11 @@ class ModelMethod(ArchiveSection):
         """,
     )
 
-    def resolve_methods_ref(
-        self, logger: BoundLogger
-    ) -> Tuple[np.int32, List[ArchiveSection]]:
-        """
-        Resolves the list of other `ModelMethod` sections that the current `ModelMethod` section will be referencing
-        to from the parent section.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (List[ArchiveSection]): The list of referenced `ModelMethod` sections.
-        """
-        n_method_references = self.m_parent_index - 1
-        methods_ref = []
-        for index in range(n_method_references):
-            methods_ref.append(self.m_parent.model_method[index])
-        return n_method_references, methods_ref
-
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
-        # If `methods_ref` does not exist but there are multiple `ModelMethod` sections in the parent, we define refs to them.
-        if self.methods_ref is None and self.m_parent_index > 0:
-            self.n_method_references, self.methods_ref = self.resolve_methods_ref(
-                logger
-            )
 
-
-class TB(ModelMethod):
+class TB(ModelMethodElectronic):
     """
     A base section containing the parameters pertaining to a tight-binding model calculation.
     The type of tight-binding model is specified in the `type` quantity.
@@ -605,20 +613,20 @@ class TB(ModelMethod):
         a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
 
-    # ? Maybe this can be simplified to a flat list of `OrbitalsState` and then use the m_parent ot understand the provenance
-    n_atoms = Quantity(
+    # ? these 2 quantities will change when `BasisSet` is defined
+    n_orbitals = Quantity(
         type=np.int32,
         description="""
-        Number of atoms used as a basis to obtain the `TB` model.
+        Number of orbitals used as a basis to obtain the `TB` model.
         """,
     )
 
-    atoms_ref = Quantity(
-        type=AtomsState,
-        shape=["n_atoms"],
+    orbitals_ref = Quantity(
+        type=OrbitalsState,
+        shape=["n_orbitals"],
         description="""
-        References to the `AtomsState` sections that contains the atom and orbitals information
-        which are relevant for the `TB` model.
+        References to the `OrbitalsState` sections that contain the orbitals information which are
+        relevant for the `TB` model.
 
         Example: hydrogenated graphene with 3 atoms in the unit cell. The full list of `AtomsState` would
         be
@@ -628,39 +636,14 @@ class TB(ModelMethod):
                 AtomsState(chemical_symbol='H', orbitals_state=[OrbitalsState('s')]),
             ]
 
-        If our model is only for the 2 'C' atoms and considering 'pz` orbitals, then:
+        The relevant orbitals for the TB model are the `'pz'` ones for each `'C'` atom. Then, we define:
 
-            atoms_ref = [
-                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
-                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
-            ]
+            orbitals_ref= [OrbitalState('pz'), OrbitalsState('pz')]
 
-        See `orbitals_ref` for the continuation of this example.
-        """,
-    )
-
-    n_atoms_orbitals = Quantity(
-        type=np.int32,
-        shape=["n_atoms"],
-        description="""
-        Number of orbitals of each atom referenced in `atoms_ref` used as a basis to obtain the `TB` model.
-        """,
-    )
-
-    orbitals_ref = Quantity(
-        type=OrbitalsState,
-        shape=["n_atoms", "n_atoms_orbitals"],
-        description="""
-        References to the `OrbitalsState` sections for each referenced `AtomsState` section that contains
-        the orbitals information which are relevant for the `TB` model.
-
-        Example (see `atoms_ref` for the beginning of this example): to reference now each 'pz' orbital,
-        we create:
-
-            orbitals_ref= [[OrbitalState('pz')], [OrbitalsState('pz')]]
-
-        The first element of this list refers to the first `AtomState` defined in `atoms_ref`, and the second
-        element refers to the second `AtomState` defined in `atoms_ref`.
+        We can access the information on the atom by doing:
+            atom_state = orbitals_ref[i].m_parent
+            index = orbitals_ref[i].m_parent_index
+            atom_position = orbitals_ref[i].m_parent.m_parent.positions[index]
         """,
     )
 
@@ -681,57 +664,14 @@ class TB(ModelMethod):
             else None
         )
 
-    def reference_to_orbitals_state(
-        self, indices: np.ndarray, atoms_state: List[AtomsState], logger: BoundLogger
-    ) -> Optional[List[List[OrbitalsState]]]:
-        """
-        Resolves the references to the `OrbitalsState` for `AtomsState` sections defined by the `indices`.
-
-        Args:
-            indices (np.ndarray): The indices of the `AtomsState` sections to reference.
-            atoms_state (List[AtomsState]): The list of `AtomsState` sections to reference.
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[List[List[OrbitalsState]]]): The resolved references to the `OrbitalsState` sections.
-        """
-        atoms_orbitals_ref = []
-        for index in indices:
-            active_atoms_state = atoms_state[index]
-            orbitals = active_atoms_state.orbitals_state
-            if orbitals is not None:
-                orbitals_ref = [orb for orb in orbitals]
-            atoms_orbitals_ref.append(orbitals_ref)
-        return atoms_orbitals_ref
-
-    def reference_to_atoms_state(
-        self, indices: np.ndarray, atoms_state: List[AtomsState], logger: BoundLogger
-    ) -> Optional[List[AtomsState]]:
-        """
-        Resolves the references to the `AtomsState` for `AtomsState` sections defined by the `indices`.
-
-        Args:
-            indices (np.ndarray): The indices of the `AtomsState` sections to reference.
-            atoms_state (List[AtomsState]): The list of `AtomsState` sections to reference.
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[List[AtomsState]]): The resolved references to the `AtomsState` sections.
-        """
-        atoms_ref = []
-        for index in indices:
-            active_atoms_state = atoms_state[index]
-            atoms_ref.append(active_atoms_state)
-        return atoms_ref
-
     def resolve_references_to_states(
         self,
         model_systems: List[ModelSystem],
         logger: BoundLogger,
         model_index: int = -1,
-    ) -> Tuple[List[AtomsState], List[List[OrbitalsState]]]:
+    ) -> Optional[List[OrbitalsState]]:
         """
-        Resolves the references to the `AtomsState` and `OrbitalsState` sections from the child `ModelSystem` section.
+        Resolves the references to the `OrbitalsState` sections from the child `ModelSystem` section.
 
         Args:
             model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
@@ -739,7 +679,7 @@ class TB(ModelMethod):
             model_index (int, optional): The `ModelSystem` section index from which resolve the references. Defaults to -1.
 
         Returns:
-            Tuple[List[AtomsState], List[List[OrbitalsState]]]: The resolved references to the `AtomsState` and `OrbitalsState` sections.
+            Optional[List[OrbitalsState]]: The resolved references to the `OrbitalsState` sections.
         """
         model_system = model_systems[model_index]
         # If ModelSystem is not representative, the normalization will not run
@@ -747,28 +687,30 @@ class TB(ModelMethod):
             logger.warning(
                 f"`ModelSystem`[{model_index}] section was not found to be representative."
             )
-            return [], [[]]
+            return None
         # If AtomicCell is not found, the normalization will not run
         atomic_cell = model_system.atomic_cell[0]
         if atomic_cell is None:
             logger.warning("`AtomicCell` section was not found.")
-            return [], [[]]
+            return None
         # If there is no child ModelSystem, the normalization will not run
         atoms_state = atomic_cell.atoms_state
         model_system_child = model_system.model_system
         if model_system_child is None:
             logger.warning("No child `ModelSystem` section was found.")
-            return [], [[]]
+            return None
+        orbitals_ref = []
         for active_atom in model_system_child:
             # If the child is not an "active_atom", the normalization will not run
             if active_atom.type != "active_atom":
                 continue
             indices = active_atom.atom_indices
-            atoms_ref = self.reference_to_atoms_state(indices, atoms_state, logger)
-            atoms_orbitals_ref = self.reference_to_orbitals_state(
-                indices, atoms_state, logger
-            )
-        return atoms_ref, atoms_orbitals_ref
+            for index in indices:
+                active_atoms_state = atoms_state[index]
+                orbitals_state = active_atoms_state.orbitals_state
+                for orbital in orbitals_state:
+                    orbitals_ref.append(orbital)
+        return orbitals_ref
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -783,27 +725,18 @@ class TB(ModelMethod):
             else self.type
         )
 
-        # Resolve `atoms_ref` and `orbitals_ref` from the info in the child `ModelSystem` section and the `AtomsState` and `OrbitalsState` sections
+        # Resolve `orbitals_ref` from the info in the child `ModelSystem` section and the `OrbitalsState` sections
         model_systems = self.m_xpath("m_parent.model_system", dict=False)
         if model_systems is None:
             logger.warning(
-                "Could not find the `ModelSystem` sections. References to `AtomsState` and `OrbitalsState` will not be resolved."
+                "Could not find the `ModelSystem` sections. References to `OrbitalsState` will not be resolved."
             )
             return
         # This normalization only considers the last `ModelSystem` (default `model_index` argument set to -1)
-        atoms_ref, atoms_orbitals_ref = self.resolve_references_to_states(
-            model_systems, logger
-        )
-        self.atoms_ref = (
-            atoms_ref
-            if (self.atoms_ref is None and atoms_ref is not None)
-            else self.atoms_ref
-        )
-        self.orbitals_ref = (
-            atoms_orbitals_ref
-            if (self.orbitals_ref is None and atoms_orbitals_ref is not None)
-            else self.orbitals_ref
-        )
+        orbitals_ref = self.resolve_references_to_states(model_systems, logger)
+        if orbitals_ref is not None and self.orbitals_ref is None:
+            self.n_orbitals = len(orbitals_ref)
+            self.orbitals_ref = orbitals_ref
 
 
 class Wannier(TB):
@@ -829,13 +762,6 @@ class Wannier(TB):
         type=np.int32,
         description="""
         Number of input Bloch bands to calculate the projection matrix.
-        """,
-    )
-
-    convergence_tolerance_max_localization = Quantity(
-        type=np.float64,
-        description="""
-        Convergence tolerance for maximal localization of the projected orbitals.
         """,
     )
 
@@ -900,7 +826,7 @@ class SlaterKosterBond(ArchiveSection):
     orbital_2 = Quantity(
         type=OrbitalsState,
         description="""
-        Reference to the first `OrbitalsState` section.
+        Reference to the second `OrbitalsState` section.
         """,
     )
 
@@ -919,15 +845,16 @@ class SlaterKosterBond(ArchiveSection):
 
     # TODO add more names and in the table
     name = Quantity(
-        type=MEnum("sss", "sps"),
+        type=MEnum("sss", "sps", "sds"),
         description="""
         The name of the Slater-Koster bond. The name is composed by the `l_quantum_symbol` of the orbitals
         and the cell index. Table of possible values:
 
-        | Value   | `orbital_1.l_quantum_symbol` | `orbital_2.l_quantum_symbol` | `cell_index` |
+        | Value   | `orbital_1.l_quantum_symbol` | `orbital_2.l_quantum_symbol` | `bravais_vector` |
         | ------- | ---------------------------- | ---------------------------- | ------------ |
         | `'sss'` | 's' | 's' | [0, 0, 0] |
         | `'sps'` | 's' | 'p' | [0, 0, 0] |
+        | `'sds'` | 's' | 'd' | [0, 0, 0] |
         """,
     )
 
@@ -939,12 +866,13 @@ class SlaterKosterBond(ArchiveSection):
         """,
     )
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
         # TODO extend this to cover all bond names
         self._bond_name_map = {
             "sss": ["s", "s", (0, 0, 0)],
             "sps": ["s", "p", (0, 0, 0)],
+            "sds": ["s", "d", (0, 0, 0)],
         }
 
     def resolve_bond_name_from_references(
