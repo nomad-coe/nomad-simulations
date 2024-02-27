@@ -36,6 +36,7 @@
 
 import numpy as np
 import pint
+import re
 from structlog.stdlib import BoundLogger
 from typing import Optional, List
 from ase.dft.kpoints import monkhorst_pack
@@ -51,6 +52,7 @@ from nomad.metainfo import (
     Reference,
     Section,
     Context,
+    JSON,
 )
 
 from .model_system import ModelSystem
@@ -544,7 +546,7 @@ class ModelMethod(ArchiveSection):
 
 class ModelMethodElectronic(ModelMethod):
     """
-    A base section containing the parameters pertaining to an model Hamiltonian used in electronic structure
+    A base section used to define the parameters of a model Hamiltonian used in electronic structure
     calculations (TB, DFT, GW, BSE, DMFT, etc).
     """
 
@@ -568,6 +570,7 @@ class ModelMethodElectronic(ModelMethod):
         Describes the relativistic treatment used for the calculation of the final energy
         and related quantities. If `None`, no relativistic treatment is applied.
         """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
 
     # ? What about this quantity
@@ -585,31 +588,39 @@ class ModelMethodElectronic(ModelMethod):
         | `"MDB"` | http://dx.doi.org/10.1103/PhysRevLett.108.236402 and http://dx.doi.org/10.1063/1.4865104 |
         | `"XC"` | The method to calculate the Van der Waals energy uses a non-local functional |
         """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
 
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
 
 
-class Functional(MSection):
+class XCFunctional(ArchiveSection):
     """
-    Section containing the parameters of an exchange or correlation functional.
+    A base section used to define the parameters of an exchange or correlation functional.
     """
 
     m_def = Section(validate=False)
 
-    name = Quantity(
+    libxc_name = Quantity(
         type=str,
-        shape=[],
         description="""
         Provides the name of one of the exchange and/or correlation (XC) functional
-        following the libbx convention.
+        following the libxc convention (see https://www.tddft.org/programs/libxc/).
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    name = Quantity(
+        type=MEnum("exchange", "correlation", "hybrid", "contribution"),
+        description="""
         """,
     )
 
+    # ! I changed type from Any to JSON (in the normalization it seems to be a dictionary); check with @ndaelman-hu
+    # ? Should not be this simply `exact_exchange_mixing_factor` and be under `DFT`?
     parameters = Quantity(
-        type=typing.Any,
-        shape=[],
+        type=JSON,
         description="""
         Contains an associative list of non-default values of the parameters for the
         functional.
@@ -627,19 +638,245 @@ class Functional(MSection):
 
     weight = Quantity(
         type=np.float64,
-        shape=[],
         description="""
-        Provides the value of the weight for the functional.
+        Weight of the functional in the full DFT XC functional. This quantity is relevant when defining
+        linear combinations of the different functionals. If not specified, its value is 1.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
 
-        This weight is used in the linear combination of the different functionals. If not
-        specified then the default is set to 1.
+    # ? add method to extract `name` from `libxc_name`
+
+    def get_weight_name(self, weight: Optional[np.float64]) -> Optional[str]:
+        """
+        Returns the `weight` as a string with a "*" added at the end.
+
+        Args:
+            weight (Optional[np.float64]): The weight of the functional.
+
+        Returns:
+            (Optional[str]): The weight as a string with a "*" added at the end.
+        """
+        weight_name = ""
+        if weight is not None:
+            weight_name = f"{str(weight)}*"
+        return weight_name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        # Appending `weight` as a string to `libxc_name`
+        libxc_name_weight = ""
+        if self.weight is not None:
+            libxc_name_weight = self.resolve_libxc_name(self.weight)
+        if "*" not in self.libxc_name:
+            self.libxc_name = libxc_name_weight + self.libxc_name
+
+        # Appending `"+alpha"` in `libxc_name` for hybrids in which the `exact_exchange_mixing_factoris` included
+        # ! check with @ndaelman-hu if this makes sense
+        libxc_name_alpha = ""
+        if (
+            self.name == "hybrid"
+            and "exact_exchange_mixing_factor" in self.parameters.keys()
+        ):
+            libxc_name_alpha = f"+alpha"
+        if "+alpha" not in self.libxc_name:
+            self.libxc_name = self.libxc_name + libxc_name_alpha
+
+
+class DFT(ModelMethodElectronic):
+    """
+    A base section used to define the parameters used in a density functional theory (DFT) calculation.
+    """
+
+    # ? Do we need to define `type` for DFT+U?
+
+    jacobs_ladder = Quantity(
+        type=MEnum("LDA", "GGA", "metaGGA", "hyperGGA", "hybrid", "unavailable"),
+        description="""
+        Functional classification in line with Jacob\'s Ladder.
+        For more information, see https://doi.org/10.1063/1.1390175 (original paper);
+        https://doi.org/10.1103/PhysRevLett.91.146401 (meta-GGA);
+        and https://doi.org/10.1063/1.1904565 (hyper-GGA).
         """,
     )
+
+    # ! MEnum this
+    self_interaction_correction_method = Quantity(
+        type=str,
+        description="""
+        Contains the name for the self-interaction correction (SIC) treatment used to
+        calculate the final energy and related quantities. If skipped or empty, no special
+        correction is applied.
+
+        The following SIC methods are available:
+
+        | SIC method                | Description                       |
+
+        | ------------------------- | --------------------------------  |
+
+        | `""`                      | No correction                     |
+
+        | `"SIC_AD"`                | The average density correction    |
+
+        | `"SIC_SOSEX"`             | Second order screened exchange    |
+
+        | `"SIC_EXPLICIT_ORBITALS"` | (scaled) Perdew-Zunger correction explicitly on a
+        set of orbitals |
+
+        | `"SIC_MAURI_SPZ"`         | (scaled) Perdew-Zunger expression on the spin
+        density / doublet unpaired orbital |
+
+        | `"SIC_MAURI_US"`          | A (scaled) correction proposed by Mauri and co-
+        workers on the spin density / doublet unpaired orbital |
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    xc_functionals = SubSection(sub_section=XCFunctional.m_def, repeats=True)
+
+    exact_exchange_mixing_factor = Quantity(
+        type=np.float64,
+        description="""
+        Amount of exact exchange mixed in with the XC functional (value range = [0,1]).
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        self._jacobs_ladder_map = {
+            "lda": "LDA",
+            "gga": "GGA",
+            "mgg": "meta-GGA",
+            "hyb_mgg": "hyper-GGA",
+            "hyb": "hybrid",
+        }
+        self._jacobs_ladder_map_extended = {**self._jacobs_ladder_map, "hf_": "HF"}
+
+    def resolve_libxc_names(
+        self, xc_functionals: List[XCFunctional]
+    ) -> Optional[List[str]]:
+        """
+        Resolves the `libxc_names` and sortes them from the list of `XCFunctional` sections.
+
+        Args:
+            xc_functionals (List[XCFunctional]): The list of `XCFunctional` sections.
+
+        Returns:
+            (Optional[List[str]]): The resolved and sorted `libxc_names`.
+        """
+        libxc_names = [
+            functional.libxc_name
+            for functional in xc_functionals
+            if functional.libxc_name is not None
+        ]
+        return sorted(libxc_names)
+
+    def resolve_jacobs_ladder(
+        self,
+        libxc_names: List[str],
+    ) -> str:
+        """
+        Resolves the `jacobs_ladder` from the `libxc_names`. The mapping (libxc -> NOMAD) is set in `self._jacobs_ladder_map`.
+
+        Args:
+            libxc_names (List[str]): The list of `libxc_names`.
+
+        Returns:
+            (str): The resolved `jacobs_ladder`.
+        """
+        if libxc_names is None:
+            return "unavailable"
+
+        rung_order = {x: i for i, x in enumerate(self._jacobs_ladder_map.keys())}
+        re_abbrev = re.compile(r"((HYB_)?[A-Z]{3})")
+
+        abbrevs = []
+        for xc_name in libxc_names:
+            try:
+                abbrev = re_abbrev.match(xc_name).group(1)
+                abbrev = abbrev.lower() if abbrev == "HYB_MGG" else abbrev[:3].lower()
+                abbrevs.append(abbrev)
+            except AttributeError:
+                continue
+
+        try:
+            highest_rung_abbrev = max(abbrevs, key=lambda x: rung_order[x])
+        except KeyError:
+            return "unavailable"
+        return self._jacobs_ladder_map.get(highest_rung_abbrev, "unavailable")
+
+    def resolve_exact_exchange_mixing_factor(
+        self, xc_functionals: List[XCFunctional], libxc_names: List[str]
+    ) -> Optional[float]:
+        """
+        Resolves the `exact_exchange_mixing_factor` from the `xc_functionals` and `libxc_names`.
+
+        Args:
+            xc_functionals (List[XCFunctional]): The list of `XCFunctional` sections.
+            libxc_names (List[str]): The list of `libxc_names`.
+
+        Returns:
+            (Optional[float]): The resolved `exact_exchange_mixing_factor`.
+        """
+
+        for functional in xc_functionals:
+            if functional.name == "hybrid":
+                return functional.parameters.get("exact_exchange_mixing_factor")
+
+        def _scan_patterns(patterns: List[str], xc_name: str) -> bool:
+            return any(x for x in patterns if re.search("_" + x + "$", xc_name))
+
+        for xc_name in libxc_names:
+            if not re.search("_XC?_", xc_name):
+                continue
+            if re.search("_B3LYP[35]?$", xc_name):
+                return 0.2
+            elif _scan_patterns(["HSE", "PBEH", "PBE_MOL0", "PBE_SOL0"], xc_name):
+                return 0.25
+            elif re.search("_M05$", xc_name):
+                return 0.28
+            elif re.search("_PBE0_13$", xc_name):
+                return 1 / 3
+            elif re.search("_PBE38$", xc_name):
+                return 3 / 8
+            elif re.search("_PBE50$", xc_name):
+                return 0.5
+            elif re.search("_M06_2X$", xc_name):
+                return 0.54
+            elif _scan_patterns(["M05_2X", "PBE_2X"], xc_name):
+                return 0.56
+        return None
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        libxc_names = self.resolve_libxc_names(self.xc_functionals)
+        if libxc_names is not None:
+            # Resolves the `jacobs_ladder` from `libxc` mapping
+            jacobs_ladder = self.resolve_jacobs_ladder(libxc_names)
+            self.jacobs_ladder = (
+                jacobs_ladder if self.jacobs_ladder is None else self.jacobs_ladder
+            )
+
+            # Resolves the `exact_exchange_mixing_factor` from the `xc_functionals` and `libxc_names`
+            if self.xc_functionals is not None:
+                exact_exchange_mixing_factor = (
+                    self.resolve_exact_exchange_mixing_factor(
+                        self.xc_functionals, libxc_names
+                    )
+                )
+                self.exact_exchange_mixing_factor = (
+                    exact_exchange_mixing_factor
+                    if self.exact_exchange_mixing_factor is None
+                    else self.exact_exchange_mixing_factor
+                )
 
 
 class TB(ModelMethodElectronic):
     """
-    A base section containing the parameters pertaining to a tight-binding model calculation.
+    A base section containing the parameters pertaining to a tight-binding (TB) model calculation.
     The type of tight-binding model is specified in the `type` quantity.
     """
 
