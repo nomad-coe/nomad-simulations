@@ -56,7 +56,7 @@ from nomad.metainfo import (
 )
 
 from .model_system import ModelSystem
-from .atoms_state import OrbitalsState
+from .atoms_state import OrbitalsState, CoreHole
 
 
 class NumericalSettings(ArchiveSection):
@@ -1289,8 +1289,9 @@ class Photon(ArchiveSection):
 
 class ExcitedStateMethodology(ModelMethodElectronic):
     """
-    Base class containing the common numerical parameters typical of excited-state
-    calculations.
+    A base section used to define the parameters typical of excited-state calculations. "ExcitedStateMethodology"
+    mainly refers to methodologies which consider many-body effects as a perturbation of the original
+    DFT Hamiltonian. These are: GW, TDDFT, BSE.
     """
 
     type = Quantity(
@@ -1334,8 +1335,8 @@ class ExcitedStateMethodology(ModelMethodElectronic):
 
 class Screening(ExcitedStateMethodology):
     """
-    Section containing the various parameters that define a screening calculation, as for
-    example, in RPA.
+    A base section used to define the parameters that define the calculation of screening. This is usually done in
+    RPA and linear response.
     """
 
     dielectric_infinity = Quantity(
@@ -1353,7 +1354,7 @@ class Screening(ExcitedStateMethodology):
 
 class GW(ExcitedStateMethodology):
     """
-    Section containing the various parameters that define a GW calculation.
+    A base section used to define the parameters of a GW calculation.
     """
 
     type = Quantity(
@@ -1410,12 +1411,12 @@ class GW(ExcitedStateMethodology):
         a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
 
+    # TODO improve description
     interval_qp_corrections = Quantity(
         type=np.int32,
         shape=[2],
         description="""
-        Band indices (in an interval) for which the GW quasiparticle corrections are
-        calculated.
+        Band indices (in an interval) for which the GW quasiparticle corrections are calculated.
         """,
     )
 
@@ -1433,12 +1434,12 @@ class GW(ExcitedStateMethodology):
 
 class BSE(ExcitedStateMethodology):
     """
-    Section containing the various parameters that define a BSE calculation.
+    A base section used to define the parameters of a BSE calculation.
     """
 
+    # ? does RPA relates with `screening_ref`?
     type = Quantity(
         type=MEnum("Singlet", "Triplet", "IP", "RPA"),
-        shape=[],
         description="""
         Type of BSE hamiltonian solved:
 
@@ -1464,7 +1465,6 @@ class BSE(ExcitedStateMethodology):
 
     solver = Quantity(
         type=MEnum("Full-diagonalization", "Lanczos-Haydock", "GMRES", "SLEPc", "TDA"),
-        shape=[],
         description="""
         Solver algotithm used to diagonalize the BSE Hamiltonian.
 
@@ -1494,8 +1494,8 @@ class BSE(ExcitedStateMethodology):
 # ? Is this class really necessary or should go in outputs.py?
 class CoreHoleSpectra(ModelMethodElectronic):
     """
-    Section containing the various parameters that define a calculation of core-hole spectra.
-    It can be within BSE as a "core" subsection.
+    A base section used to define the parameters used in a core-hole spectra calculation. This
+    also contains reference to the specific methodological section (DFT, BSE) used to obtain the core-hole spectra.
     """
 
     m_def = Section(validate=False)
@@ -1540,8 +1540,16 @@ class CoreHoleSpectra(ModelMethodElectronic):
             "N45",
         ),
         description="""
-        Edge to be calculated for the core-hole spectra.
+        Edge label of the excited core-hole. This is obtained by normalization by using `core_hole_ref`.
         """,
+    )
+
+    core_hole_ref = Quantity(
+        type=CoreHole,
+        description="""
+        Reference to the `CoreHole` section that contains the information of the edge of the excited core-hole.
+        """,
+        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
     )
 
     excited_state_method_ref = Quantity(
