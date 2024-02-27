@@ -591,6 +591,52 @@ class ModelMethodElectronic(ModelMethod):
         super().normalize(archive, logger)
 
 
+class Functional(MSection):
+    """
+    Section containing the parameters of an exchange or correlation functional.
+    """
+
+    m_def = Section(validate=False)
+
+    name = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Provides the name of one of the exchange and/or correlation (XC) functional
+        following the libbx convention.
+        """,
+    )
+
+    parameters = Quantity(
+        type=typing.Any,
+        shape=[],
+        description="""
+        Contains an associative list of non-default values of the parameters for the
+        functional.
+
+        For example, if a calculations using a hybrid XC functional (e.g., HSE06)
+        specifies a user-given value of the mixing parameter between exact and GGA
+        exchange, then this non-default value is stored in this metadata.
+
+        The labels and units of these values may be defined in name.
+
+        If this metadata is not given, the default parameter values for the functional
+        are assumed.
+        """,
+    )
+
+    weight = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        Provides the value of the weight for the functional.
+
+        This weight is used in the linear combination of the different functionals. If not
+        specified then the default is set to 1.
+        """,
+    )
+
+
 class TB(ModelMethodElectronic):
     """
     A base section containing the parameters pertaining to a tight-binding model calculation.
@@ -664,7 +710,7 @@ class TB(ModelMethodElectronic):
             else None
         )
 
-    def resolve_references_to_states(
+    def resolve_orbital_references(
         self,
         model_systems: List[ModelSystem],
         logger: BoundLogger,
@@ -682,23 +728,28 @@ class TB(ModelMethodElectronic):
             Optional[List[OrbitalsState]]: The resolved references to the `OrbitalsState` sections.
         """
         model_system = model_systems[model_index]
-        # If ModelSystem is not representative, the normalization will not run
+
+        # If `ModelSystem` is not representative, the normalization will not run
         if not model_system.is_representative:
             logger.warning(
                 f"`ModelSystem`[{model_index}] section was not found to be representative."
             )
             return None
-        # If AtomicCell is not found, the normalization will not run
+
+        # If `AtomicCell` is not found, the normalization will not run
         atomic_cell = model_system.atomic_cell[0]
         if atomic_cell is None:
             logger.warning("`AtomicCell` section was not found.")
             return None
-        # If there is no child ModelSystem, the normalization will not run
+
+        # If there is no child `ModelSystem`, the normalization will not run
         atoms_state = atomic_cell.atoms_state
         model_system_child = model_system.model_system
         if model_system_child is None:
             logger.warning("No child `ModelSystem` section was found.")
             return None
+
+        # We flatten the `OrbitalsState` sections from the `ModelSystem` section
         orbitals_ref = []
         for active_atom in model_system_child:
             # If the child is not an "active_atom", the normalization will not run
@@ -733,7 +784,7 @@ class TB(ModelMethodElectronic):
             )
             return
         # This normalization only considers the last `ModelSystem` (default `model_index` argument set to -1)
-        orbitals_ref = self.resolve_references_to_states(model_systems, logger)
+        orbitals_ref = self.resolve_orbital_references(model_systems, logger)
         if orbitals_ref is not None and self.orbitals_ref is None:
             self.n_orbitals = len(orbitals_ref)
             self.orbitals_ref = orbitals_ref

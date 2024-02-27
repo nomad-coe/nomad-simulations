@@ -36,12 +36,12 @@
 
 import numpy as np
 import ase
-from typing import Optional
+from typing import Optional, Union, Dict, Any
 from structlog.stdlib import BoundLogger
 
 from nomad.units import ureg
 
-from nomad.metainfo import Quantity, SubSection, MEnum
+from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
@@ -52,6 +52,11 @@ class OrbitalsState(ArchiveSection):
     """
     A base section used to define the orbital state of an atom.
     """
+
+    # TODO add check for `l_quantum_number` being only 0, 1, 2, 3
+    # TODO add check for `ml_quantum_number` being only -l, -l+1, ..., l-1, l
+    # TODO add check for `ms_quantum_number` being only -0.5 or 0.5
+    # TODO add check for `j_quantum_number` and `mj_quantum_number`
 
     # TODO: add the relativistic kappa_quantum_number
     n_quantum_number = Quantity(
@@ -110,7 +115,7 @@ class OrbitalsState(ArchiveSection):
     )
 
     ms_quantum_number = Quantity(
-        type=np.int32,
+        type=np.float64,
         description="""
         Spin quantum number. Set to -1 for spin down and +1 for spin up. In non-collinear spin
         systems, the projection axis $z$ should also be defined.
@@ -118,7 +123,7 @@ class OrbitalsState(ArchiveSection):
     )
 
     ms_quantum_symbol = Quantity(
-        type=str,
+        type=MEnum("down", "up"),
         description="""
         Spin quantum symbol. Set to 'down' for spin down and 'up' for spin up. In non-collinear
         spin systems, the projection axis $z$ should also be defined.
@@ -142,8 +147,8 @@ class OrbitalsState(ArchiveSection):
         """,
     )
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
         self._orbitals = {
             -1: dict(zip(range(4), ("s", "p", "d", "f"))),
             0: {0: ""},
@@ -164,63 +169,72 @@ class OrbitalsState(ArchiveSection):
                 )
             ),
         }
-        self._orbitals_map = {
+        self._orbitals_map: Dict[str, Any] = {
             "l_symbols": self._orbitals[-1],
             "ml_symbols": {i: self._orbitals[i] for i in range(4)},
-            "ms_symbols": dict((zip((False, True), ("down", "up")))),
+            "ms_symbols": dict((zip((-0.5, 0.5), ("down", "up")))),
             "l_numbers": {v: k for k, v in self._orbitals[-1].items()},
             "ml_numbers": {
                 k: {v: k for k, v in self._orbitals[k].items()} for k in range(4)
             },
-            "ms_numbers": dict((zip((False, True), (-0.5, 0.5)))),
+            "ms_numbers": dict((zip(("down", "up"), (-0.5, 0.5)))),
         }
 
     def resolve_number_and_symbol(
-        self, quantum_number: str, type: str, logger: BoundLogger
-    ) -> None:
+        self, quantum_name: str, quantum_type: str, logger: BoundLogger
+    ) -> Optional[Union[str, int]]:
         """
-        Resolves the quantum number from the `self._orbitals_map` on the passed type. `type` can be either
-        'number' or 'symbol'. If the quantum type is not found, then the countertype
-        (e.g., type = 'number' => countertype = 'symbol') is used to resolve it.
+        Resolves the quantum number or symbol from the `self._orbitals_map` on the passed `quantum_type`.
+        `quantum_type` can be either 'number' or 'symbol'. If the quantum type is not found, then the countertype
+        (e.g., quantum_type = 'number' => countertype = 'symbol') is used to resolve it.
 
         Args:
-            quantum_number (str): The quantum number to resolve. Can be 'l', 'ml' or 'ms'.
-            type (str): The type of the quantum number. Can be 'number' or 'symbol'.
+            quantum_name (str): The quantum name to resolve. Can be 'l', 'ml' or 'ms'.
+            quantum_type (str): The type of the quantum name. Can be 'number' or 'symbol'.
             logger (BoundLogger): The logger to log messages.
-        """
-        if quantum_number not in ["l", "ml", "ms"]:
-            logger.warning(
-                "The quantum number is not recognized. Try 'l', 'ml' or 'ms'."
-            )
-            return
-        if type not in ["number", "symbol"]:
-            logger.warning("The type is not recognized. Try 'number' or 'symbol'.")
-            return
 
+        Returns:
+            (Optional[Union[str, int]]): The quantum number or symbol resolved from the orbitals_map.
+        """
+        if quantum_name not in ["l", "ml", "ms"]:
+            logger.warning("The quantum_name is not recognized. Try 'l', 'ml' or 'ms'.")
+            return None
+        if quantum_type not in ["number", "symbol"]:
+            logger.warning(
+                "The quantum_type is not recognized. Try 'number' or 'symbol'."
+            )
+            return None
+
+        # Check if quantity already exists
+        quantity = getattr(self, f"{quantum_name}_quantum_{quantum_type}")
+        if quantity is not None:
+            return quantity
+
+        # If not, check whether the countertype exists
         _countertype_map = {
             "number": "symbol",
             "symbol": "number",
         }
-        # Check if quantity already exists
-        quantity = getattr(self, f"{quantum_number}_quantum_{type}")
-        if quantity or quantity is None:
-            return
-
-        # If not, check whether the countertype exists
         other_quantity = getattr(
-            self, f"{quantum_number}_quantum_{_countertype_map[type]}"
+            self, f"{quantum_name}_quantum_{_countertype_map[quantum_type]}"
         )
-        if not other_quantity:
+        if other_quantity is None:
             logger.warning(
-                f"Could not find the {quantum_number}_quantum_{type} countertype {_countertype_map[type]}."
+                f"Could not find the {quantum_name}_quantum_{quantum_type} countertype {_countertype_map[quantum_type]}."
             )
-            return
+            return None
 
         # If the counterpart exists, then resolve the quantity from the orbitals_map
-        quantity = self._orbitals_map.get(f"{quantum_number}_{type}s", {}).get(
-            other_quantity
-        )
-        setattr(self, f"{quantum_number}_quantum_{type}", quantity)
+        orbital_quantity = self._orbitals_map.get(f"{quantum_name}_{quantum_type}s", {})
+        if quantum_name == "l" or quantum_name == "ms":
+            quantity = orbital_quantity.get(other_quantity)
+        elif quantum_name == "ml":
+            if self.l_quantum_number is None:
+                return None
+            quantity = orbital_quantity.get(self.l_quantum_number, {}).get(
+                other_quantity
+            )
+        return quantity
 
     def resolve_degeneracy(self) -> Optional[int]:
         """
@@ -234,12 +248,20 @@ class OrbitalsState(ArchiveSection):
             (Optional[int]): The degeneracy of the orbital state.
         """
         degeneracy = None
-        if self.l_quantum_number and self.ml_quantum_number is None:
+        if (
+            self.l_quantum_number
+            and self.ml_quantum_number is None
+            and self.j_quantum_number is None
+        ):
             if self.ms_quantum_number:
                 degeneracy = 2 * self.l_quantum_number + 1
             else:
                 degeneracy = 2 * (2 * self.l_quantum_number + 1)
-        elif self.l_quantum_number and self.ml_quantum_number:
+        elif (
+            self.l_quantum_number
+            and self.ml_quantum_number
+            and self.j_quantum_number is None
+        ):
             if self.ms_quantum_number:
                 degeneracy = 1
             else:
@@ -255,16 +277,20 @@ class OrbitalsState(ArchiveSection):
                         [mj for mj in mjs if mj in self.mj_quantum_number]
                     )
                 else:
-                    degeneracy += RussellSaundersState(jj, 1).degeneracy
+                    degeneracy += RussellSaundersState(J=jj, occ=1).degeneracy
         return degeneracy
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Resolving the quantum numbers and symbols if not available
-        for quantum_number in ["l", "ml", "ms"]:
-            for type in ["number", "symbol"]:
-                self.resolve_number_and_symbol(quantum_number, type, logger)
+        for quantum_name in ["l", "ml", "ms"]:
+            for quantum_type in ["number", "symbol"]:
+                quantity = self.resolve_number_and_symbol(
+                    quantum_name, quantum_type, logger
+                )
+                if getattr(self, f"{quantum_name}_quantum_{quantum_type}") is None:
+                    setattr(self, f"{quantum_name}_quantum_{quantum_type}", quantity)
 
         # Resolve the degeneracy
         self.degeneracy = (
