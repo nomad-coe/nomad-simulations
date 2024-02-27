@@ -506,7 +506,7 @@ class ModelMethod(ArchiveSection):
     type = Quantity(
         type=str,
         description="""
-        Identifyer used to further specify the type of model Hamiltonian. Example: a TB
+        Identifier used to further specify the type of model Hamiltonian. Example: a TB
         model can be 'Wannier', 'DFTB', 'xTB' or 'Slater-Koster'. This quantity should be
         rewritten to a MEnum when inheriting from this class.
         """,
@@ -1285,3 +1285,274 @@ class Photon(ArchiveSection):
             logger.warning(
                 "The `Photon.momentum_transfer` is not defined but the `Photon.multipole_type` describes inelastic scattering processes."
             )
+
+
+class ExcitedStateMethodology(ModelMethodElectronic):
+    """
+    Base class containing the common numerical parameters typical of excited-state
+    calculations.
+    """
+
+    type = Quantity(
+        type=str,
+        description="""
+        Identifier used to further specify the type of model Hamiltonian.
+        """,
+        a_eln=ELNAnnotation(component="StringEditQuantity"),
+    )
+
+    n_states = Quantity(
+        type=np.int32,
+        description="""
+        Number of states used to calculate the excitations.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    n_empty_states = Quantity(
+        type=np.int32,
+        description="""
+        Number of empty states used to calculate the excitations. This quantity is complementary to `n_states`.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    broadening = Quantity(
+        type=np.float64,
+        unit="joule",
+        description="""
+        Lifetime broadening applied to the spectra in full-width at half maximum for excited-state calculations.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    q_mesh = SubSection(sub_section=KMesh.m_def)
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class Screening(ExcitedStateMethodology):
+    """
+    Section containing the various parameters that define a screening calculation, as for
+    example, in RPA.
+    """
+
+    dielectric_infinity = Quantity(
+        type=np.int32,
+        description="""
+        Value of the static dielectric constant at infinite q. For metals, this is infinite
+        (or a very large value), while for insulators is finite.
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class GW(ExcitedStateMethodology):
+    """
+    Section containing the various parameters that define a GW calculation.
+    """
+
+    type = Quantity(
+        type=MEnum(
+            "G0W0",
+            "scGW",
+            "scGW0",
+            "scG0W",
+            "ev-scGW0",
+            "ev-scGW",
+            "qp-scGW0",
+            "qp-scGW",
+        ),
+        description="""
+        GW Hedin's self-consistency cycle:
+
+        | Name      | Description                      | Reference             |
+        | --------- | -------------------------------- | --------------------- |
+        | `'G0W0'`  | single-shot                      | PRB 74, 035101 (2006) |
+        | `'scGW'`  | self-consistent G and W               | PRB 75, 235102 (2007) |
+        | `'scGW0'` | self-consistent G with fixed W0  | PRB 54, 8411 (1996)   |
+        | `'scG0W'` | self-consistent W with fixed G0  | -                     |
+        | `'ev-scGW0'`  | eigenvalues self-consistent G with fixed W0   | PRB 34, 5390 (1986)   |
+        | `'ev-scGW'`  | eigenvalues self-consistent G and W   | PRB 74, 045102 (2006)   |
+        | `'qp-scGW0'`  | quasiparticle self-consistent G with fixed W0 | PRL 99, 115109 (2007) |
+        | `'qp-scGW'`  | quasiparticle self-consistent G and W | PRL 96, 226402 (2006) |
+        """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+    )
+
+    analytical_continuation = Quantity(
+        type=MEnum(
+            "pade",
+            "contour_deformation",
+            "ppm_GodbyNeeds",
+            "ppm_HybertsenLouie",
+            "ppm_vonderLindenHorsh",
+            "ppm_FaridEngel",
+            "multi_pole",
+        ),
+        description="""
+        Analytical continuation approximations of the GW self-energy:
+
+        | Name           | Description         | Reference                        |
+        | -------------- | ------------------- | -------------------------------- |
+        | `'pade'` | Pade's approximant  | J. Low Temp. Phys 29, 179 (1977) |
+        | `'contour_deformation'` | Contour deformation | PRB 67, 155208 (2003) |
+        | `'ppm_GodbyNeeds'` | Godby-Needs plasmon-pole model | PRL 62, 1169 (1989) |
+        | `'ppm_HybertsenLouie'` | Hybertsen and Louie plasmon-pole model | PRB 34, 5390 (1986) |
+        | `'ppm_vonderLindenHorsh'` | von der Linden and P. Horsh plasmon-pole model | PRB 37, 8351 (1988) |
+        | `'ppm_FaridEngel'` | Farid and Engel plasmon-pole model  | PRB 47, 15931 (1993) |
+        | `'multi_pole'` | Multi-pole fitting  | PRL 74, 1827 (1995) |
+        """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+    )
+
+    interval_qp_corrections = Quantity(
+        type=np.int32,
+        shape=[2],
+        description="""
+        Band indices (in an interval) for which the GW quasiparticle corrections are
+        calculated.
+        """,
+    )
+
+    screening_ref = Quantity(
+        type=Screening,
+        description="""
+        Reference to the `Screening` section that the GW calculation used to obtain the screened Coulomb interactions.
+        """,
+        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class BSE(ExcitedStateMethodology):
+    """
+    Section containing the various parameters that define a BSE calculation.
+    """
+
+    type = Quantity(
+        type=MEnum("Singlet", "Triplet", "IP", "RPA"),
+        shape=[],
+        description="""
+        Type of BSE hamiltonian solved:
+
+            H_BSE = H_diagonal + 2 * gx * Hx - gc * Hc
+
+        where gx, gc specifies the type.
+
+        Online resources for the theory:
+        - http://exciting.wikidot.com/carbon-excited-states-from-bse#toc1
+        - https://www.vasp.at/wiki/index.php/Bethe-Salpeter-equations_calculations
+        - https://docs.abinit.org/theory/bse/
+        - https://www.yambo-code.eu/wiki/index.php/Bethe-Salpeter_kernel
+
+        | Name | Description |
+        | --------- | ----------------------- |
+        | `'Singlet'` | gx = 1, gc = 1 |
+        | `'Triplet'` | gx = 0, gc = 1 |
+        | `'IP'` | Independent-particle approach |
+        | `'RPA'` | Random Phase Approximation |
+        """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+    )
+
+    solver = Quantity(
+        type=MEnum("Full-diagonalization", "Lanczos-Haydock", "GMRES", "SLEPc", "TDA"),
+        shape=[],
+        description="""
+        Solver algotithm used to diagonalize the BSE Hamiltonian.
+
+        | Name | Description | Reference |
+        | --------- | ----------------------- | ----------- |
+        | `'Full-diagonalization'` | Full diagonalization of the BSE Hamiltonian | - |
+        | `'Lanczos-Haydock'` | Subspace iterative Lanczos-Haydock algorithm | https://doi.org/10.1103/PhysRevB.59.5441 |
+        | `'GMRES'` | Generalized minimal residual method | https://doi.org/10.1137/0907058 |
+        | `'SLEPc'` | Scalable Library for Eigenvalue Problem Computations | https://slepc.upv.es/ |
+        | `'TDA'` | Tamm-Dancoff approximation | https://doi.org/10.1016/S0009-2614(99)01149-5 |
+        """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+    )
+
+    screening_ref = Quantity(
+        type=Screening,
+        description="""
+        Reference to the `Screening` section that the BSE calculation used to obtain the screened Coulomb interactions.
+        """,
+        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+# ? Is this class really necessary or should go in outputs.py?
+class CoreHoleSpectra(ModelMethodElectronic):
+    """
+    Section containing the various parameters that define a calculation of core-hole spectra.
+    It can be within BSE as a "core" subsection.
+    """
+
+    m_def = Section(validate=False)
+
+    # # TODO add examples
+    # solver = Quantity(
+    #     type=str,
+    #     description="""
+    #     Solver algorithm used for the core-hole spectra.
+    #     """,
+    #     a_eln=ELNAnnotation(component="StringEditQuantity"),
+    # )
+
+    type = Quantity(
+        type=MEnum("absorption", "emission"),
+        description="""
+        Type of the CoreHole excitation spectra calculated, either "absorption" or "emission".
+        """,
+        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+    )
+
+    edge = Quantity(
+        type=MEnum(
+            "K",
+            "L1",
+            "L2",
+            "L3",
+            "L23",
+            "M1",
+            "M2",
+            "M3",
+            "M23",
+            "M4",
+            "M5",
+            "M45",
+            "N1",
+            "N2",
+            "N3",
+            "N23",
+            "N4",
+            "N5",
+            "N45",
+        ),
+        description="""
+        Edge to be calculated for the core-hole spectra.
+        """,
+    )
+
+    excited_state_method_ref = Quantity(
+        type=ModelMethodElectronic,
+        description="""
+        Reference to the `ModelMethodElectronic` section (e.g., `DFT` or `BSE`) that was used to obtain the core-hole spectra.
+        """,
+        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
+    )
+
+    # TODO add normalization to obtain `edge`
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
