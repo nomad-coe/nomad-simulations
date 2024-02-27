@@ -605,8 +605,8 @@ class XCFunctional(ArchiveSection):
     libxc_name = Quantity(
         type=str,
         description="""
-        Provides the name of one of the exchange and/or correlation (XC) functional
-        following the libxc convention (see https://www.tddft.org/programs/libxc/).
+        Provides the name of one of the exchange or correlation (XC) functional following the libxc
+        convention (see https://www.tddft.org/programs/libxc/).
         """,
         a_eln=ELNAnnotation(component="StringEditQuantity"),
     )
@@ -614,6 +614,8 @@ class XCFunctional(ArchiveSection):
     name = Quantity(
         type=MEnum("exchange", "correlation", "hybrid", "contribution"),
         description="""
+        Name of the XC functional. It can be one of the following: 'exchange', 'correlation',
+        'hybrid', or 'contribution'.
         """,
     )
 
@@ -639,8 +641,8 @@ class XCFunctional(ArchiveSection):
     weight = Quantity(
         type=np.float64,
         description="""
-        Weight of the functional in the full DFT XC functional. This quantity is relevant when defining
-        linear combinations of the different functionals. If not specified, its value is 1.
+        Weight of the functional. This quantity is relevant when defining linear combinations of the
+        different functionals. If not specified, its value is 1.
         """,
         a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
@@ -694,11 +696,21 @@ class DFT(ModelMethodElectronic):
     jacobs_ladder = Quantity(
         type=MEnum("LDA", "GGA", "metaGGA", "hyperGGA", "hybrid", "unavailable"),
         description="""
-        Functional classification in line with Jacob\'s Ladder.
-        For more information, see https://doi.org/10.1063/1.1390175 (original paper);
-        https://doi.org/10.1103/PhysRevLett.91.146401 (meta-GGA);
-        and https://doi.org/10.1063/1.1904565 (hyper-GGA).
+        Functional classification in line with Jacob's Ladder. See:
+            - https://doi.org/10.1063/1.1390175 (original paper)
+            - https://doi.org/10.1103/PhysRevLett.91.146401 (meta-GGA)
+            - https://doi.org/10.1063/1.1904565 (hyper-GGA)
         """,
+    )
+
+    xc_functionals = SubSection(sub_section=XCFunctional.m_def, repeats=True)
+
+    exact_exchange_mixing_factor = Quantity(
+        type=np.float64,
+        description="""
+        Amount of exact exchange mixed in with the XC functional (value range = [0, 1]).
+        """,
+        a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
     # ! MEnum this
@@ -731,16 +743,6 @@ class DFT(ModelMethodElectronic):
         workers on the spin density / doublet unpaired orbital |
         """,
         a_eln=ELNAnnotation(component="StringEditQuantity"),
-    )
-
-    xc_functionals = SubSection(sub_section=XCFunctional.m_def, repeats=True)
-
-    exact_exchange_mixing_factor = Quantity(
-        type=np.float64,
-        description="""
-        Amount of exact exchange mixed in with the XC functional (value range = [0,1]).
-        """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
     )
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
