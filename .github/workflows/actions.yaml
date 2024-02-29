@@ -12,16 +12,20 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install .[dev,tests]
+        # we need the latest nomad version for testing
+        pip install nomad-lab[infrastructure]@git+https://github.com/nomad-coe/nomad.git@develop
+        pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+        pip install coverage coveralls
     - name: mypy
       run: |
         python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional simulationdataschema tests
     - name: Test with pytest
-      if: success() || failure()
       run: |
-        python -m pytest -sv tests
+        python -m coverage run -m pytest -sv tests
   ruff:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: chartboost/ruff-action@v1
+        with:
+          args: "check"

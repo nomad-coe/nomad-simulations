@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{ name = "The NOMAD Authors" }]
 license = { text = "Apache-2.0" }
 dependencies = [
-    "nomad-lab[infrastructure]@git+https://github.com/nomad-coe/nomad.git@develop",
+    "nomad-lab>=1.2.0",
     'matid>=2.0.0.dev2'
 ]
 
@@ -24,12 +24,6 @@ dev = [
     'pytest-timeout==1.4.2',
     'pytest-cov==2.7.1',
     'ruff==0.1.4'
-]
-
-tests = [
-    "electronicparsers@git+https://github.com/nomad-coe/electronic-parsers.git@develop",
-    "atomisticparsers@git+https://github.com/nomad-coe/atomistic-parsers.git@develop",
-    "workflowparsers@git+https://github.com/nomad-coe/workflow-parsers.git@master"
 ]
 
 [tool.ruff]
@@ -56,8 +50,25 @@ ignore = [
 ]
 fixable = ["ALL"]
 
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+# use single quotes for strings.
+quote-style = "single"
+
+# indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
 [tool.setuptools.packages.find]
 include = ["simulationdataschema*"]
 
 [tool.setuptools.package-data]
-simulationdataschema = ['*/nomad_plugin.yaml']
+simulationdataschema = ["*/nomad_plugin.yaml"]
