@@ -925,7 +925,7 @@ class TB(ModelMethodElectronic):
 
             orbitals_ref= [OrbitalState('pz'), OrbitalsState('pz')]
 
-        We can access the information on the atom by doing:
+        The relevant atoms information can be accessed from the parent AtomsState sections:
             atom_state = orbitals_ref[i].m_parent
             index = orbitals_ref[i].m_parent_index
             atom_position = orbitals_ref[i].m_parent.m_parent.positions[index]
@@ -1373,14 +1373,14 @@ class GW(ExcitedStateMethodology):
 
         | Name      | Description                      | Reference             |
         | --------- | -------------------------------- | --------------------- |
-        | `'G0W0'`  | single-shot                      | PRB 74, 035101 (2006) |
-        | `'scGW'`  | self-consistent G and W               | PRB 75, 235102 (2007) |
-        | `'scGW0'` | self-consistent G with fixed W0  | PRB 54, 8411 (1996)   |
+        | `'G0W0'`  | single-shot                      | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.74.035101 |
+        | `'scGW'`  | self-consistent G and W               | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.75.235102 |
+        | `'scGW0'` | self-consistent G with fixed W0  | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.54.8411 |
         | `'scG0W'` | self-consistent W with fixed G0  | -                     |
-        | `'ev-scGW0'`  | eigenvalues self-consistent G with fixed W0   | PRB 34, 5390 (1986)   |
-        | `'ev-scGW'`  | eigenvalues self-consistent G and W   | PRB 74, 045102 (2006)   |
-        | `'qp-scGW0'`  | quasiparticle self-consistent G with fixed W0 | PRL 99, 115109 (2007) |
-        | `'qp-scGW'`  | quasiparticle self-consistent G and W | PRL 96, 226402 (2006) |
+        | `'ev-scGW0'`  | eigenvalues self-consistent G with fixed W0   | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.34.5390 |
+        | `'ev-scGW'`  | eigenvalues self-consistent G and W   | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.74.045102 |
+        | `'qp-scGW0'`  | quasiparticle self-consistent G with fixed W0 | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.76.115109 |
+        | `'qp-scGW'`  | quasiparticle self-consistent G and W | https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.96.226402 |
         """,
         a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
@@ -1400,13 +1400,13 @@ class GW(ExcitedStateMethodology):
 
         | Name           | Description         | Reference                        |
         | -------------- | ------------------- | -------------------------------- |
-        | `'pade'` | Pade's approximant  | J. Low Temp. Phys 29, 179 (1977) |
-        | `'contour_deformation'` | Contour deformation | PRB 67, 155208 (2003) |
-        | `'ppm_GodbyNeeds'` | Godby-Needs plasmon-pole model | PRL 62, 1169 (1989) |
-        | `'ppm_HybertsenLouie'` | Hybertsen and Louie plasmon-pole model | PRB 34, 5390 (1986) |
-        | `'ppm_vonderLindenHorsh'` | von der Linden and P. Horsh plasmon-pole model | PRB 37, 8351 (1988) |
-        | `'ppm_FaridEngel'` | Farid and Engel plasmon-pole model  | PRB 47, 15931 (1993) |
-        | `'multi_pole'` | Multi-pole fitting  | PRL 74, 1827 (1995) |
+        | `'pade'` | Pade's approximant  | https://link.springer.com/article/10.1007/BF00655090 |
+        | `'contour_deformation'` | Contour deformation | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.67.155208 |
+        | `'ppm_GodbyNeeds'` | Godby-Needs plasmon-pole model | https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.62.1169 |
+        | `'ppm_HybertsenLouie'` | Hybertsen and Louie plasmon-pole model | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.34.5390 |
+        | `'ppm_vonderLindenHorsh'` | von der Linden and P. Horsh plasmon-pole model | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.37.8351 |
+        | `'ppm_FaridEngel'` | Farid and Engel plasmon-pole model  | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.47.15931 |
+        | `'multi_pole'` | Multi-pole fitting  | https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.74.1827 |
         """,
         a_eln=ELNAnnotation(component="EnumEditQuantity"),
     )
@@ -1561,6 +1561,119 @@ class CoreHoleSpectra(ModelMethodElectronic):
     )
 
     # TODO add normalization to obtain `edge`
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class DMFT(ModelMethodElectronic):
+    """
+    A base section used to define the parameters of a DMFT calculation.
+    """
+
+    impurity_solver = Quantity(
+        type=MEnum(
+            "CT-INT",
+            "CT-HYB",
+            "CT-AUX",
+            "ED",
+            "NRG",
+            "MPS",
+            "IPT",
+            "NCA",
+            "OCA",
+            "slave_bosons",
+            "hubbard_I",
+        ),
+        description="""
+        Impurity solver method used in the DMFT loop:
+
+        | Name              | Reference                            |
+        | ----------------- | ------------------------------------ |
+        | `'CT-INT'`        | https://link.springer.com/article/10.1134/1.1800216 |
+        | `'CT-HYB'`        | https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.97.076405 |
+        | `'CT-AUX'`        | https://iopscience.iop.org/article/10.1209/0295-5075/82/57003 |
+        | `'ED'`            | https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.72.1545 |
+        | `'NRG'`           | https://journals.aps.org/rmp/abstract/10.1103/RevModPhys.80.395 |
+        | `'MPS'`           | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.90.045144 |
+        | `'IPT'`           | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.45.6479 |
+        | `'NCA'`           | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.47.3553 |
+        | `'OCA'`           | https://journals.aps.org/prb/abstract/10.1103/PhysRevB.47.3553 |
+        | `'slave_bosons'`  | https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.57.1362 |
+        | `'hubbard_I'`     | https://iopscience.iop.org/article/10.1088/0953-8984/24/7/075604 |
+        """,
+    )
+
+    n_impurities = Quantity(
+        type=np.int32,
+        description="""
+        Number of impurities mapped from the correlated atoms in the unit cell. This defines whether
+        the DMFT calculation is done in a single-impurity or multi-impurity run.
+        """,
+    )
+
+    n_orbitals = Quantity(
+        type=np.int32,
+        shape=["n_impurities"],
+        description="""
+        Number of correlated orbitals per impurity.
+        """,
+    )
+
+    orbitals_ref = Quantity(
+        type=OrbitalsState,
+        shape=["n_orbitals"],
+        description="""
+        References to the `OrbitalsState` sections that contain the orbitals information which are
+        relevant for the `DMFT` calculation.
+
+        Example: hydrogenated graphene with 3 atoms in the unit cell. The full list of `AtomsState` would
+        be
+            [
+                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
+                AtomsState(chemical_symbol='C', orbitals_state=[OrbitalsState('s'), OrbitalsState('px'), OrbitalsState('py'), OrbitalsState('pz')]),
+                AtomsState(chemical_symbol='H', orbitals_state=[OrbitalsState('s')]),
+            ]
+
+        The relevant orbitals for the TB model are the `'pz'` ones for each `'C'` atom. Then, we define:
+
+            orbitals_ref= [OrbitalState('pz'), OrbitalsState('pz')]
+
+        The relevant impurities information can be accesed from the parent AtomsState sections:
+            impurity_state = orbitals_ref[i].m_parent
+            index = orbitals_ref[i].m_parent_index
+            impurity_position = orbitals_ref[i].m_parent.m_parent.positions[index]
+        """,
+    )
+
+    # ? Improve this with `orbitals_ref.occupation` and possibly a function?
+    n_electrons = Quantity(
+        type=np.float64,
+        shape=["n_impurities"],
+        description="""
+        Initial number of valence electrons per impurity.
+        """,
+    )
+
+    inverse_temperature = Quantity(
+        type=np.float64,
+        unit="1/joule",
+        description="""
+        Inverse temperature = 1/(kB*T).
+        """,
+    )
+
+    magnetic_state = Quantity(
+        type=MEnum("paramagnetic", "ferromagnetic", "antiferromagnetic"),
+        description="""
+        Magnetic state in which the DMFT calculation is done. This quantity can be obtained from
+        `orbitals_ref` and their spin state.
+        """,
+    )
+
+    def resolve_magnetic_state(logger) -> str:
+        # ! Check solid_dmft example by using magmom (atomic magnetic moments), and improve on AtomsState to include such moments
+        pass
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
