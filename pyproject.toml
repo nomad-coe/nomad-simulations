@@ -23,7 +23,7 @@ dev = [
     'pytest==3.10.0',
     'pytest-timeout==1.4.2',
     'pytest-cov==2.7.1',
-    'ruff==0.1.4'
+    'ruff==0.1.8'
 ]
 
 [tool.ruff]
