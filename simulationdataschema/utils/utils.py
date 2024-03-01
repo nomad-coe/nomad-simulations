@@ -55,13 +55,13 @@ def get_sibling_section(
         sibling_section (ArchiveSection): The sibling_section to be returned.
     """
     if not sibling_section_name:
-        logger.warning("The sibling_section_name is empty.")
+        logger.warning('The sibling_section_name is empty.')
         return None
-    sibling_section = section.m_xpath(f"m_parent.{sibling_section_name}", dict=False)
+    sibling_section = section.m_xpath(f'm_parent.{sibling_section_name}', dict=False)
     # If the sibling_section is a list, return the element `index_sibling` of that list
     if isinstance(sibling_section, list):
         if index_sibling >= len(sibling_section):
-            logger.warning("The index of the sibling_section is out of range.")
+            logger.warning('The index of the sibling_section is out of range.')
             return None
         return sibling_section[index_sibling]
     return sibling_section
@@ -93,10 +93,10 @@ class RussellSaundersState:
                 yield J - m
 
     def __init__(self, *args, **kwargs):
-        self.J = kwargs.get("J")
+        self.J = kwargs.get('J')
         if self.J is None:
             raise TypeError
-        self.occupation = kwargs.get("occ")
+        self.occupation = kwargs.get('occ')
         if self.occupation is None:
             raise TypeError
 
