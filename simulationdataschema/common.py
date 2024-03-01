@@ -42,6 +42,7 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity
 
 
+# TODO check this once outputs.py is defined
 class HoppingMatrix(ArchiveSection):
     """
     Section containing the hopping/overlap matrix elements between N projected orbitals. This
@@ -62,9 +63,10 @@ class HoppingMatrix(ArchiveSection):
         """,
     )
 
+    # TODO check with SlaterKoster and OrbitalsState.degeneracy
     degeneracy_factors = Quantity(
         type=np.int32,
-        shape=["n_wigner_seitz_points"],
+        shape=['n_wigner_seitz_points'],
         description="""
         Degeneracy of each Wigner-Seitz grid point.
         """,
@@ -72,7 +74,8 @@ class HoppingMatrix(ArchiveSection):
 
     value = Quantity(
         type=np.float64,
-        shape=["n_wigner_seitz_points", "n_orbitals * n_orbitals", 7],
+        shape=['n_wigner_seitz_points', 'n_orbitals * n_orbitals', 7],
+        unit='joule',
         description="""
         Real space hopping matrix for each Wigner-Seitz grid point. The elements are
         defined as follows:
@@ -81,7 +84,7 @@ class HoppingMatrix(ArchiveSection):
 
         where (n_x, n_y, n_z) define the Wigner-Seitz cell vector in fractional coordinates,
         (orb_1, orb_2) indicates the hopping amplitude between orb_1 and orb_2, and the
-        real and imaginary parts of the hopping in electron_volt.
+        real and imaginary parts of the hopping.
         """,
     )
 
