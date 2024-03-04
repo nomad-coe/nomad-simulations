@@ -61,7 +61,7 @@ class Program(Entity):
         description="""
         The name of the program.
         """,
-        a_eln=ELNAnnotation(component="StringEditQuantity"),
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
     version = Quantity(
@@ -69,7 +69,7 @@ class Program(Entity):
         description="""
         The version label of the program.
         """,
-        a_eln=ELNAnnotation(component="StringEditQuantity"),
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
     link = Quantity(
@@ -77,7 +77,7 @@ class Program(Entity):
         description="""
         Website link to the program in published information.
         """,
-        a_eln=ELNAnnotation(component="URLEditQuantity"),
+        a_eln=ELNAnnotation(component='URLEditQuantity'),
     )
 
     version_internal = Quantity(
@@ -86,7 +86,7 @@ class Program(Entity):
         Specifies a program version tag used internally for development purposes.
         Any kind of tagging system is supported, including git commit hashes.
         """,
-        a_eln=ELNAnnotation(component="StringEditQuantity"),
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
     compilation_host = Quantity(
@@ -94,7 +94,7 @@ class Program(Entity):
         description="""
         Specifies the host on which the program was compiled.
         """,
-        a_eln=ELNAnnotation(component="StringEditQuantity"),
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
     def normalize(self, archive, logger) -> None:
@@ -112,7 +112,7 @@ class BaseSimulation(Activity):
     """
 
     m_def = Section(
-        links=["https://liusemweb.github.io/mdo/core/1.1/index.html#Calculation"]
+        links=['https://liusemweb.github.io/mdo/core/1.1/index.html#Calculation']
     )
 
     datetime_end = Quantity(
@@ -120,43 +120,43 @@ class BaseSimulation(Activity):
         description="""
         The date and time when this computation ended.
         """,
-        a_eln=ELNAnnotation(component="DateTimeEditQuantity"),
+        a_eln=ELNAnnotation(component='DateTimeEditQuantity'),
     )
 
     cpu1_start = Quantity(
         type=np.float64,
-        unit="second",
+        unit='second',
         description="""
         The starting time of the computation on the (first) CPU 1.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     cpu1_end = Quantity(
         type=np.float64,
-        unit="second",
+        unit='second',
         description="""
         The end time of the computation on the (first) CPU 1.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     wall_start = Quantity(
         type=np.float64,
-        unit="second",
+        unit='second',
         description="""
         The internal wall-clock time from the starting of the computation.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     wall_end = Quantity(
         type=np.float64,
-        unit="second",
+        unit='second',
         description="""
         The internal wall-clock time from the end of the computation.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     program = SubSection(sub_section=Program.m_def, repeats=False)
@@ -190,12 +190,12 @@ class Simulation(BaseSimulation, EntryData):
         # define it as the last system reported (TODO CHECK THIS!).
         # TODO extend adding the proper representative system extraction using `normalizer.py`
         if self.model_system is None:
-            logger.error("No system information reported.")
+            logger.error('No system information reported.')
             return
         system_ref = self.model_system[-1]
         # * We define is_representative in the parser
         # system_ref.is_representative = True
-        self.m_cache["system_ref"] = system_ref
+        self.m_cache['system_ref'] = system_ref
 
         # Setting up the `branch_depth` in the parent-child tree
         for system_parents in self.model_system:

@@ -61,107 +61,107 @@ from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .atoms_state import AtomsState
-from .utils import get_sibling_section
+from .utils import get_sibling_section, is_not_representative
 
 
 class GeometricSpace(Entity):
     """
-    A base section to define geometrical space-related entities.
+    A base section used to define geometrical spaces and their entities.
     """
 
     length_vector_a = Quantity(
         type=np.float64,
-        unit="meter",
+        unit='meter',
         description="""
         Length of the first basis vector.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     length_vector_b = Quantity(
         type=np.float64,
-        unit="meter",
+        unit='meter',
         description="""
         Length of the second basis vector.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     length_vector_c = Quantity(
         type=np.float64,
-        unit="meter",
+        unit='meter',
         description="""
         Length of the third basis vector.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     angle_vectors_b_c = Quantity(
         type=np.float64,
-        unit="radian",
+        unit='radian',
         description="""
         Angle between second and third basis vector.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     angle_vectors_a_c = Quantity(
         type=np.float64,
-        unit="radian",
+        unit='radian',
         description="""
         Angle between first and third basis vector.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     angle_vectors_a_b = Quantity(
         type=np.float64,
-        unit="radian",
+        unit='radian',
         description="""
         Angle between first and second basis vector.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     volume = Quantity(
         type=np.float64,
-        unit="meter ** 3",
+        unit='meter ** 3',
         description="""
         Volume of a 3D real space entity.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     surface_area = Quantity(
         type=np.float64,
-        unit="meter ** 2",
+        unit='meter ** 2',
         description="""
         Surface area of a 3D real space entity.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     area = Quantity(
         type=np.float64,
-        unit="meter ** 2",
+        unit='meter ** 2',
         description="""
         Area of a 2D real space entity.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     length = Quantity(
         type=np.float64,
-        unit="meter",
+        unit='meter',
         description="""
         Total length of a 1D real space entity.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     coordinates_system = Quantity(
-        type=MEnum("cartesian", "polar", "cylindrical", "spherical"),
-        default="cartesian",
+        type=MEnum('cartesian', 'polar', 'cylindrical', 'spherical'),
+        default='cartesian',
         description="""
         Coordinate system used to determine the geometrical information of a shape in real
         space. Default to 'cartesian'.
@@ -214,7 +214,7 @@ class GeometricSpace(Entity):
             self.get_geometric_space_for_atomic_cell(logger)
         except Exception:
             logger.warning(
-                "Could not extract the geometric space information from ASE Atoms object.",
+                'Could not extract the geometric space information from ASE Atoms object.',
             )
             return
 
@@ -225,7 +225,7 @@ class Cell(GeometricSpace):
     """
 
     type = Quantity(
-        type=MEnum("original", "primitive", "conventional"),
+        type=MEnum('original', 'primitive', 'conventional'),
         description="""
         Representation type of the cell structure. It might be:
             - 'original' as in origanally parsed,
@@ -243,8 +243,8 @@ class Cell(GeometricSpace):
 
     positions = Quantity(
         type=np.float64,
-        shape=["n_cell_points", 3],
-        unit="meter",
+        shape=['n_cell_points', 3],
+        unit='meter',
         description="""
         Positions of all the atoms in Cartesian coordinates.
         """,
@@ -252,8 +252,8 @@ class Cell(GeometricSpace):
 
     velocities = Quantity(
         type=np.float64,
-        shape=["n_cell_points", 3],
-        unit="meter / second",
+        shape=['n_cell_points', 3],
+        unit='meter / second',
         description="""
         Velocities of the atoms. It is the change in cartesian coordinates of the atom position
         with time.
@@ -263,22 +263,10 @@ class Cell(GeometricSpace):
     lattice_vectors = Quantity(
         type=np.float64,
         shape=[3, 3],
-        unit="meter",
+        unit='meter',
         description="""
         Lattice vectors of the simulated cell in Cartesian coordinates. The first index runs
         over each lattice vector. The second index runs over the $x, y, z$ Cartesian coordinates.
-        """,
-    )
-
-    # TODO move to KMesh
-    lattice_vectors_reciprocal = Quantity(
-        type=np.float64,
-        shape=[3, 3],
-        unit="1/meter",
-        description="""
-        Reciprocal lattice vectors of the simulated cell, in Cartesian coordinates and
-        including the $2 pi$ pre-factor. The first index runs over each lattice vector. The
-        second index runs over the $x, y, z$ Cartesian coordinates.
         """,
     )
 
@@ -321,7 +309,7 @@ class AtomicCell(Cell):
 
     equivalent_atoms = Quantity(
         type=np.int32,
-        shape=["n_atoms"],
+        shape=['n_atoms'],
         description="""
         List of equivalent atoms as defined in `atoms`. If no equivalent atoms are found,
         then the list is simply the index of each element, e.g.:
@@ -333,7 +321,7 @@ class AtomicCell(Cell):
     # ! improve description and clarify whether this belongs to `Symmetry` with @lauri-codes
     wyckoff_letters = Quantity(
         type=str,
-        shape=["n_atoms"],
+        shape=['n_atoms'],
         description="""
         Wyckoff letters associated with each atom.
         """,
@@ -357,7 +345,7 @@ class AtomicCell(Cell):
         # PBC
         if self.periodic_boundary_conditions is None:
             logger.info(
-                "Could not find `AtomicCell.periodic_boundary_conditions`. They will be set to [False, False, False]."
+                'Could not find `AtomicCell.periodic_boundary_conditions`. They will be set to [False, False, False].'
             )
             self.periodic_boundary_conditions = [False, False, False]
         ase_atoms.set_pbc(self.periodic_boundary_conditions)
@@ -366,23 +354,19 @@ class AtomicCell(Cell):
         if self.positions is not None:
             if len(self.positions) != len(self.atoms_state):
                 logger.error(
-                    "Length of `AtomicCell.positions` does not coincide with the length of the `AtomicCell.atoms_state`."
+                    'Length of `AtomicCell.positions` does not coincide with the length of the `AtomicCell.atoms_state`.'
                 )
                 return None
-            ase_atoms.set_positions(self.positions.to("angstrom").magnitude)
+            ase_atoms.set_positions(self.positions.to('angstrom').magnitude)
         else:
-            logger.error("Could not find `AtomicCell.positions`.")
+            logger.error('Could not find `AtomicCell.positions`.')
             return None
 
         # Lattice vectors
         if self.lattice_vectors is not None:
-            ase_atoms.set_cell(self.lattice_vectors.to("angstrom").magnitude)
-            if self.lattice_vectors_reciprocal is None:
-                self.lattice_vectors_reciprocal = (
-                    2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
-                )
+            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
         else:
-            logger.info("Could not find `AtomicCell.lattice_vectors`.")
+            logger.info('Could not find `AtomicCell.lattice_vectors`.')
 
         return ase_atoms
 
@@ -496,7 +480,7 @@ class Symmetry(ArchiveSection):
         description="""
         Reference to the AtomicCell section that the symmetry refers to.
         """,
-        a_eln=ELNAnnotation(component="ReferenceEditQuantity"),
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     def resolve_analyzed_atomic_cell(
@@ -515,16 +499,16 @@ class Symmetry(ArchiveSection):
             (Optional[AtomicCell]): The resolved `AtomicCell` section or None if the cell_type
             is not recognized.
         """
-        if cell_type not in ["primitive", "conventional"]:
+        if cell_type not in ['primitive', 'conventional']:
             logger.error(
                 "Cell type not recognized, only 'primitive' and 'conventional' are allowed."
             )
             return None
-        wyckoff = getattr(symmetry_analyzer, f"get_wyckoff_letters_{cell_type}")()
+        wyckoff = getattr(symmetry_analyzer, f'get_wyckoff_letters_{cell_type}')()
         equivalent_atoms = getattr(
-            symmetry_analyzer, f"get_equivalent_atoms_{cell_type}"
+            symmetry_analyzer, f'get_equivalent_atoms_{cell_type}'
         )()
-        system = getattr(symmetry_analyzer, f"get_{cell_type}_system")()
+        system = getattr(symmetry_analyzer, f'get_{cell_type}_system')()
 
         positions = system.get_scaled_positions()
         cell = system.get_cell()
@@ -569,24 +553,24 @@ class Symmetry(ArchiveSection):
             )
         except ValueError as e:
             logger.debug(
-                "Symmetry analysis with MatID is not available.", details=str(e)
+                'Symmetry analysis with MatID is not available.', details=str(e)
             )
             return None, None
         except Exception as e:
-            logger.warning("Symmetry analysis with MatID failed.", exc_info=e)
+            logger.warning('Symmetry analysis with MatID failed.', exc_info=e)
             return None, None
 
         # We store symmetry_analyzer info in a dictionary
-        symmetry["bravais_lattice"] = symmetry_analyzer.get_bravais_lattice()
-        symmetry["hall_symbol"] = symmetry_analyzer.get_hall_symbol()
-        symmetry["point_group_symbol"] = symmetry_analyzer.get_point_group()
-        symmetry["space_group_number"] = symmetry_analyzer.get_space_group_number()
+        symmetry['bravais_lattice'] = symmetry_analyzer.get_bravais_lattice()
+        symmetry['hall_symbol'] = symmetry_analyzer.get_hall_symbol()
+        symmetry['point_group_symbol'] = symmetry_analyzer.get_point_group()
+        symmetry['space_group_number'] = symmetry_analyzer.get_space_group_number()
         symmetry[
-            "space_group_symbol"
+            'space_group_symbol'
         ] = symmetry_analyzer.get_space_group_international_short()
-        symmetry["origin_shift"] = symmetry_analyzer._get_spglib_origin_shift()
+        symmetry['origin_shift'] = symmetry_analyzer._get_spglib_origin_shift()
         symmetry[
-            "transformation_matrix"
+            'transformation_matrix'
         ] = symmetry_analyzer._get_spglib_transformation_matrix()
 
         # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
@@ -597,18 +581,18 @@ class Symmetry(ArchiveSection):
 
         # Populating the primitive AtomState information
         primitive_atomic_cell = self.resolve_analyzed_atomic_cell(
-            symmetry_analyzer, "primitive", logger
+            symmetry_analyzer, 'primitive', logger
         )
 
         # Populating the conventional AtomState information
         conventional_atomic_cell = self.resolve_analyzed_atomic_cell(
-            symmetry_analyzer, "conventional", logger
+            symmetry_analyzer, 'conventional', logger
         )
 
         # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
         # standarized Wyckoff numbers and the space group number
         if (
-            symmetry.get("space_group_number")
+            symmetry.get('space_group_number')
             and conventional_atomic_cell.atoms_state is not None
         ):
             # Resolve atomic_numbers and wyckoff letters from the conventional cell
@@ -622,20 +606,20 @@ class Symmetry(ArchiveSection):
                 conventional_num, conventional_wyckoff
             )
             aflow_prototype = search_aflow_prototype(
-                symmetry.get("space_group_number"), norm_wyckoff
+                symmetry.get('space_group_number'), norm_wyckoff
             )
-            strukturbericht = aflow_prototype.get("Strukturbericht Designation")
+            strukturbericht = aflow_prototype.get('Strukturbericht Designation')
             strukturbericht = (
-                re.sub("[$_{}]", "", strukturbericht)
-                if strukturbericht != "None"
+                re.sub('[$_{}]', '', strukturbericht)
+                if strukturbericht != 'None'
                 else None
             )
-            prototype_aflow_id = aflow_prototype.get("aflow_prototype_id")
-            prototype_formula = aflow_prototype.get("Prototype")
+            prototype_aflow_id = aflow_prototype.get('aflow_prototype_id')
+            prototype_formula = aflow_prototype.get('Prototype')
             # Adding these to the symmetry dictionary for later assignement
-            symmetry["strukturbericht_designation"] = strukturbericht
-            symmetry["prototype_aflow_id"] = prototype_aflow_id
-            symmetry["prototype_formula"] = prototype_formula
+            symmetry['strukturbericht_designation'] = strukturbericht
+            symmetry['prototype_aflow_id'] = prototype_aflow_id
+            symmetry['prototype_formula'] = prototype_formula
 
         # Populating Symmetry section
         for key, val in self.m_def.all_quantities.items():
@@ -645,9 +629,9 @@ class Symmetry(ArchiveSection):
 
     def normalize(self, archive, logger) -> None:
         atomic_cell = get_sibling_section(
-            section=self, sibling_section_name="atomic_cell", logger=logger
+            section=self, sibling_section_name='atomic_cell', logger=logger
         )
-        if self.m_parent.type == "bulk":
+        if self.m_parent.type == 'bulk':
             # Adding the newly calculated primitive and conventional cells to the ModelSystem
             (
                 primitive_atomic_cell,
@@ -726,15 +710,15 @@ class ChemicalFormula(ArchiveSection):
         Args:
             formula (Formula): The Formula object from NOMAD atomutils containing the chemical formulas.
         """
-        self.descriptive = formula.format("descriptive")
-        self.reduced = formula.format("reduced")
-        self.iupac = formula.format("iupac")
-        self.hill = formula.format("hill")
-        self.anonymous = formula.format("anonymous")
+        self.descriptive = formula.format('descriptive')
+        self.reduced = formula.format('reduced')
+        self.iupac = formula.format('iupac')
+        self.hill = formula.format('hill')
+        self.anonymous = formula.format('anonymous')
 
     def normalize(self, archive, logger) -> None:
         atomic_cell = get_sibling_section(
-            section=self, sibling_section_name="atomic_cell", logger=logger
+            section=self, sibling_section_name='atomic_cell', logger=logger
         )
         ase_atoms = atomic_cell.to_ase_atoms(logger)
         formula = None
@@ -743,21 +727,20 @@ class ChemicalFormula(ArchiveSection):
             # self.chemical_composition = ase_atoms.get_chemical_formula(mode="all")
         except ValueError as e:
             logger.warning(
-                "Could not extract the chemical formulas information.",
+                'Could not extract the chemical formulas information.',
                 exc_info=e,
                 error=str(e),
             )
         if formula:
             self.resolve_chemical_formulas(formula)
-            self.m_cache["elemental_composition"] = formula.elemental_composition()
+            self.m_cache['elemental_composition'] = formula.elemental_composition()
 
 
 class ModelSystem(System):
-    # ! Work in this description with new `AtomState`
     """
-    Model system used as an input for the computation.
+    Model system used as an input for simulating the material.
 
-    We define:
+    Definitions:
         - `name` refers to all the verbose and user-dependent naming in ModelSystem,
         - `type` refers to the type of the ModelSystem (atom, bulk, surface, etc.),
         - `dimensionality` refers to the dimensionality of the ModelSystem (0, 1, 2, 3),
@@ -822,25 +805,25 @@ class ModelSystem(System):
         crystal or it can be filled up. For example, an heterostructure of graphene (G) sandwiched
         in between hexagonal boron nitrides (hBN) slabs could be named 'hBN/G/hBN'.
         """,
-        a_eln=ELNAnnotation(component="StringEditQuantity"),
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
     # TODO work on improving and extending this quantity and the description
     type = Quantity(
         type=MEnum(
-            "atom",
-            "active_atom",
-            "molecule / cluster",
-            "1D",
-            "surface",
-            "2D",
-            "bulk",
-            "unavailable",
+            'atom',
+            'active_atom',
+            'molecule / cluster',
+            '1D',
+            'surface',
+            '2D',
+            'bulk',
+            'unavailable',
         ),
         description="""
         Type of the system (atom, bulk, surface, etc.) which is determined by the normalizer.
         """,
-        a_eln=ELNAnnotation(component="EnumEditQuantity"),
+        a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
 
     dimensionality = Quantity(
@@ -851,7 +834,7 @@ class ModelSystem(System):
 
             https://doi.org/10.1103/PhysRevLett.118.106101.
         """,
-        a_eln=ELNAnnotation(component="NumberEditQuantity"),
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
     # TODO improve on the definition and usage
@@ -897,7 +880,7 @@ class ModelSystem(System):
 
     atom_indices = Quantity(
         type=np.int32,
-        shape=["*"],
+        shape=['*'],
         description="""
         Indices of the atoms in the child with respect to its parent. Example:
             - We have SrTiO3, where `AtomicCell.labels = ['Sr', 'Ti', 'O', 'O', 'O']`. If
@@ -916,7 +899,7 @@ class ModelSystem(System):
         """,
     )
 
-    model_system = SubSection(sub_section=SectionProxy("ModelSystem"), repeats=True)
+    model_system = SubSection(sub_section=SectionProxy('ModelSystem'), repeats=True)
 
     def resolve_system_type_and_dimensionality(
         self, ase_atoms: ase.Atoms, logger: BoundLogger
@@ -940,37 +923,37 @@ class ModelSystem(System):
         ):
             try:
                 classifier = Classifier(
-                    radii="covalent",
+                    radii='covalent',
                     cluster_threshold=config.normalize.cluster_threshold,
                 )
                 classification = classifier.classify(ase_atoms)
             except Exception as e:
                 logger.warning(
-                    "MatID system classification failed.", exc_info=e, error=str(e)
+                    'MatID system classification failed.', exc_info=e, error=str(e)
                 )
                 return system_type, dimensionality
 
             if isinstance(classification, Class3D):
-                system_type = "bulk"
+                system_type = 'bulk'
                 dimensionality = 3
             elif isinstance(classification, Atom):
-                system_type = "atom"
+                system_type = 'atom'
                 dimensionality = 0
             elif isinstance(classification, Class0D):
-                system_type = "molecule / cluster"
+                system_type = 'molecule / cluster'
                 dimensionality = 0
             elif isinstance(classification, Class1D):
-                system_type = "1D"
+                system_type = '1D'
                 dimensionality = 1
             elif isinstance(classification, Surface):
-                system_type = "surface"
+                system_type = 'surface'
                 dimensionality = 2
             elif isinstance(classification, (Class2D, Material2D)):
-                system_type = "2D"
+                system_type = '2D'
                 dimensionality = 2
         else:
             logger.info(
-                "ModelSystem.type and dimensionality analysis not run due to large system size."
+                'ModelSystem.type and dimensionality analysis not run due to large system size.'
             )
 
         return system_type, dimensionality
@@ -979,16 +962,16 @@ class ModelSystem(System):
         super().normalize(archive, logger)
 
         # We don't need to normalize if the system is not representative
-        if not self.is_representative:
+        if is_not_representative(self, logger):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
         if self.atomic_cell is None:
             self.logger.warning(
-                "Could not find the originally parsed atomic system. `Symmetry` and `ChemicalFormula` extraction is thus not run."
+                'Could not find the originally parsed atomic system. `Symmetry` and `ChemicalFormula` extraction is thus not run.'
             )
             return
-        self.atomic_cell[0].type = "original"
+        self.atomic_cell[0].type = 'original'
         ase_atoms = self.atomic_cell[0].to_ase_atoms(logger)
         if not ase_atoms:
             return
@@ -997,13 +980,13 @@ class ModelSystem(System):
         # one does not exists already)
         original_atom_positions = self.atomic_cell[0].positions
         if original_atom_positions is not None:
-            self.type = "unavailable" if not self.type else self.type
+            self.type = 'unavailable' if not self.type else self.type
             (
                 self.type,
                 self.dimensionality,
             ) = self.resolve_system_type_and_dimensionality(ase_atoms, logger)
             # Creating and normalizing Symmetry section
-            if self.type == "bulk" and self.symmetry is not None:
+            if self.type == 'bulk' and self.symmetry is not None:
                 sec_symmetry = self.m_create(Symmetry)
                 sec_symmetry.normalize(archive, logger)
 
@@ -1013,5 +996,5 @@ class ModelSystem(System):
         sec_chemical_formula.normalize(archive, logger)
         if sec_chemical_formula.m_cache:
             self.elemental_composition = sec_chemical_formula.m_cache.get(
-                "elemental_composition", []
+                'elemental_composition', []
             )

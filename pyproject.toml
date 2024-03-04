@@ -10,7 +10,7 @@ readme = "README.md"
 authors = [{ name = "The NOMAD Authors" }]
 license = { text = "Apache-2.0" }
 dependencies = [
-    "nomad-lab[infrastructure]@git+https://github.com/nomad-coe/nomad.git@develop",
+    "nomad-lab>=1.2.0",
     'matid>=2.0.0.dev2'
 ]
 
@@ -23,23 +23,17 @@ dev = [
     'pytest==3.10.0',
     'pytest-timeout==1.4.2',
     'pytest-cov==2.7.1',
-    'ruff==0.1.4'
-]
-
-tests = [
-    "electronicparsers@git+https://github.com/nomad-coe/electronic-parsers.git@develop",
-    "atomisticparsers@git+https://github.com/nomad-coe/atomistic-parsers.git@develop",
-    "workflowparsers@git+https://github.com/nomad-coe/workflow-parsers.git@master"
+    'ruff==0.1.8'
 ]
 
 [tool.ruff]
 include = ["simulationdataschema/*.py", "tests/*.py"]
-select = [
+lint.select = [
     "E", # pycodestyle
     "W", # pycodestyle
     "PL", # pylint
 ]
-ignore = [
+lint.ignore = [
     "E501", # Line too long ({width} > {limit} characters)
     "E701", # Multiple statements on one line (colon)
     "E731", # Do not assign a lambda expression, use a def
@@ -54,10 +48,27 @@ ignore = [
     "PLR1714", # consider-using-in
     "PLR5501", # else-if-used
 ]
-fixable = ["ALL"]
+lint.fixable = ["ALL"]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[tool.ruff.format]
+# use single quotes for strings.
+quote-style = "single"
+
+# indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
 
 [tool.setuptools.packages.find]
 include = ["simulationdataschema*"]
 
 [tool.setuptools.package-data]
-simulationdataschema = ['*/nomad_plugin.yaml']
+simulationdataschema = ["*/nomad_plugin.yaml"]

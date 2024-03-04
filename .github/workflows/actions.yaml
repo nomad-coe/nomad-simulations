@@ -12,16 +12,26 @@ jobs:
     - name: Install dependencies
       run: |
         pip install --upgrade pip
-        pip install .[dev,tests]
+        pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+        pip install coverage coveralls
     - name: mypy
       run: |
         python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional simulationdataschema tests
     - name: Test with pytest
-      if: success() || failure()
       run: |
-        python -m pytest -sv tests
-  ruff:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: chartboost/ruff-action@v1
+        python -m coverage run -m pytest -sv tests
+  ruff-linting:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+        - uses: chartboost/ruff-action@v1
+          with:
+            args: "check ."
+  ruff-formatting:
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v3
+        - uses: chartboost/ruff-action@v1
+          with:
+            args: "format . --check --verbose"
+            version: 0.1.8
