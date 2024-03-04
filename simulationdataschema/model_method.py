@@ -84,15 +84,35 @@ class Mesh(NumericalSettings):
     meshes and symmetry-reduced representations.
     """
 
-    sampling_method = Quantity(
+    spacing = Quantity(
+        type=MEnum('Equidistant', 'Logarithmic', 'Tan'),
+        default='Equidistant',
+        description="""
+        Identifier for the spacing of the Mesh. Defaults to 'Equidistant' if not defined. It can take the values:
+
+        | Name      | Description                      |
+        | --------- | -------------------------------- |
+        | `'Equidistant'`  | Equidistant grid (also known as 'Newton-Cotes') |
+        | `'Logarithmic'`  | log distance grid |
+        | `'Tan'`  | Non-uniform tan mesh for grids. More dense at low abs values of the points, while less dense for higher values |
+        """,
+    )
+
+    center = Quantity(
+        type=MEnum('Gamma-centered', 'Monkhorst-Pack', 'Gamma-offcenter'),
+        description="""
+        Identifier for the center of the Mesh:
+
+        | Name      | Description                      |
+        | --------- | -------------------------------- |
+        | `'Gamma-centered'` | Regular mesh is centered around Gamma. No offset. |
+        | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
+        | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
+        """,
+    )
+
+    quadrature = Quantity(
         type=MEnum(
-            'Gamma-centered',
-            'Monkhorst-Pack',
-            'Gamma-offcenter',
-            'Line-path',
-            'Equidistant',
-            'Logarithmic',
-            'Tan',
             'Gauss-Legendre',
             'Gauss-Laguerre',
             'Clenshaw-Curtis',
@@ -100,17 +120,10 @@ class Mesh(NumericalSettings):
             'Gauss-Hermite',
         ),
         description="""
-        Method used to generate the mesh:
+        Quadrature rule used for integration of the Mesh. This quantity is relevant for 1D meshes:
 
         | Name      | Description                      |
         | --------- | -------------------------------- |
-        | `'Gamma-centered'` | Regular mesh is centered around Gamma. No offset. |
-        | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
-        | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
-        | `'Line-path'` | Line path along high-symmetry points. Typically employed for simualting band structures. |
-        | `'Equidistant'`  | Equidistant 1D grid (also known as 'Newton-Cotes') |
-        | `'Logarithmic'`  | log distance 1D grid |
-        | `'Tan'`  | Non-uniform tan mesh for 1D grids. More dense at low abs values of the points, while less dense for higher values |
         | `'Gauss-Legendre'` | Quadrature rule for integration using Legendre polynomials |
         | `'Gauss-Laguerre'` | Quadrature rule for integration using Laguerre polynomials |
         | `'Clenshaw-Curtis'`  | Quadrature rule for integration using Chebyshev polynomials using discrete cosine transformations |
@@ -264,7 +277,7 @@ class KMesh(Mesh):
         type=np.float64,
         shape=[3],
         description="""
-        Offset vector shifting the mesh with respect to a Gamma-centered case.
+        Offset vector shifting the mesh with respect to a Gamma-centered case (where it is defined as [0, 0, 0]).
         """,
     )
 
@@ -272,7 +285,8 @@ class KMesh(Mesh):
         type=np.float64,
         shape=['*', 3],
         description="""
-        Full list of the mesh points without any symmetry operations.
+        Full list of the mesh points without any symmetry operations. In the presence of symmetry
+        operations, this quantity is a larger list than `points` (as it will contain all the points in the Brillouin zone).
         """,
     )
 
@@ -307,7 +321,7 @@ class KMesh(Mesh):
         self, logger: BoundLogger
     ) -> Tuple[Optional[List[np.ndarray]], Optional[np.ndarray]]:
         """
-        Resolves the `points` and `offset` of the `KMesh` from the `grid` and the `sampling_method`.
+        Resolves the `points` and `offset` of the `KMesh` from the `grid` and the `center`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -317,11 +331,11 @@ class KMesh(Mesh):
         """
         points = None
         offset = None
-        if self.sampling_method == 'Gamma-centered':
+        if self.center == 'Gamma-centered':
             grid_space = [np.linspace(0, 1, n) for n in self.grid]
             points = np.meshgrid(grid_space)
             offset = np.array([0, 0, 0])
-        elif self.sampling_method == 'Monkhorst-Pack':
+        elif self.center == 'Monkhorst-Pack':
             try:
                 points = monkhorst_pack(self.grid)
                 offset = get_monkhorst_pack_size_and_offset(points)[-1]
