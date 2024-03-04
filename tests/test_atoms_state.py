@@ -60,6 +60,27 @@ class TestOrbitalsState:
         return OrbitalsState(n_quantum_number=2)
 
     @pytest.mark.parametrize(
+        'number, values, results',
+        [
+            ('n_quantum_number', [-1, 0, 1, 2], [False, False, True, True]),
+            ('l_quantum_number', [-2, 0, 1, 2], [False, False, True, True]),
+            # l_quantum_number == 2 when testing 'ml_quantum_number'
+            ('ml_quantum_number', [-3, 5, -2, 1], [False, False, True, True]),
+            ('ms_quantum_number', [0, 10, -0.5, 0.5], [False, False, True, True]),
+        ],
+    )
+    def test_check_quantum_numbers(self, orbital_state, number, values, results):
+        """
+        Test the quantum number check for the `OrbitalsState` section.
+        """
+        for val, res in zip(values, results):
+            if number == 'ml_quantum_number':
+                orbital_state.l_quantum_number = 2
+            setattr(orbital_state, number, val)
+            check = orbital_state._check_quantum_numbers(self.logger)
+            assert check == res
+
+    @pytest.mark.parametrize(
         'quantum_name, quantum_type, value, countertype, expected_result',
         [
             ('l', 'number', 0, 'symbol', 's'),

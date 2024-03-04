@@ -161,7 +161,7 @@ class OrbitalsState(Entity):
             'ms_numbers': dict((zip(('down', 'up'), (-0.5, 0.5)))),
         }
 
-    def _quantum_numbers_check(self, logger: BoundLogger) -> bool:
+    def _check_quantum_numbers(self, logger: BoundLogger) -> bool:
         """
         Checks the physicality of the quantum numbers.
 
@@ -174,10 +174,10 @@ class OrbitalsState(Entity):
         if self.n_quantum_number < 1:
             logger.error('The `n_quantum_number` must be greater than 0.')
             return False
-        if self.l_quantum_number and self.l_quantum_number < 1:
+        if self.l_quantum_number is not None and self.l_quantum_number < 1:
             logger.error('The `l_quantum_number` must be greater than 0.')
             return False
-        if self.ml_quantum_number and (
+        if self.ml_quantum_number is not None and (
             self.ml_quantum_number < -self.l_quantum_number
             or self.ml_quantum_number > self.l_quantum_number
         ):
@@ -185,7 +185,10 @@ class OrbitalsState(Entity):
                 'The `ml_quantum_number` must be between `-l_quantum_number` and `l_quantum_number`.'
             )
             return False
-        if self.ms_quantum_number and self.ms_quantum_number not in [-0.5, 0.5]:
+        if self.ms_quantum_number is not None and self.ms_quantum_number not in [
+            -0.5,
+            0.5,
+        ]:
             logger.error('The `ms_quantum_number` must be -0.5 or 0.5.')
             return False
         return True
@@ -294,7 +297,7 @@ class OrbitalsState(Entity):
         super().normalize(archive, logger)
 
         # General checks for physical quantum numbers and symbols
-        if not self._quantum_numbers_check(logger):
+        if not self._check_quantum_numbers(logger):
             logger.error('The quantum numbers are not physical.')
             return
 
