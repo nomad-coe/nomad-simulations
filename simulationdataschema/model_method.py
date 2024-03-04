@@ -154,17 +154,20 @@ class Mesh(NumericalSettings):
         shape=['n_points'],
         description="""
         The amount of times the same point reappears. A value larger than 1, typically indicates
-        a symmtery operation that was applied to the `Mesh`.
+        a symmtery operation that was applied to the `Mesh`. This quantity is equivalent to `weights`:
+
+            multiplicities = 1 / weights
         """,
     )
 
-    # ! is this description correct?
     weights = Quantity(
         type=np.float64,
         shape=['n_points'],
         description="""
-        The frequency of times the same point reappears. A value larger than 1, typically
-        indicates a symmtery operation that was applied to the mesh.
+        Weight of each point. A value smaller than 1, typically indicates a symmtery operation that was
+        applied to the mesh. This quantity is equivalent to `multiplicities`:
+
+            weights = 1 / multiplicities
         """,
     )
 
