@@ -202,6 +202,14 @@ class TestHubbardInteractions:
 
     logger = logging.getLogger(__name__)
 
+    @staticmethod
+    def add_slater_interactions(
+        hubbard_interactions, slater_integrals
+    ) -> HubbardInteractions:
+        if slater_integrals is not None:
+            hubbard_interactions.slater_integrals = slater_integrals * ureg('eV')
+        return hubbard_interactions
+
     @pytest.fixture(autouse=True)
     def hubbard_interactions(self) -> HubbardInteractions:
         return HubbardInteractions()
@@ -218,14 +226,16 @@ class TestHubbardInteractions:
         """
         Test the Hubbard interactions `U`, `U'`, and `J` for a given set of Slater integrals.
         """
-        hubbard_interactions.slater_integrals = (
-            slater_integrals * ureg('eV') if slater_integrals is not None else None
-        )
+        # Adding `slater_integrals` to the `HubbardInteractions` section
+        self.add_slater_interactions(hubbard_interactions, slater_integrals)
+
+        # Resolving U, U', and J from class method
         (
             u_interaction,
             u_interorbital_interaction,
             j_hunds_coupling,
         ) = hubbard_interactions.resolve_u_interactions(self.logger)
+
         if None not in (u_interaction, u_interorbital_interaction, j_hunds_coupling):
             assert np.isclose(u_interaction.to('eV').magnitude, results[0])
             assert np.isclose(u_interorbital_interaction.to('eV').magnitude, results[1])

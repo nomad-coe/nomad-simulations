@@ -18,6 +18,7 @@
 
 import numpy as np
 import ase
+import pint
 from typing import Optional, Union, Dict, Any
 from structlog.stdlib import BoundLogger
 
@@ -458,7 +459,7 @@ class HubbardInteractions(ArchiveSection):
     def resolve_u_interactions(self, logger: BoundLogger) -> Optional[tuple]:
         """
         Resolves the Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling)
-        from the Slater integrals (F0, F2, F4).
+        from the Slater integrals (F0, F2, F4) in the units defined for the Quantity.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -466,31 +467,20 @@ class HubbardInteractions(ArchiveSection):
         Returns:
             (Optional[tuple]): The Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling).
         """
-        if self.slater_integrals is None or len(self.slater_integrals) == 3:
+        if self.slater_integrals is None or len(self.slater_integrals) != 3:
             logger.warning(
                 'Could not find `slater_integrals` or the length is not three.'
             )
-            return None
+            return None, None, None
         f0 = self.slater_integrals[0]
         f2 = self.slater_integrals[1]
         f4 = self.slater_integrals[2]
-        u_interaction = (
-            ((2.0 / 7.0) ** 2)
-            * (f0 + 5.0 * f2 + 9.0 * f4)
-            / (4.0 * np.pi)
-            * ureg('joule')
-        )
+        u_interaction = ((2.0 / 7.0) ** 2) * (f0 + 5.0 * f2 + 9.0 * f4) / (4.0 * np.pi)
         u_interorbital_interaction = (
-            ((2.0 / 7.0) ** 2)
-            * (f0 - 5.0 * f2 + 3.0 * f4 / 2.0)
-            / (4.0 * np.pi)
-            * ureg('joule')
+            ((2.0 / 7.0) ** 2) * (f0 - 5.0 * f2 + 3.0 * f4 / 2.0) / (4.0 * np.pi)
         )
         j_hunds_coupling = (
-            ((2.0 / 7.0) ** 2)
-            * (5.0 * f2 + 15.0 * f4 / 4.0)
-            / (4.0 * np.pi)
-            * ureg('joule')
+            ((2.0 / 7.0) ** 2) * (5.0 * f2 + 15.0 * f4 / 4.0) / (4.0 * np.pi)
         )
         return u_interaction, u_interorbital_interaction, j_hunds_coupling
 
