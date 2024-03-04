@@ -315,25 +315,29 @@ class CoreHole(ArchiveSection):
         """,
     )
 
-    def resolve_occupation(self, logger: BoundLogger) -> None:
+    def resolve_occupation(self, logger: BoundLogger) -> Optional[np.float64]:
         """
         Resolves the occupation of the orbital state. The occupation is resolved from the degeneracy
         and the number of excited electrons.
 
         Args:
             logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[np.float64]): The occupation of the active orbital state.
         """
         if self.orbital_ref is None or self.n_excited_electrons is None:
             logger.warning(
                 'Cannot resolve occupation without `orbital_ref` or `n_excited_electrons`.'
             )
-            return
+            return None
         if self.orbital_ref.occupation is None:
             degeneracy = self.orbital_ref.resolve_degeneracy()
             if degeneracy is None:
                 logger.warning('Cannot resolve occupation without `degeneracy`.')
-                return
-            self.orbital_ref.occupation = degeneracy - self.n_excited_electrons
+                return None
+            return degeneracy - self.n_excited_electrons
+        return None
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -350,7 +354,7 @@ class CoreHole(ArchiveSection):
         # Resolve the occupation of the active orbital state
         if self.orbital_ref is not None and self.n_excited_electrons:
             if self.orbital_ref.occupation is None:
-                self.resolve_occupation(logger)
+                self.orbital_ref.occupation = self.resolve_occupation(logger)
 
 
 class HubbardInteractions(ArchiveSection):

@@ -153,9 +153,8 @@ class TestCoreHole:
         core_hole.orbital_ref = orbital_ref
         if orbital_ref is not None:
             assert orbital_ref.resolve_degeneracy() == degeneracy
-        core_hole.degeneracy = degeneracy
         core_hole.n_excited_electrons = n_excited_electrons
-        resolved_occupation = core_hole.resolve_occupation(degeneracy, self.logger)
+        resolved_occupation = core_hole.resolve_occupation(self.logger)
         if resolved_occupation is not None:
             assert np.isclose(resolved_occupation, occupation)
         else:
