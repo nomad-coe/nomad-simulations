@@ -358,6 +358,8 @@ class HubbardInteractions(ArchiveSection):
     A base section to define the Hubbard interactions of the system.
     """
 
+    # TODO (@JosePizarro3 note): we need to have checks for when a `ModelSystem` is spin rotational invariant (then we only need to pass `u_interaction` and `j_hunds_coupling` and resolve the other quantities)
+
     n_orbitals = Quantity(
         type=np.int32,
         description="""

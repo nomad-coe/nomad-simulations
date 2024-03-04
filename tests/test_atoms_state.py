@@ -206,8 +206,18 @@ class TestHubbardInteractions:
     def add_slater_interactions(
         hubbard_interactions, slater_integrals
     ) -> HubbardInteractions:
+        """Adds `slater_integrals` (in eV) to the `HubbardInteractions` section."""
         if slater_integrals is not None:
             hubbard_interactions.slater_integrals = slater_integrals * ureg('eV')
+        return hubbard_interactions
+
+    @staticmethod
+    def add_u_j(hubbard_interactions, u, j) -> HubbardInteractions:
+        """Adds `u_interaction` and `j_local_exchange_interaction` (in eV) to the `HubbardInteractions` section."""
+        if u is not None:
+            hubbard_interactions.u_interaction = u * ureg('eV')
+        if j is not None:
+            hubbard_interactions.j_local_exchange_interaction = j * ureg('eV')
         return hubbard_interactions
 
     @pytest.fixture(autouse=True)
@@ -266,14 +276,10 @@ class TestHubbardInteractions:
         """
         Test the effective Hubbard interaction `Ueff` for a given set of Hubbard interactions `U` and `J`.
         """
-        hubbard_interactions.u_interaction = (
-            u_interaction * ureg('eV') if u_interaction else None
-        )
-        hubbard_interactions.j_local_exchange_interaction = (
-            j_local_exchange_interaction * ureg('eV')
-            if j_local_exchange_interaction
-            else None
-        )
+        # Adding `u_interaction` and `j_local_exchange_interaction` to the `HubbardInteractions` section
+        self.add_u_j(hubbard_interactions, u_interaction, j_local_exchange_interaction)
+
+        # Resolving Ueff from class method
         resolved_u_effective = hubbard_interactions.resolve_u_effective(self.logger)
         if resolved_u_effective is not None:
             assert np.isclose(resolved_u_effective.to('eV').magnitude, u_effective)
@@ -284,11 +290,12 @@ class TestHubbardInteractions:
         """
         Test the normalization of the `HubbardInteractions`. Inputs are defined as the quantities of the `HubbardInteractions` section.
         """
-        hubbard_interactions.u_interaction = 3.0 * ureg('eV')
+        # ? Is this enough for testing? Can we do more?
+        self.add_u_j(hubbard_interactions, 3.0, 2.0)
         hubbard_interactions.u_interorbital_interaction = 1.0 * ureg('eV')
-        hubbard_interactions.j_hunds_coupling = 3.0 * ureg('eV')
+        hubbard_interactions.j_hunds_coupling = 2.0 * ureg('eV')
 
         hubbard_interactions.normalize(None, self.logger)
-        assert hubbard_interactions.u_effective == 2.0 * ureg('eV')
-        assert hubbard_interactions.u_interaction == 3.0 * ureg('eV')
-        assert hubbard_interactions.j_local_exchange_interaction == 1.0 * ureg('eV')
+        assert np.isclose(hubbard_interactions.u_effective.to('eV').magnitude, 1.0)
+        assert np.isclose(hubbard_interactions.u_interaction.to('eV').magnitude, 3.0)
+        assert hubbard_interactions.slater_integrals is None
