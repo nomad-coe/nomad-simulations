@@ -61,7 +61,7 @@ from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .atoms_state import AtomsState
-from .utils import get_sibling_section
+from .utils import get_sibling_section, is_not_representative
 
 
 class GeometricSpace(Entity):
@@ -962,7 +962,7 @@ class ModelSystem(System):
         super().normalize(archive, logger)
 
         # We don't need to normalize if the system is not representative
-        if not self.is_representative:
+        if is_not_representative(self, logger):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section

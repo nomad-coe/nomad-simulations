@@ -38,8 +38,8 @@ import numpy as np
 import pint
 import re
 from structlog.stdlib import BoundLogger
-from typing import Optional, List
-from ase.dft.kpoints import monkhorst_pack
+from typing import Optional, List, Tuple
+from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
@@ -48,8 +48,6 @@ from nomad.metainfo import (
     Quantity,
     SubSection,
     MEnum,
-    SectionProxy,
-    Reference,
     Section,
     Context,
     JSON,
@@ -57,6 +55,7 @@ from nomad.metainfo import (
 
 from .model_system import ModelSystem
 from .atoms_state import OrbitalsState, CoreHole
+from .utils import is_not_representative
 
 
 class NumericalSettings(ArchiveSection):
@@ -178,17 +177,12 @@ class LinePathSegment(ArchiveSection):
     A base section used to define the settings of a single line path segment within a multidimensional mesh.
     """
 
-    start_point = Quantity(
+    high_symmetry_path = Quantity(
         type=str,
+        shape=[2],
         description="""
-        Name of the high-symmetry starting point of the line path segment.
-        """,
-    )
-
-    end_point = Quantity(
-        type=str,
-        description="""
-        Name of the high-symmetry end point of the line path segment.
+        List of the two high-symmetry points followed in the line path segment, e.g., ['Gamma', 'X']. The
+        point's coordinates can be extracted from the values in the `self.m_parent.high_symmetry_points` JSON quantity.
         """,
     )
 
@@ -203,14 +197,48 @@ class LinePathSegment(ArchiveSection):
         type=np.float64,
         shape=['n_line_points', 3],
         description="""
-        List of all the points in the line path segment.
+        List of all the points in the line path segment in units of the `reciprocal_lattice_vectors`.
         """,
     )
 
-    # TODO add resolve_points for equidistant line path segment (where only n_line_points and the start and end points are stored)
+    def resolve_points(
+        self,
+        high_symmetry_path: List[str],
+        n_line_points: int,
+        logger: BoundLogger,
+    ) -> Optional[np.ndarray]:
+        """
+        Resolves the `points` of the `LinePathSegment` from the `high_symmetry_path` and the `n_line_points`.
+
+        Args:
+            high_symmetry_path (List[str]): The high-symmetry path of the `LinePathSegment`.
+            n_line_points (int): The number of points in the line path segment.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[List[np.ndarray]]): The resolved `points` of the `LinePathSegment`.
+        """
+        if high_symmetry_path is None or n_line_points is None:
+            logger.warning(
+                'Could not resolve `LinePathSegment.points` from `LinePathSegment.high_symmetry_path` and `LinePathSegment.n_line_points`.'
+            )
+            return None
+        if self.m_parent.high_symmetry_points is None:
+            logger.warning(
+                'Could not resolve the parent of `LinePathSegment` to extract `LinePathSegment.m_parent.high_symmetry_points`.'
+            )
+            return None
+        start_point = self.m_parent.high_symmetry_points.get(self.high_symmetry_path[0])
+        end_point = self.m_parent.high_symmetry_points.get(self.high_symmetry_path[1])
+        return np.linspace(start_point, end_point, self.n_line_points)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        if self.points is None:
+            self.points = self.resolve_points(
+                self.high_symmetry_path, self.n_line_points, logger
+            )
 
 
 class KMesh(Mesh):
@@ -246,10 +274,15 @@ class KMesh(Mesh):
     )
 
     high_symmetry_points = Quantity(
-        type=str,
-        shape=['*'],
+        type=JSON,
         description="""
-        Named high symmetry points in the mesh.
+        Dictionary containing the high-symmetry points and their points in terms of `reciprocal_lattice_vectors`.
+        E.g., in a cubic lattice:
+
+            high_symmetry_points = {
+                'Gamma': [0, 0, 0],
+                'X': [0.5, 0, 0],
+            }
         """,
     )
 
@@ -265,28 +298,36 @@ class KMesh(Mesh):
 
     line_path_segments = SubSection(sub_section=LinePathSegment.m_def, repeats=True)
 
-    def resolve_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+    # TODO add extraction of `high_symmetry_points` using BandStructureNormalizer idea (left for later when defining outputs.py)
+
+    def resolve_points_and_offset(
+        self, logger: BoundLogger
+    ) -> Tuple[Optional[List[np.ndarray]], Optional[np.ndarray]]:
         """
-        Resolves the `points` of the `KMesh` from the `grid` and the `sampling_method`.
+        Resolves the `points` and `offset` of the `KMesh` from the `grid` and the `sampling_method`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[pint.Quantity]): The resolved `points` of the `KMesh`.
+            (Optional[List[pint.Quantity, pint.Quantity]]): The resolved `points` and `offset` of the `KMesh`.
         """
         points = None
+        offset = None
         if self.sampling_method == 'Gamma-centered':
-            points = np.meshgrid(*[np.linspace(0, 1, n) for n in self.grid])
+            grid_space = [np.linspace(0, 1, n) for n in self.grid]
+            points = np.meshgrid(grid_space)
+            offset = np.array([0, 0, 0])
         elif self.sampling_method == 'Monkhorst-Pack':
             try:
-                points += monkhorst_pack(self.grid)
+                points = monkhorst_pack(self.grid)
+                offset = get_monkhorst_pack_size_and_offset(points)[-1]
             except ValueError:
                 logger.warning(
-                    'Could not resolve `KMesh.points` from `KMesh.grid`. Monkhorst-Pack failed.'
+                    'Could not resolve `KMesh.points` and `KMesh.offset` from `KMesh.grid`. ASE `monkhorst_pack` failed.'
                 )
                 return None  # this is a quick workaround: k_mesh.grid should be symmetry reduced
-        return points
+        return points, offset
 
     def get_k_line_density(
         self, reciprocal_lattice_vectors: pint.Quantity, logger: BoundLogger
@@ -333,10 +374,7 @@ class KMesh(Mesh):
         """
         for model_system in model_systems:
             # General checks to proceed with normalization
-            if not model_system.is_representative:
-                logger.warning(
-                    'The last `ModelSystem` was not found to be representative.'
-                )
+            if is_not_representative(model_system, logger):
                 return None
             # TODO extend this for other dimensions (@ndaelman-hu)
             if model_system.type != 'bulk':
@@ -374,9 +412,8 @@ class KMesh(Mesh):
             return
 
         # Normalize k mesh from grid sampling
-        self.points = (
-            self.resolve_points(logger) if self.points is None else self.points
-        )
+        if self.points is None and self.offset is None:
+            self.points, self.offset = self.resolve_points_and_offset(logger)
 
         # Calculate k_line_density for data quality measures
         model_systems = self.m_xpath('m_parent.m_parent.model_system', dict=False)
@@ -384,9 +421,9 @@ class KMesh(Mesh):
             self.k_line_density = self.resolve_k_line_density(model_systems, logger)
 
 
-class FrequencyMesh(Mesh):
+class QuasiparticlesFrequencyMesh(Mesh):
     """
-    A base section used to specify the settings of a sampling mesh in the frequency real or imaginary space.
+    A base section used to specify the settings of a sampling mesh in the frequency real or imaginary space for quasiparticle calculations.
     """
 
     points = Quantity(
@@ -489,7 +526,7 @@ class ModelMethod(ArchiveSection):
         description="""
         Name of the model method. This is typically used to easy identification of the `ModelMethod` section.
 
-        Suggested values: 'DFT', 'TB', 'BSE', 'GW', 'DMFT', 'NMR', 'kMC'.
+        Suggested values: 'DFT', 'TB', 'GE', 'BSE', 'DMFT', 'NMR', 'kMC'.
         """,
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
@@ -510,23 +547,6 @@ class ModelMethod(ArchiveSection):
         External reference to the model e.g. DOI, URL.
         """,
         a_eln=ELNAnnotation(component='URLEditQuantity'),
-    )
-
-    n_method_references = Quantity(
-        type=np.int32,
-        description="""
-        Number of other `ModelMethod` section references of the current method.
-        """,
-    )
-
-    methods_ref = Quantity(
-        type=Reference(SectionProxy('ModelMethod')),
-        shape=['n_method_references'],
-        description="""
-        Links the current `ModelMethod` section to other `ModelMethod` sections. For example, a
-        `BSE` calculation is composed of two `ModelMethod` sections: one with the settings of the
-        incoming `Photon`, and another with the settings of the `BSE` calculation.
-        """,
     )
 
     numerical_settings = SubSection(sub_section=NumericalSettings.m_def, repeats=True)
@@ -940,10 +960,7 @@ class TB(ModelMethodElectronic):
         model_system = model_systems[model_index]
 
         # If `ModelSystem` is not representative, the normalization will not run
-        if not model_system.is_representative:
-            logger.warning(
-                f'`ModelSystem`[{model_index}] section was not found to be representative.'
-            )
+        if is_not_representative(model_system, logger):
             return None
 
         # If `AtomicCell` is not found, the normalization will not run

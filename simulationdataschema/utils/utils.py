@@ -109,3 +109,20 @@ class RussellSaundersState:
         return factorial(self.multiplicity) / (
             factorial(self.multiplicity - self.occupation) * factorial(self.occupation)
         )
+
+
+def is_not_representative(model_system, logger: BoundLogger = None):
+    """
+    Checks if the given `ModelSystem` is not representative and logs a warning.
+
+    Args:
+        model_system (ModelSystem): The `ModelSystem` to check.
+        logger (BoundLogger): The logger to log messages.
+
+    Returns:
+        (bool): True if the `ModelSystem` is not representative, False otherwise.
+    """
+    if not model_system.is_representative:
+        logger.warning('The `ModelSystem` was not found to be representative.')
+        return True
+    return False
