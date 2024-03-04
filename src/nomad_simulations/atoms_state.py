@@ -37,12 +37,9 @@ class OrbitalsState(Entity):
     A base section used to define the orbital state of an atom.
     """
 
-    # TODO add check for `l_quantum_number` being only 0, 1, 2, 3
-    # TODO add check for `ml_quantum_number` being only -l, -l+1, ..., l-1, l
-    # TODO add check for `ms_quantum_number` being only -0.5 or 0.5
     # TODO add check for `j_quantum_number` and `mj_quantum_number`
-
     # TODO: add the relativistic kappa_quantum_number
+
     n_quantum_number = Quantity(
         type=np.int32,
         description="""
@@ -164,6 +161,35 @@ class OrbitalsState(Entity):
             'ms_numbers': dict((zip(('down', 'up'), (-0.5, 0.5)))),
         }
 
+    def _quantum_numbers_check(self, logger: BoundLogger) -> bool:
+        """
+        Checks the physicality of the quantum numbers.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (bool): True if the quantum numbers are physical, False otherwise.
+        """
+        if self.n_quantum_number < 1:
+            logger.error('The `n_quantum_number` must be greater than 0.')
+            return False
+        if self.l_quantum_number and self.l_quantum_number < 1:
+            logger.error('The `l_quantum_number` must be greater than 0.')
+            return False
+        if self.ml_quantum_number and (
+            self.ml_quantum_number < -self.l_quantum_number
+            or self.ml_quantum_number > self.l_quantum_number
+        ):
+            logger.error(
+                'The `ml_quantum_number` must be between `-l_quantum_number` and `l_quantum_number`.'
+            )
+            return False
+        if self.ms_quantum_number and self.ms_quantum_number not in [-0.5, 0.5]:
+            logger.error('The `ms_quantum_number` must be -0.5 or 0.5.')
+            return False
+        return True
+
     def resolve_number_and_symbol(
         self, quantum_name: str, quantum_type: str, logger: BoundLogger
     ) -> Optional[Union[str, int]]:
@@ -266,6 +292,11 @@ class OrbitalsState(Entity):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # General checks for physical quantum numbers and symbols
+        if not self._quantum_numbers_check(logger):
+            logger.error('The quantum numbers are not physical.')
+            return
 
         # Resolving the quantum numbers and symbols if not available
         for quantum_name in ['l', 'ml', 'ms']:
