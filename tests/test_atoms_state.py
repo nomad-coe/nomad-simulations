@@ -164,15 +164,15 @@ class TestCoreHole:
         'orbital_ref, n_excited_electrons, dscf_state, results',
         [
             (OrbitalsState(l_quantum_number=1), -0.5, None, (-0.5, None, None)),
-            (OrbitalsState(l_quantum_number=1), 0.5, None, (0.5, 6, 5.5)),
+            (OrbitalsState(l_quantum_number=1), 0.5, None, (0.5, None, 5.5)),
             (
                 OrbitalsState(l_quantum_number=1, ml_quantum_number=-1),
                 0.5,
                 None,
-                (0.5, 2, 1.5),
+                (0.5, None, 1.5),
             ),
             (OrbitalsState(l_quantum_number=1), 0.5, 'initial', (None, 1, None)),
-            (OrbitalsState(l_quantum_number=1), 0.5, 'final', (0.5, 6, 5.5)),
+            (OrbitalsState(l_quantum_number=1), 0.5, 'final', (0.5, None, 5.5)),
             (None, 0.5, None, (0.5, None, None)),
         ],
     )

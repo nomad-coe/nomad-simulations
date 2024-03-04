@@ -343,16 +343,16 @@ class CoreHole(ArchiveSection):
         super().normalize(archive, logger)
 
         # Check if n_excited_electrons is between 0 and 1
-        if 0.0 <= self.n_excited_electrons <= 1.0:
+        if self.n_excited_electrons < 0 or self.n_excited_electrons > 1:
             logger.error('Number of excited electrons must be between 0 and 1.')
-
-        # If dscf_state is 'initial', then n_excited_electrons is set to 0
-        if self.dscf_state == 'initial':
-            self.n_excited_electrons = None
-            self.degeneracy = 1
+            return
 
         # Resolve the occupation of the active orbital state
-        if self.orbital_ref is not None and self.n_excited_electrons:
+        if self.orbital_ref is not None:
+            # If dscf_state is 'initial', then n_excited_electrons is set to 0
+            if self.dscf_state == 'initial':
+                self.n_excited_electrons = None
+                self.orbital_ref.degeneracy = 1
             if self.orbital_ref.occupation is None:
                 self.orbital_ref.occupation = self.resolve_occupation(logger)
 
