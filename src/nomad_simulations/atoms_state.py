@@ -610,31 +610,49 @@ class AtomsState(Entity):
         sub_section=HubbardInteractions.m_def, repeats=False
     )
 
-    def resolve_chemical_symbol_and_number(self, logger: BoundLogger) -> None:
+    def resolve_chemical_symbol(self, logger: BoundLogger) -> Optional[str]:
         """
-        Resolves the chemical symbol from the atomic number and viceversa.
+        Resolves the `chemical_symbol` from the `atomic_number`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[str]): The resolved `chemical_symbol`.
         """
-        f = lambda x: tuple(map(bool, x))
-        if f((self.chemical_symbol, self.atomic_number)) == f((None, not None)):
+        if self.atomic_number is not None:
             try:
-                self.chemical_symbol = ase.data.chemical_symbols[self.atomic_number]
+                return ase.data.chemical_symbols[self.atomic_number]
             except IndexError:
                 logger.error(
                     'The `AtomsState.atomic_number` is out of range of the periodic table.'
                 )
-        elif f((self.chemical_symbol, self.atomic_number)) == f((not None, None)):
+        return None
+
+    def resolve_atomic_number(self, logger: BoundLogger) -> Optional[int]:
+        """
+        Resolves the `atomic_number` from the `chemical_symbol`.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[int]): The resolved `atomic_number`.
+        """
+        if self.chemical_symbol is not None:
             try:
-                self.atomic_number = ase.data.atomic_numbers[self.chemical_symbol]
+                return ase.data.atomic_numbers[self.chemical_symbol]
             except IndexError:
                 logger.error(
                     'The `AtomsState.chemical_symbol` is not recognized in the periodic table.'
                 )
+        return None
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Get chemical_symbol from atomic_number and viceversa
-        self.resolve_chemical_symbol_and_number(logger)
+        if self.chemical_symbol is None:
+            self.chemical_symbol = self.resolve_chemical_symbol(logger)
+        if self.atomic_number is None:
+            self.atomic_number = self.resolve_atomic_number(logger)

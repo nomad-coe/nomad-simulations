@@ -344,3 +344,43 @@ class TestHubbardInteractions:
         assert np.isclose(hubbard_interactions.u_effective.to('eV').magnitude, 1.0)
         assert np.isclose(hubbard_interactions.u_interaction.to('eV').magnitude, 3.0)
         assert hubbard_interactions.slater_integrals is None
+
+
+class TestAtomsState:
+    """
+    Tests the `AtomsState` class defined in atoms_state.py.
+    """
+
+    logger = logging.getLogger(__name__)
+
+    @staticmethod
+    def add_element_information(atom_state, quantity_name, value) -> None:
+        setattr(atom_state, quantity_name, value)
+
+    @pytest.fixture(autouse=True)
+    def atom_state(self) -> AtomsState:
+        return AtomsState()
+
+    @pytest.mark.parametrize(
+        'chemical_symbol, atomic_number',
+        [
+            ('Fe', 26),
+            ('H', 1),
+            ('Cu', 29),
+            ('O', 8),
+        ],
+    )
+    def test_chemical_symbol_and_atomic_number(
+        self, atom_state, chemical_symbol, atomic_number
+    ):
+        """
+        Test the `chemical_symbol` and `atomic_number` resolution for the `AtomsState` section.
+        """
+        # Testing `chemical_symbol`
+        self.add_element_information(atom_state, 'chemical_symbol', chemical_symbol)
+        resolved_atomic_number = atom_state.resolve_atomic_number(self.logger)
+        assert resolved_atomic_number == atomic_number
+        # Testing `atomic_number`
+        self.add_element_information(atom_state, 'atomic_number', atomic_number)
+        resolved_chemical_symbol = atom_state.resolve_chemical_symbol(self.logger)
+        assert resolved_chemical_symbol == chemical_symbol
