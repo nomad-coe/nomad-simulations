@@ -19,17 +19,8 @@
 import pytest
 import numpy as np
 
-from nomad.units import ureg
-
 from . import logger
-
-from nomad_simulations.model_system import (
-    AtomicCell,
-    Symmetry,
-    ChemicalFormula,
-    ModelSystem,
-)
-from nomad_simulations.atoms_state import AtomsState
+from nomad_simulations.model_system import AtomicCell
 
 
 class TestAtomicCell:
