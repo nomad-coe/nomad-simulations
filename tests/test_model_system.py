@@ -18,6 +18,7 @@
 
 import pytest
 
+from . import logger
 from nomad_simulations.model_system import AtomicCell
 
 
