@@ -22,7 +22,7 @@ import logging
 
 from nomad.units import ureg
 
-from simulationdataschema.atoms_state import (
+from nomad_simulations.atoms_state import (
     OrbitalsState,
     CoreHole,
     HubbardInteractions,

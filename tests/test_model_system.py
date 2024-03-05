@@ -18,7 +18,7 @@
 
 import pytest
 
-from simulationdataschema.model_system import AtomicCell
+from nomad_simulations.model_system import AtomicCell
 
 
 class TestAtomicCell:
