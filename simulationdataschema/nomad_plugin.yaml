@@ -1,4 +1,0 @@
-plugin_type: schema
-name: simulationdataschema
-description: |
-  This is a collection of schemas for simulation data.
