@@ -37,13 +37,6 @@ class TestOrbitalsState:
     """
 
     @staticmethod
-    def add_quantum_numbers(orbital_state, quantum_name, quantum_type, value) -> None:
-        """Adds quantum numbers to the `OrbitalsState` section."""
-        if quantum_name == 'ml':  # l_quantum_number must be specified
-            orbital_state.l_quantum_number = 1
-        setattr(orbital_state, f'{quantum_name}_quantum_{quantum_type}', value)
-
-    @staticmethod
     def add_state(
         orbital_state, l_number, ml_number, ms_number, j_number, mj_number
     ) -> None:
@@ -107,7 +100,9 @@ class TestOrbitalsState:
         """
         # Adding quantum numbers to the `OrbitalsState` section
         orbital_state = OrbitalsState(n_quantum_number=2)
-        self.add_quantum_numbers(orbital_state, quantum_name, quantum_type, value)
+        if quantum_name == 'ml':  # l_quantum_number must be specified
+            orbital_state.l_quantum_number = 1
+        setattr(orbital_state, f'{quantum_name}_quantum_{quantum_type}', value)
 
         # Making sure that the `quantum_type` is assigned
         resolved_type = orbital_state.resolve_number_and_symbol(
@@ -239,12 +234,6 @@ class TestHubbardInteractions:
     """
 
     @staticmethod
-    def add_slater_interactions(hubbard_interactions, slater_integrals) -> None:
-        """Adds `slater_integrals` (in eV) to the `HubbardInteractions` section."""
-        if slater_integrals is not None:
-            hubbard_interactions.slater_integrals = slater_integrals * ureg('eV')
-
-    @staticmethod
     def add_u_j(hubbard_interactions, u, j) -> None:
         """Adds `u_interaction` and `j_local_exchange_interaction` (in eV) to the `HubbardInteractions` section."""
         if u is not None:
@@ -266,7 +255,8 @@ class TestHubbardInteractions:
         """
         # Adding `slater_integrals` to the `HubbardInteractions` section
         hubbard_interactions = HubbardInteractions()
-        self.add_slater_interactions(hubbard_interactions, slater_integrals)
+        if slater_integrals is not None:
+            hubbard_interactions.slater_integrals = slater_integrals * ureg('eV')
 
         # Resolving U, U', and J from class method
         (
@@ -336,10 +326,6 @@ class TestAtomsState:
     Tests the `AtomsState` class defined in atoms_state.py.
     """
 
-    @staticmethod
-    def add_element_information(atom_state, quantity_name, value) -> None:
-        setattr(atom_state, quantity_name, value)
-
     @pytest.mark.parametrize(
         'chemical_symbol, atomic_number',
         [
@@ -355,10 +341,10 @@ class TestAtomsState:
         """
         # Testing `chemical_symbol`
         atom_state = AtomsState()
-        self.add_element_information(atom_state, 'chemical_symbol', chemical_symbol)
+        setattr(atom_state, 'chemical_symbol', chemical_symbol)
         resolved_atomic_number = atom_state.resolve_atomic_number(logger)
         assert resolved_atomic_number == atomic_number
         # Testing `atomic_number`
-        self.add_element_information(atom_state, 'atomic_number', atomic_number)
+        setattr(atom_state, 'atomic_number', atomic_number)
         resolved_chemical_symbol = atom_state.resolve_chemical_symbol(logger)
         assert resolved_chemical_symbol == chemical_symbol
