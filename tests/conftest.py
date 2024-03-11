@@ -102,6 +102,37 @@ def generate_model_system(
     return model_system
 
 
+def get_template_atomic_cell(
+    lattice_vectors: List = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    positions=None,
+    periodic_boundary_conditions: List = [False, False, False],
+    chemical_symbols: List = ['H', 'H', 'O'],
+    atomic_numbers: List = [1, 1, 8],
+) -> AtomicCell:
+    # Define positions if not provided
+    if positions is None and chemical_symbols is not None:
+        n_atoms = len(chemical_symbols)
+        positions = [[i / n_atoms, i / n_atoms, i / n_atoms] for i in range(n_atoms)]
+    # Define the atomic cell
+    atomic_cell = AtomicCell()
+    if lattice_vectors:
+        atomic_cell.lattice_vectors = lattice_vectors * ureg('angstrom')
+    if positions:
+        atomic_cell.positions = positions * ureg('angstrom')
+    if periodic_boundary_conditions:
+        atomic_cell.periodic_boundary_conditions = periodic_boundary_conditions
+
+    # Add the elements information
+    for index, atom in enumerate(chemical_symbols):
+        atom_state = AtomsState()
+        setattr(atom_state, 'chemical_symbol', atom)
+        atomic_number = atom_state.resolve_atomic_number(logger)
+        assert atomic_number == atomic_numbers[index]
+        atom_state.atomic_number = atomic_number
+        atomic_cell.atoms_state.append(atom_state)
+    return atomic_cell
+
+
 def generate_scf_electronic_band_gap_template(
     threshold_change: float = 1e-3,
 ) -> SCFOutputs:
@@ -171,6 +202,11 @@ def generate_simulation_electronic_dos(
 @pytest.fixture(scope='session')
 def model_system() -> ModelSystem:
     return generate_model_system()
+
+
+@pytest.fixture(scope='session')
+def atomic_cell() -> AtomicCell:
+    return get_template_atomic_cell()
 
 
 @pytest.fixture(scope='session')

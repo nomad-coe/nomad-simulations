@@ -20,7 +20,14 @@ import pytest
 import numpy as np
 
 from . import logger
-from nomad_simulations.model_system import AtomicCell
+from .conftest import get_template_atomic_cell
+from nomad_simulations.model_system import (
+    AtomicCell,
+    Symmetry,
+    ChemicalFormula,
+    ModelSystem,
+)
+from nomad_simulations.atoms_state import AtomsState
 
 
 class TestAtomicCell:
@@ -28,31 +35,8 @@ class TestAtomicCell:
     Test the `AtomicCell`, `Cell` and `GeometricSpace` classes defined in model_system.py
     """
 
-    @staticmethod
-    def atomic_cell(
-        lattice_vectors, positions, periodic_boundary_conditions, atoms, atomic_numbers
-    ) -> AtomicCell:
-        # Define the atomic cell
-        atomic_cell = AtomicCell()
-        if lattice_vectors:
-            atomic_cell.lattice_vectors = lattice_vectors * ureg('angstrom')
-        if positions:
-            atomic_cell.positions = positions * ureg('angstrom')
-        if periodic_boundary_conditions:
-            atomic_cell.periodic_boundary_conditions = periodic_boundary_conditions
-
-        # Add the elements information
-        for index, atom in enumerate(atoms):
-            atom_state = AtomsState()
-            setattr(atom_state, 'chemical_symbol', atom)
-            atomic_number = atom_state.resolve_atomic_number(logger)
-            assert atomic_number == atomic_numbers[index]
-            atom_state.atomic_number = atomic_number
-            atomic_cell.atoms_state.append(atom_state)
-        return atomic_cell
-
     @pytest.mark.parametrize(
-        'atoms, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
+        'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
         [
             (
                 ['H', 'H', 'O'],
@@ -98,24 +82,24 @@ class TestAtomicCell:
     )
     def test_generate_ase_atoms(
         self,
-        atoms,
+        chemical_symbols,
         atomic_numbers,
         formula,
         lattice_vectors,
         positions,
         periodic_boundary_conditions,
     ):
-        atomic_cell = self.atomic_cell(
+        atomic_cell = get_template_atomic_cell(
             lattice_vectors,
             positions,
             periodic_boundary_conditions,
-            atoms,
+            chemical_symbols,
             atomic_numbers,
         )
 
         # Test `to_ase_atoms` function
         ase_atoms = atomic_cell.to_ase_atoms(logger)
-        if not atoms or not positions or len(atoms) != len(positions):
+        if not chemical_symbols or len(chemical_symbols) != len(positions):
             assert ase_atoms is None
         else:
             if lattice_vectors:
@@ -128,7 +112,7 @@ class TestAtomicCell:
             assert ase_atoms.symbols.get_chemical_formula() == formula
 
     @pytest.mark.parametrize(
-        'atoms, atomic_numbers, lattice_vectors, positions, vectors_results, angles_results, volume',
+        'chemical_symbols, atomic_numbers, lattice_vectors, positions, vectors_results, angles_results, volume',
         [
             (
                 ['H', 'H', 'O'],
@@ -188,7 +172,7 @@ class TestAtomicCell:
     )
     def test_geometric_space(
         self,
-        atoms,
+        chemical_symbols,
         atomic_numbers,
         lattice_vectors,
         positions,
@@ -197,11 +181,11 @@ class TestAtomicCell:
         volume,
     ):
         pbc = [False, False, False]
-        atomic_cell = self.atomic_cell(
+        atomic_cell = get_template_atomic_cell(
             lattice_vectors,
             positions,
             pbc,
-            atoms,
+            chemical_symbols,
             atomic_numbers,
         )
 
@@ -236,3 +220,44 @@ class TestAtomicCell:
             assert np.isclose(atomic_cell.volume.to('angstrom^3').magnitude, volume)
         else:
             assert atomic_cell.volume == volume
+
+
+class TestChemicalFormula:
+    def test_empty_section(self):
+        chemical_formula = ChemicalFormula()
+        chemical_formula.normalize(None, logger)
+        for name in ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']:
+            assert getattr(chemical_formula, name) is None
+
+    @pytest.mark.parametrize(
+        'chemical_symbols, atomic_numbers, formulas',
+        [
+            (
+                ['H', 'H', 'O'],
+                [1, 1, 8],
+                ['H2O', 'H2O', 'H2O', 'H2O', 'A2B'],
+            ),
+            (
+                ['O', 'O', 'O', 'O', 'La', 'Cu', 'Cu'],
+                [8, 8, 8, 8, 57, 29, 29],
+                ['LaCu2O4', 'Cu2LaO4', 'LaCu2O4', 'Cu2LaO4', 'A4B2C'],
+            ),
+            (
+                ['O', 'La', 'As', 'Fe', 'C'],
+                [8, 57, 33, 26, 6],
+                ['CAsFeLaO', 'AsCFeLaO', 'LaFeCAsO', 'CAsFeLaO', 'ABCDE'],
+            ),
+        ],
+    )
+    def test_normalize(self, chemical_symbols, atomic_numbers, formulas):
+        atomic_cell = get_template_atomic_cell(
+            chemical_symbols=chemical_symbols, atomic_numbers=atomic_numbers
+        )
+        chemical_formula = ChemicalFormula()
+        model_system = ModelSystem(chemical_formula=chemical_formula)
+        model_system.atomic_cell.append(atomic_cell)
+        chemical_formula.normalize(None, logger)
+        for index, name in enumerate(
+            ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']
+        ):
+            assert getattr(chemical_formula, name) == formulas[index]

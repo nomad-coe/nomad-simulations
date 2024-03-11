@@ -345,7 +345,13 @@ class AtomicCell(Cell):
             self.periodic_boundary_conditions = [False, False, False]
         ase_atoms.set_pbc(self.periodic_boundary_conditions)
 
-        # Positions (ensure they are parsed)
+        # Lattice vectors
+        if self.lattice_vectors is not None:
+            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
+        else:
+            logger.info('Could not find `AtomicCell.lattice_vectors`.')
+
+        # Positions
         if self.positions is not None:
             if len(self.positions) != len(self.atoms_state):
                 logger.error(
@@ -354,14 +360,8 @@ class AtomicCell(Cell):
                 return None
             ase_atoms.set_positions(self.positions.to('angstrom').magnitude)
         else:
-            logger.error('Could not find `AtomicCell.positions`.')
+            logger.warning('Could not find `AtomicCell.positions`.')
             return None
-
-        # Lattice vectors
-        if self.lattice_vectors is not None:
-            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
-        else:
-            logger.info('Could not find `AtomicCell.lattice_vectors`.')
 
         return ase_atoms
 
@@ -714,6 +714,9 @@ class ChemicalFormula(ArchiveSection):
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name='cell', logger=logger
         )
+        if atomic_cell is None:
+            logger.warning('Could not resolve the sibling `AtomicCell` section.')
+            return
         ase_atoms = atomic_cell.to_ase_atoms(logger)
         formula = None
         try:
