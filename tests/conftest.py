@@ -105,7 +105,7 @@ def generate_model_system(
 def get_template_atomic_cell(
     lattice_vectors: List = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
     positions=None,
-    periodic_boundary_conditions: List = [False, False, False],
+    periodic_boundary_conditions=None,
     chemical_symbols: List = ['H', 'H', 'O'],
     atomic_numbers: List = [1, 1, 8],
 ) -> AtomicCell:
@@ -113,6 +113,10 @@ def get_template_atomic_cell(
     if positions is None and chemical_symbols is not None:
         n_atoms = len(chemical_symbols)
         positions = [[i / n_atoms, i / n_atoms, i / n_atoms] for i in range(n_atoms)]
+    # Define periodic boundary conditions if not provided
+    if periodic_boundary_conditions is None:
+        periodic_boundary_conditions = [False, False, False]
+
     # Define the atomic cell
     atomic_cell = AtomicCell()
     if lattice_vectors:
@@ -130,6 +134,7 @@ def get_template_atomic_cell(
         assert atomic_number == atomic_numbers[index]
         atom_state.atomic_number = atomic_number
         atomic_cell.atoms_state.append(atom_state)
+
     return atomic_cell
 
 

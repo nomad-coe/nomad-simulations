@@ -89,6 +89,9 @@ class TestAtomicCell:
         positions,
         periodic_boundary_conditions,
     ):
+        """
+        Test the creation of `ase.Atoms` from `AtomicCell`.
+        """
         atomic_cell = get_template_atomic_cell(
             lattice_vectors,
             positions,
@@ -180,6 +183,9 @@ class TestAtomicCell:
         angles_results,
         volume,
     ):
+        """
+        Test the `GeometricSpace` quantities normalization from `AtomicCell`.
+        """
         pbc = [False, False, False]
         atomic_cell = get_template_atomic_cell(
             lattice_vectors,
@@ -222,8 +228,15 @@ class TestAtomicCell:
             assert atomic_cell.volume == volume
 
 
-class TestChemicalFormula:
-    def test_empty_section(self):
+class TestModelSystem:
+    """
+    Test the `ModelSystem`, `Symmetry` and `ChemicalFormula` classes defined in model_system.py
+    """
+
+    def test_empty_chemical_formula(self):
+        """
+        Test the empty `ChemicalFormula` normalization if a sibling `AtomicCell` is not provided.
+        """
         chemical_formula = ChemicalFormula()
         chemical_formula.normalize(None, logger)
         for name in ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']:
@@ -249,7 +262,10 @@ class TestChemicalFormula:
             ),
         ],
     )
-    def test_normalize(self, chemical_symbols, atomic_numbers, formulas):
+    def test_chemical_formula(self, chemical_symbols, atomic_numbers, formulas):
+        """
+        Test the `ChemicalFormula` normalization if a sibling `AtomicCell` is created, and thus the `Formula` class can be used.
+        """
         atomic_cell = get_template_atomic_cell(
             chemical_symbols=chemical_symbols, atomic_numbers=atomic_numbers
         )
@@ -261,3 +277,57 @@ class TestChemicalFormula:
             ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']
         ):
             assert getattr(chemical_formula, name) == formulas[index]
+
+    @pytest.mark.parametrize(
+        'positions, pbc, system_type, dimensionality',
+        [
+            (
+                [[0, 0, 0], [0.5, 0.5, 0.5], [1, 1, 1]],
+                None,
+                'molecule / cluster',
+                0,
+            ),
+            (
+                [[0, 0, 0], [0.5, 0.5, 0.5], [1, 1, 1]],
+                [False, False, False],
+                'molecule / cluster',
+                0,
+            ),
+            (
+                [[0, 0, 0], [0.5, 0.5, 0.5], [1, 1, 1]],
+                [True, False, False],
+                '1D',
+                1,
+            ),
+            (
+                [[0, 0, 0], [0.5, 0.5, 0.5], [1, 1, 1]],
+                [True, True, False],
+                '2D',
+                2,
+            ),
+            (
+                [[0, 0, 0], [0.5, 0.5, 0.5], [1, 1, 1]],
+                [True, True, True],
+                'bulk',
+                3,
+            ),
+        ],
+    )
+    def test_system_type_and_dimensionality(
+        self, positions, pbc, system_type, dimensionality
+    ):
+        """
+        Test the `ModelSystem` normalization of `system_type` and `dimensionality` from `AtomicCell`.
+        """
+        atomic_cell = get_template_atomic_cell(
+            positions=positions, periodic_boundary_conditions=pbc
+        )
+        ase_atoms = atomic_cell.to_ase_atoms(logger)
+        model_system = ModelSystem()
+        model_system.atomic_cell.append(atomic_cell)
+        (
+            resolved_system_type,
+            resolved_dimensionality,
+        ) = model_system.resolve_system_type_and_dimensionality(ase_atoms, logger)
+        assert resolved_system_type == system_type
+        assert resolved_dimensionality == dimensionality
