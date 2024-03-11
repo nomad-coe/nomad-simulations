@@ -171,7 +171,7 @@ class OrbitalsState(Entity):
         Returns:
             (bool): True if the quantum numbers are physical, False otherwise.
         """
-        if self.n_quantum_number < 1:
+        if self.n_quantum_number is not None and self.n_quantum_number < 1:
             logger.error('The `n_quantum_number` must be greater than 0.')
             return False
         if self.l_quantum_number is not None and self.l_quantum_number < 1:
@@ -232,9 +232,6 @@ class OrbitalsState(Entity):
             self, f'{quantum_name}_quantum_{_countertype_map[quantum_type]}'
         )
         if other_quantity is None:
-            logger.debug(
-                f'Could not find the {quantum_name}_quantum_{quantum_type} countertype {_countertype_map[quantum_type]}.'
-            )
             return None
 
         # If the counterpart exists, then resolve the quantity from the orbitals_map
