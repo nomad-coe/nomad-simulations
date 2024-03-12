@@ -25,7 +25,6 @@ from . import logger
 from nomad_simulations.utils import (
     get_sibling_section,
     is_not_representative,
-    check_archive,
 )
 from nomad_simulations.model_system import ModelSystem, AtomicCell, Symmetry
 
@@ -62,11 +61,3 @@ def test_is_not_representative():
     assert is_not_representative(None, logger) is None
     assert is_not_representative(ModelSystem(), logger)
     assert not is_not_representative(ModelSystem(is_representative=True), logger)
-
-
-def test_check_archive():
-    """
-    Test the `check_archive` utility function.
-    """
-    assert not check_archive(None, logger)
-    assert check_archive(EntryArchive(), logger)

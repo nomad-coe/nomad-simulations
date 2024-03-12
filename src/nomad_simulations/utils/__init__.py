@@ -16,9 +16,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .utils import (
-    get_sibling_section,
-    RussellSaundersState,
-    is_not_representative,
-    check_archive,
-)
+from .utils import get_sibling_section, RussellSaundersState, is_not_representative

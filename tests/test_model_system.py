@@ -19,6 +19,8 @@
 import pytest
 import numpy as np
 
+from nomad.datamodel import EntryArchive
+
 from . import logger
 from .conftest import get_template_atomic_cell
 from nomad_simulations.model_system import (
@@ -26,7 +28,6 @@ from nomad_simulations.model_system import (
     ChemicalFormula,
     ModelSystem,
 )
-from nomad_simulations.atoms_state import AtomsState
 
 
 class TestAtomicCell:
@@ -406,7 +407,7 @@ class TestModelSystem:
         )
         model_system = ModelSystem(is_representative=True)
         model_system.atomic_cell.append(atomic_cell)
-        model_system.normalize(None, logger)
+        model_system.normalize(EntryArchive(), logger)
         # Basic quantities assertions
         assert model_system.type == 'bulk'
         assert model_system.dimensionality == 3
