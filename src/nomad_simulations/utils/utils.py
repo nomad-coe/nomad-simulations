@@ -22,6 +22,7 @@ from typing import Optional
 from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel import EntryArchive
 
 
 def get_sibling_section(
@@ -128,12 +129,12 @@ def is_not_representative(model_system, logger: BoundLogger = None):
     return False
 
 
-def check_archive(archive: ArchiveSection, logger: BoundLogger = None):
+def check_archive(archive: EntryArchive, logger: BoundLogger = None):
     """
-    Checks if the given `ArchiveSection` is empty and logs a warning.
+    Checks if the given `EntryArchive` is empty and logs a warning.
 
     Args:
-        archive (ArchiveSection): The `ArchiveSection` to check.
+        archive (EntryArchive): The `EntryArchive` to check.
         logger (BoundLogger): The logger to log messages.
 
     Returns:
