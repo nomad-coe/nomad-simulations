@@ -130,7 +130,7 @@ def is_not_representative(model_system, logger: BoundLogger = None):
 
 def check_archive(archive: ArchiveSection, logger: BoundLogger = None):
     """
-    Checks if the given `Archive` is empty and logs a warning.
+    Checks if the given `ArchiveSection` is empty and logs a warning.
 
     Args:
         archive (ArchiveSection): The `ArchiveSection` to check.

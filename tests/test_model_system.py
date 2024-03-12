@@ -22,7 +22,6 @@ import numpy as np
 from . import logger
 from .conftest import get_template_atomic_cell
 from nomad_simulations.model_system import (
-    AtomicCell,
     Symmetry,
     ChemicalFormula,
     ModelSystem,
