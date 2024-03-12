@@ -606,18 +606,19 @@ class Symmetry(ArchiveSection):
             aflow_prototype = search_aflow_prototype(
                 symmetry.get('space_group_number'), norm_wyckoff
             )
-            strukturbericht = aflow_prototype.get('Strukturbericht Designation')
-            strukturbericht = (
-                re.sub('[$_{}]', '', strukturbericht)
-                if strukturbericht != 'None'
-                else None
-            )
-            prototype_aflow_id = aflow_prototype.get('aflow_prototype_id')
-            prototype_formula = aflow_prototype.get('Prototype')
-            # Adding these to the symmetry dictionary for later assignement
-            symmetry['strukturbericht_designation'] = strukturbericht
-            symmetry['prototype_aflow_id'] = prototype_aflow_id
-            symmetry['prototype_formula'] = prototype_formula
+            if aflow_prototype:
+                strukturbericht = aflow_prototype.get('Strukturbericht Designation')
+                strukturbericht = (
+                    re.sub('[$_{}]', '', strukturbericht)
+                    if strukturbericht != 'None'
+                    else None
+                )
+                prototype_aflow_id = aflow_prototype.get('aflow_prototype_id')
+                prototype_formula = aflow_prototype.get('Prototype')
+                # Adding these to the symmetry dictionary for later assignement
+                symmetry['strukturbericht_designation'] = strukturbericht
+                symmetry['prototype_aflow_id'] = prototype_aflow_id
+                symmetry['prototype_formula'] = prototype_formula
 
         # Populating Symmetry section
         for key, val in self.m_def.all_quantities.items():
@@ -963,8 +964,8 @@ class ModelSystem(System):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
-        if self.cell is None:
-            self.logger.warning(
+        if self.cell is None or len(self.cell) == 0:
+            logger.warning(
                 'Could not find the originally parsed atomic system. `Symmetry` and `ChemicalFormula` extraction is thus not run.'
             )
             return

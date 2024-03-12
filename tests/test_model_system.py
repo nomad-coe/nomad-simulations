@@ -317,7 +317,7 @@ class TestModelSystem:
         self, positions, pbc, system_type, dimensionality
     ):
         """
-        Test the `ModelSystem` normalization of `system_type` and `dimensionality` from `AtomicCell`.
+        Test the `ModelSystem` normalization of `type` and `dimensionality` from `AtomicCell`.
         """
         atomic_cell = get_template_atomic_cell(
             positions=positions, periodic_boundary_conditions=pbc
@@ -331,3 +331,100 @@ class TestModelSystem:
         ) = model_system.resolve_system_type_and_dimensionality(ase_atoms, logger)
         assert resolved_system_type == system_type
         assert resolved_dimensionality == dimensionality
+
+    def test_symmetry(self):
+        """
+        Test the `Symmetry` normalization from a sibling `AtomicCell` section.
+        """
+        atomic_cell = get_template_atomic_cell(
+            periodic_boundary_conditions=[True, True, True]
+        )
+        assert (
+            np.isclose(
+                atomic_cell.lattice_vectors.to('angstrom').magnitude,
+                np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]),
+            )
+        ).all()
+        symmetry = Symmetry()
+        primitive, conventional = symmetry.resolve_bulk_symmetry(atomic_cell, logger)
+        assert symmetry.bravais_lattice == 'hR'
+        assert symmetry.hall_symbol == '-R 3 2"'
+        assert symmetry.point_group_symbol == '-3m'
+        assert symmetry.space_group_number == 166
+        assert symmetry.space_group_symbol == 'R-3m'
+        assert primitive.type == 'primitive'
+        assert primitive.periodic_boundary_conditions == [False, False, False]
+        assert (
+            np.isclose(
+                primitive.lattice_vectors.to('angstrom').magnitude,
+                np.array(
+                    [
+                        [7.07106781e-01, 4.08248290e-01, 5.77350269e-01],
+                        [-7.07106781e-01, 4.08248290e-01, 5.77350269e-01],
+                        [1.08392265e-17, -8.16496581e-01, 5.77350269e-01],
+                    ]
+                ),
+            )
+        ).all()
+        assert conventional.type == 'conventional'
+        assert (
+            np.isclose(
+                conventional.lattice_vectors.to('angstrom').magnitude,
+                np.array(
+                    [
+                        [1.41421356, 0.0, 0.0],
+                        [-0.70710678, 1.22474487, 0.0],
+                        [0.0, 0.0, 1.73205081],
+                    ]
+                ),
+            )
+        ).all()
+
+    def test_no_representative(self):
+        """
+        Test the normalization of a `ModelSystem` is not run if it is not representative.
+        """
+        model_system = ModelSystem(is_representative=False)
+        model_system.normalize(None, logger)
+        assert model_system.type is None
+        assert model_system.dimensionality is None
+
+    def test_empty_atomic_cell(self):
+        """
+        Test the normalization of a `ModelSystem` is not run if it has no `AtomicCell` child section.
+        """
+        model_system = ModelSystem(is_representative=True)
+        model_system.normalize(None, logger)
+        assert model_system.type is None
+        assert model_system.dimensionality is None
+
+    def test_normalize(self):
+        """
+        Test the full normalization of a representative `ModelSystem`.
+        """
+        atomic_cell = get_template_atomic_cell(
+            periodic_boundary_conditions=[True, True, True]
+        )
+        model_system = ModelSystem(is_representative=True)
+        model_system.atomic_cell.append(atomic_cell)
+        model_system.normalize(None, logger)
+        # Basic quantities assertions
+        assert model_system.type == 'bulk'
+        assert model_system.dimensionality == 3
+        # AtomicCell
+        assert len(model_system.atomic_cell) == 3
+        assert model_system.atomic_cell[0].type == 'original'
+        assert model_system.atomic_cell[1].type == 'primitive'
+        assert model_system.atomic_cell[2].type == 'conventional'
+        # Symmetry
+        assert len(model_system.symmetry) == 1
+        assert model_system.symmetry[0].bravais_lattice == 'hR'
+        assert model_system.symmetry[0].atomic_cell_ref == model_system.atomic_cell[2]
+        # ChemicalFormula
+        assert model_system.chemical_formula.descriptive == 'H2O'
+        # ElementalComposition
+        assert len(model_system.elemental_composition) == 2
+        assert model_system.elemental_composition[0].element == 'H'
+        assert np.isclose(model_system.elemental_composition[0].atomic_fraction, 2 / 3)
+        assert model_system.elemental_composition[1].element == 'O'
+        assert np.isclose(model_system.elemental_composition[1].atomic_fraction, 1 / 3)
