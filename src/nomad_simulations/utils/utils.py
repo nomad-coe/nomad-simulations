@@ -126,3 +126,20 @@ def is_not_representative(model_system, logger: BoundLogger = None):
         logger.warning('The `ModelSystem` was not found to be representative.')
         return True
     return False
+
+
+def check_archive(archive: ArchiveSection, logger: BoundLogger = None):
+    """
+    Checks if the given `Archive` is empty and logs a warning.
+
+    Args:
+        archive (ArchiveSection): The `ArchiveSection` to check.
+        logger (BoundLogger): The logger to log messages.
+
+    Returns:
+        (bool): True if the archive is empty, False otherwise.
+    """
+    if not archive:
+        logger.warning('The `archive` is empty.')
+        return False
+    return True

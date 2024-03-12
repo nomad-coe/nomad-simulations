@@ -29,7 +29,7 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .utils import RussellSaundersState
+from .utils import RussellSaundersState, check_archive
 
 
 class OrbitalsState(Entity):
@@ -291,6 +291,8 @@ class OrbitalsState(Entity):
         return degeneracy
 
     def normalize(self, archive, logger) -> None:
+        if not check_archive(archive, logger):
+            return
         super().normalize(archive, logger)
 
         # General checks for physical quantum numbers and symbols
@@ -370,6 +372,8 @@ class CoreHole(ArchiveSection):
         return None
 
     def normalize(self, archive, logger) -> None:
+        if not check_archive(archive, logger):
+            return
         super().normalize(archive, logger)
 
         # Check if n_excited_electrons is between 0 and 1
@@ -538,6 +542,8 @@ class HubbardInteractions(ArchiveSection):
         return self.u_interaction - self.j_local_exchange_interaction
 
     def normalize(self, archive, logger) -> None:
+        if not check_archive(archive, logger):
+            return
         super().normalize(archive, logger)
 
         # Obtain (u, up, j_hunds_coupling) from slater_integrals
@@ -646,6 +652,8 @@ class AtomsState(Entity):
         return None
 
     def normalize(self, archive, logger) -> None:
+        if not check_archive(archive, logger):
+            return
         super().normalize(archive, logger)
 
         # Get chemical_symbol from atomic_number and viceversa
