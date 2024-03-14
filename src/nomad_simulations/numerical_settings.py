@@ -381,9 +381,9 @@ class KMesh(Mesh):
                 logger.warning('`ModelSystem.type` is not describing a bulk system.')
                 return None
 
-            atomic_cell = model_system.atomic_cell
+            atomic_cell = model_system.cell
             if atomic_cell is None:
-                logger.warning('`ModelSystem.atomic_cell` was not found.')
+                logger.warning('`ModelSystem.cell` was not found.')
                 return None
 
             # Set the `reciprocal_lattice_vectors` using ASE

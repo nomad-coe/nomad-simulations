@@ -31,7 +31,7 @@ from nomad.metainfo import (
     Context,
 )
 
-from .numerical_settings import NumericalSettings
+from .numerical_settings import NumericalSettings, KMesh
 from .model_system import ModelSystem
 from .atoms_state import OrbitalsState, CoreHole
 from .utils import is_not_representative
@@ -489,7 +489,7 @@ class TB(ModelMethodElectronic):
             return None
 
         # If `AtomicCell` is not found, the normalization will not run
-        atomic_cell = model_system.atomic_cell[0]
+        atomic_cell = model_system.cell[0]
         if atomic_cell is None:
             logger.warning('`AtomicCell` section was not found.')
             return None
