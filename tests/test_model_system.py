@@ -271,7 +271,7 @@ class TestModelSystem:
         )
         chemical_formula = ChemicalFormula()
         model_system = ModelSystem(chemical_formula=chemical_formula)
-        model_system.atomic_cell.append(atomic_cell)
+        model_system.cell.append(atomic_cell)
         chemical_formula.normalize(None, logger)
         for index, name in enumerate(
             ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']
@@ -324,7 +324,7 @@ class TestModelSystem:
         )
         ase_atoms = atomic_cell.to_ase_atoms(logger)
         model_system = ModelSystem()
-        model_system.atomic_cell.append(atomic_cell)
+        model_system.cell.append(atomic_cell)
         (
             resolved_system_type,
             resolved_dimensionality,
@@ -406,20 +406,20 @@ class TestModelSystem:
             periodic_boundary_conditions=[True, True, True]
         )
         model_system = ModelSystem(is_representative=True)
-        model_system.atomic_cell.append(atomic_cell)
+        model_system.cell.append(atomic_cell)
         model_system.normalize(EntryArchive(), logger)
         # Basic quantities assertions
         assert model_system.type == 'bulk'
         assert model_system.dimensionality == 3
         # AtomicCell
-        assert len(model_system.atomic_cell) == 3
-        assert model_system.atomic_cell[0].type == 'original'
-        assert model_system.atomic_cell[1].type == 'primitive'
-        assert model_system.atomic_cell[2].type == 'conventional'
+        assert len(model_system.cell) == 3
+        assert model_system.cell[0].type == 'original'
+        assert model_system.cell[1].type == 'primitive'
+        assert model_system.cell[2].type == 'conventional'
         # Symmetry
         assert len(model_system.symmetry) == 1
         assert model_system.symmetry[0].bravais_lattice == 'hR'
-        assert model_system.symmetry[0].atomic_cell_ref == model_system.atomic_cell[2]
+        assert model_system.symmetry[0].atomic_cell_ref == model_system.cell[2]
         # ChemicalFormula
         assert model_system.chemical_formula.descriptive == 'H2O'
         # ElementalComposition
