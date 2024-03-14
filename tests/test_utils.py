@@ -16,11 +16,6 @@
 # limitations under the License.
 #
 
-import pytest
-import numpy as np
-
-from nomad.datamodel import EntryArchive
-
 from . import logger
 from nomad_simulations.utils import (
     get_sibling_section,
