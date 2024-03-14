@@ -55,7 +55,7 @@ from nomad import config
 from nomad.units import ureg
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
 
-from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
+from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
@@ -224,6 +224,14 @@ class Cell(GeometricSpace):
     A base section used to specify the cell quantities of a system at a given moment in time.
     """
 
+    name = Quantity(
+        type=str,
+        description="""
+        Name of the specific cell section. This is typically used to easy identification of the
+        `Cell` section. Possible values: "AtomicCell".
+        """,
+    )
+
     type = Quantity(
         type=MEnum('original', 'primitive', 'conventional'),
         description="""
@@ -327,6 +335,11 @@ class AtomicCell(Cell):
         """,
     )
 
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
     def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
@@ -372,6 +385,9 @@ class AtomicCell(Cell):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Set the name of the section
+        self.name = self.m_def.name if self.name is None else self.name
 
 
 class Symmetry(ArchiveSection):
@@ -629,7 +645,7 @@ class Symmetry(ArchiveSection):
 
     def normalize(self, archive, logger) -> None:
         atomic_cell = get_sibling_section(
-            section=self, sibling_section_name='atomic_cell', logger=logger
+            section=self, sibling_section_name='cell', logger=logger
         )
         if self.m_parent.type == 'bulk':
             # Adding the newly calculated primitive and conventional cells to the ModelSystem
@@ -637,14 +653,10 @@ class Symmetry(ArchiveSection):
                 primitive_atomic_cell,
                 conventional_atomic_cell,
             ) = self.resolve_bulk_symmetry(atomic_cell, logger)
-            self.m_parent.m_add_sub_section(
-                ModelSystem.atomic_cell, primitive_atomic_cell
-            )
-            self.m_parent.m_add_sub_section(
-                ModelSystem.atomic_cell, conventional_atomic_cell
-            )
+            self.m_parent.m_add_sub_section(ModelSystem.cell, primitive_atomic_cell)
+            self.m_parent.m_add_sub_section(ModelSystem.cell, conventional_atomic_cell)
             # Reference to the standarized cell, and if not, fallback to the originally parsed one
-            self.atomic_cell_ref = self.m_parent.atomic_cell[-1]
+            self.atomic_cell_ref = self.m_parent.cell[-1]
 
 
 class ChemicalFormula(ArchiveSection):
@@ -718,7 +730,7 @@ class ChemicalFormula(ArchiveSection):
 
     def normalize(self, archive, logger) -> None:
         atomic_cell = get_sibling_section(
-            section=self, sibling_section_name='atomic_cell', logger=logger
+            section=self, sibling_section_name='cell', logger=logger
         )
         ase_atoms = atomic_cell.to_ase_atoms(logger)
         formula = None
@@ -858,7 +870,7 @@ class ModelSystem(System):
         """,
     )
 
-    atomic_cell = SubSection(sub_section=AtomicCell.m_def, repeats=True)
+    cell = SubSection(sub_section=Cell.m_def, repeats=True)
 
     symmetry = SubSection(sub_section=Symmetry.m_def, repeats=True)
 
@@ -966,29 +978,30 @@ class ModelSystem(System):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
-        if self.atomic_cell is None:
+        if self.cell is None:
             self.logger.warning(
                 'Could not find the originally parsed atomic system. `Symmetry` and `ChemicalFormula` extraction is thus not run.'
             )
             return
-        self.atomic_cell[0].type = 'original'
-        ase_atoms = self.atomic_cell[0].to_ase_atoms(logger)
-        if not ase_atoms:
-            return
+        if self.cell[0].name == 'AtomicCell':
+            self.cell[0].type = 'original'
+            ase_atoms = self.cell[0].to_ase_atoms(logger)
+            if not ase_atoms:
+                return
 
-        # Resolving system `type`, `dimensionality`, and Symmetry section (if this last
-        # one does not exists already)
-        original_atom_positions = self.atomic_cell[0].positions
-        if original_atom_positions is not None:
-            self.type = 'unavailable' if not self.type else self.type
-            (
-                self.type,
-                self.dimensionality,
-            ) = self.resolve_system_type_and_dimensionality(ase_atoms, logger)
-            # Creating and normalizing Symmetry section
-            if self.type == 'bulk' and self.symmetry is not None:
-                sec_symmetry = self.m_create(Symmetry)
-                sec_symmetry.normalize(archive, logger)
+            # Resolving system `type`, `dimensionality`, and Symmetry section (if this last
+            # one does not exists already)
+            original_atom_positions = self.cell[0].positions
+            if original_atom_positions is not None:
+                self.type = 'unavailable' if not self.type else self.type
+                (
+                    self.type,
+                    self.dimensionality,
+                ) = self.resolve_system_type_and_dimensionality(ase_atoms, logger)
+                # Creating and normalizing Symmetry section
+                if self.type == 'bulk' and self.symmetry is not None:
+                    sec_symmetry = self.m_create(Symmetry)
+                    sec_symmetry.normalize(archive, logger)
 
         # Creating and normalizing ChemicalFormula section
         # TODO add support for fractional formulas (possibly add `AtomicCell.concentrations` for each species)

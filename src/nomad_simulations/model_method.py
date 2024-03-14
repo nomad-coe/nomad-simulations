@@ -15,24 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#
-# Copyright The NOMAD Authors.
-#
-# This file is part of NOMAD.
-# See https://nomad-lab.eu for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 
 import numpy as np
 import pint
@@ -71,7 +53,6 @@ class NumericalSettings(ArchiveSection):
         `NumericalSettings` section. Possible values: "KMesh", "FrequencyMesh", "TimeMesh",
         "SelfConsistency", "BasisSet".
         """,
-        a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
     def normalize(self, archive, logger) -> None:
@@ -317,6 +298,11 @@ class KMesh(Mesh):
 
     # TODO add extraction of `high_symmetry_points` using BandStructureNormalizer idea (left for later when defining outputs.py)
 
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
     def resolve_points_and_offset(
         self, logger: BoundLogger
     ) -> Tuple[Optional[List[np.ndarray]], Optional[np.ndarray]]:
@@ -420,9 +406,6 @@ class KMesh(Mesh):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Set the name of the section
-        self.name = self.m_def.name if self.name is None else self.name
-
         # If `grid` is not defined, we do not normalize the KMesh
         if self.grid is None:
             logger.warning('Could not find `KMesh.grid`.')
@@ -452,11 +435,13 @@ class QuasiparticlesFrequencyMesh(Mesh):
         """,
     )
 
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-
-        # Set the name of the section
-        self.name = self.m_def.name if self.name is None else self.name
 
 
 class SelfConsistency(NumericalSettings):
@@ -511,22 +496,27 @@ class SelfConsistency(NumericalSettings):
         """,
     )
 
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-
-        # Set the name of the section
-        self.name = self.m_def.name if self.name is None else self.name
 
 
 class BasisSet(NumericalSettings):
     """"""
 
     # TODO work on this base section (@ndaelman-hu)
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-
-        # Set the name of the section
-        self.name = self.m_def.name if self.name is None else self.name
 
 
 class ModelMethod(ArchiveSection):
