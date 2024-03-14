@@ -219,7 +219,7 @@ class OrbitalsState(ArchiveSection):
             self, f'{quantum_name}_quantum_{_countertype_map[quantum_type]}'
         )
         if other_quantity is None:
-            logger.warning(
+            logger.debug(
                 f'Could not find the {quantum_name}_quantum_{quantum_type} countertype {_countertype_map[quantum_type]}.'
             )
             return None
