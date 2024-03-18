@@ -43,7 +43,7 @@ from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .atoms_state import AtomsState
-from .utils import get_sibling_section, is_not_representative, check_archive
+from .utils import get_sibling_section, is_not_representative
 
 
 class GeometricSpace(Entity):

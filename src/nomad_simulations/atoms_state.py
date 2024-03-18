@@ -29,7 +29,7 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .utils import RussellSaundersState, check_archive
+from .utils import RussellSaundersState
 
 
 class OrbitalsState(Entity):
