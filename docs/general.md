@@ -21,7 +21,7 @@ The detailed UML diagram of quantities and functions defined for `Simulation` is
     </label>
 </div>
 
-We use double inheritance from `EntryData` in order to populate the `data` section in the NOMAD archive. You can read more about the public normalize function function and its purpose in our base classes in the corresponding [documentation page](normalize.md). The private function `set_system_branch_depth()` is related with the `ModelSystem` base class, so we refer to its specific [documentation page](model_system/model_system.md) to know more.
+We use double inheritance from `EntryData` in order to populate the `data` section in the NOMAD archive. All of the base classes discussed here are subject to the [public normalize function](normalize.md) in NOMAD. The private function `set_system_branch_depth()` is related with the [ModelSystem base class](model_system/model_system.md).
 
 ## Main sub-sections in `Simulation`
 
@@ -33,7 +33,7 @@ The `Simulation` base class is composed of 4 main sub-sections:
 4. `Outputs`: contains all the output properties, as well as references to the `ModelSystem` and `ModelMethod` used to obtain such properties. It might also contain information which will populate `ModelSystem` (e.g., atomic occupations, atomic moments, crystal field energies, etc.).
 
 !!! note "Self-consistent steps, SinglePoint entries, and more complex workflows."
-    In NOMAD, we consider the minimal unit for storing the data in the archive (i.e., an *entry*) as any calculation containing all the self-consistent steps of itself. This is what we call, `SinglePoint`. Thus, we do not split each self-consistent step in its own entry in the NOMAD archive, but rather store them under the same entry in the archive. Any other complex calculation which combines several differentiated self-consistent calculations must be considered a **workflow** (e.g., a `GW` calculation is usually composed of 2 `SinglePoint` entries: the `DFT SinglePoint` self-consistent calculation + the `GW SinglePoint` self-consistent calculations). You can check the corresponding [Github project](https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow) for more information.
+    In NOMAD, we consider the minimal unit for storing the data in the archive (i.e., an *entry*) as any calculation containing all the self-consistent steps of itself. This is what we call, `SinglePoint`. Thus, we do not split each self-consistent step in its own entry in the NOMAD archive, but rather store them under the same entry in the archive. Any other complex calculation which combines several differentiated self-consistent calculations must be considered a **workflow** (e.g., a `GW` calculation is usually composed of 2 `SinglePoint` entries: the `DFT SinglePoint` self-consistent calculation + the `GW SinglePoint` self-consistent calculations). You can check the [NOMAD simulations workflow schema](https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow) for more information.
 
 The simplified schematics for a `Simulation` data section will then be:
 
