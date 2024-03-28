@@ -104,6 +104,8 @@ class ModelMethodElectronic(ModelMethod):
     )
 
     # ? What about this quantity
+    ## ND: I don't like this listing. Had a better oen at some point:
+    ## ND: ZORA, FORA, full, etc.
     relativity_method = Quantity(
         type=MEnum(
             'scalar_relativistic',
@@ -402,17 +404,17 @@ class DFT(ModelMethodElectronic):
 
 class PerturbationMethod(ModelMethodElectronic):
     type = Quantity(
-        type=MEnum('MP', 'RP', 'BW', 'unavailable'),
+        type=MEnum('MP', 'RS', 'BW'),
         description="""
         Perturbation approach. The abbreviations stand for:
         | Abbreviation | Description |
         | ------------ | ----------- |
         | `'MP'`       | Moller-Plesset |
-        | `'RP'`       | Rayleigh-Plesset |
-        | `'BW'`       | Block-Wigner |
+        | `'RS'`       | Rayleigh-Schrödigner |
+        | `'BW'`       | Brillouin-Wigner |
         """,
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
-    )
+    )  # TODO: check if the special symbols are supported
 
     order = Quantity(
         type=np.int32,
@@ -438,18 +440,19 @@ class CoupledCluster(ModelMethodElectronic):
 
     type = Quantity(
         type=MEnum(
-            'CCD',
-            'CCSD',
-            'CCSD(T)',
-            'CCSDT',
-            'CCSDT(Q)',
-            'CCSDTQ',
+            *[
+                f'{prefix}CC{base_order}{ext_order}{corr}'
+                for prefix in ('', 'QV', 'B')
+                for base_order in ('D', 'SD')
+                for ext_order in ('', '(T)', '(Q)', 'T', 'Q')
+                for corr in ('', 'F12', 'R12')
+            ]
         ),
         description="""
         Coupled Cluster method.
         """,
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
-    )  # TODO: add combos of solvers
+    )  # TODO: add combos with solvers
 
     excitation_order = Quantity(
         type=np.int32,
@@ -484,7 +487,16 @@ class CoupledCluster(ModelMethodElectronic):
         ),
         default='variational',
         description="""
-        Solver used to solve the Coupled Cluster equations.
+        Solvers of the coupled cluster equations.
+        """,
+        a_eln=ELNAnnotation(component='EnumEditQuantity'),
+    )
+
+    explicit_correlation = Quantity(
+        type=MEnum('F12', 'R12', None),
+        default=None,
+        description="""
+        Explicit correlation treatment.
         """,
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
