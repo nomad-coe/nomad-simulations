@@ -87,11 +87,19 @@ class ModelMethodElectronic(ModelMethod):
     """
 
     # ? Is this necessary or will it be defined in another way?
+    ## ND: yes, this is a very necessary parameter, but sometimes the total spin is also restricted
     is_spin_polarized = Quantity(
         type=bool,
         description="""
         If the simulation is done considering the spin degrees of freedom (then there are two spin
         channels, 'down' and 'up') or not.
+        """,
+    )
+
+    total_spin_restriction = Quantity(
+        type=np.float64,
+        description="""
+        Restriction on the total system spin.
         """,
     )
 
@@ -390,6 +398,114 @@ class DFT(ModelMethodElectronic):
                     if self.exact_exchange_mixing_factor is None
                     else self.exact_exchange_mixing_factor
                 )
+
+
+class PerturbationMethod(ModelMethodElectronic):
+    type = Quantity(
+        type=MEnum('MP', 'RP', 'BW', 'unavailable'),
+        description="""
+        Perturbation approach. The abbreviations stand for:
+        | Abbreviation | Description |
+        | ------------ | ----------- |
+        | `'MP'`       | Moller-Plesset |
+        | `'RP'`       | Rayleigh-Plesset |
+        | `'BW'`       | Block-Wigner |
+        """,
+        a_eln=ELNAnnotation(component='EnumEditQuantity'),
+    )
+
+    order = Quantity(
+        type=np.int32,
+        description="""
+        Order up to which the perturbation is expanded.
+        """,
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
+    )
+
+    is_size_extensive = Quantity(
+        type=bool,
+        description="""
+        If the perturbation method is size extensive.
+        """,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
+    )  # this should go into a knowledge base
+
+
+class CoupledCluster(ModelMethodElectronic):
+    """
+    A base section used to define the parameters of a Coupled Cluster calculation.
+    """
+
+    type = Quantity(
+        type=MEnum(
+            'CCD',
+            'CCSD',
+            'CCSD(T)',
+            'CCSDT',
+            'CCSDT(Q)',
+            'CCSDTQ',
+        ),
+        description="""
+        Coupled Cluster method.
+        """,
+        a_eln=ELNAnnotation(component='EnumEditQuantity'),
+    )  # TODO: add combos of solvers
+
+    excitation_order = Quantity(
+        type=np.int32,
+        shape=['*'],
+        description="""
+        Orders at which the excitation are used.
+        1 = single, 2 = double, 3 = triple, 4 = quadruple, etc.
+
+        Note that coupled cluster typically start from doubles.
+        Singles excitations in a Koopman-compliant scheme only make sense as a response to a perturbation.
+        """,
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
+    )
+
+    perturbative_order = Quantity(
+        type=np.int32,
+        shape=['*'],
+        description="""
+        Excitation order at which the perturbative correction is used.
+        1 = single, 2 = double, 3 = triple, 4 = quadruple, etc.
+        """,
+        a_eln=ELNAnnotation(component='NumberEditQuantity'),
+    )
+
+    perturbative_method = SubSection(sub_section=PerturbationMethod.m_def)
+
+    solver = Quantity(
+        type=MEnum(
+            'variational',
+            'quasi-variational',
+            'Brueckner',
+        ),
+        default='variational',
+        description="""
+        Solver used to solve the Coupled Cluster equations.
+        """,
+        a_eln=ELNAnnotation(component='EnumEditQuantity'),
+    )
+
+    is_unrestricted = Quantity(
+        type=bool,
+        description="""
+        Denotes whether the excitations are unrestricted or not.
+        It should be confused with `is_spin_polarized`,
+        which denotes restrictions on the ground state.
+        """,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
+    )  # this should go into a knowledge base
+
+    is_size_extensive = Quantity(
+        type=bool,
+        description="""
+        If the Coupled Cluster method is size extensive.
+        """,
+        a_eln=ELNAnnotation(component='BoolEditQuantity'),
+    )  # this should go into a knowledge base
 
 
 class TB(ModelMethodElectronic):
