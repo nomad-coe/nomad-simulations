@@ -436,7 +436,12 @@ class PerturbationMethod(ModelMethodElectronic):
 class CoupledCluster(ModelMethodElectronic):
     """
     A base section used to define the parameters of a Coupled Cluster calculation.
+    A standard schema is defined, though the most common cases can be summarized in the `type` quantity.
+    Conversion between both is provided.
     """
+
+    order_map = {k: v for k, v in enumerate(('S', 'D', 'T', 'Q'))}
+    solver_map = {'quasi-variational': 'QV', 'Brueckner': 'B'}
 
     def check_orders(self, logger) -> bool:
         """Perform a sanity check on the excitation and perturbation order.
@@ -457,7 +462,7 @@ class CoupledCluster(ModelMethodElectronic):
                 return False
         return True
 
-    def type_cc(self) -> str:
+    def type_to_cc(self) -> None:
         """Produce an educated guess based on the other parameters."""
         name = 'CC'
         # cover the basic cases
@@ -475,21 +480,42 @@ class CoupledCluster(ModelMethodElectronic):
         if self.explicit_correlation is not None:
             name += self.explicit_correlation
         # cover specific solver approaches
-        if self.solver == 'quasi-variational':
-            name = 'QV' + name
-        elif self.solver == 'Brueckner':
-            name = 'B' + name
+        if self.solver in self.solver_map:
+            name = self.solver_map[self.solver] + name
+
+    def cc_to_type(self) -> None:
+        """Try to extract the excitation and perturbation orders from the type."""
+        self.type = self.type.upper()
+        match = re.match(
+            r'(?:(QV|B))CC(S)?(D)?(?:(T|\(T\)))(?:(Q|\(Q\)))(?:-(F12|R12))', self.type
+        )
+        if match is None:
+            return
+        self.excitation_order = []
+        self.perturbative_order = []
+        for i in range(2, 6):
+            if abbrev := match.group(i):
+                if abbrev[0] == '(':
+                    self.perturbative_order.append(i)
+                else:
+                    self.excitation_order.append(i)
+        if match.group(1) in self.solver_map:
+            self.solver = self.solver_map[match.group(1)]
+        if match.group(6):
+            self.explicit_correlation = match.group(6)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         if self.check_excitation_order(logger):
             if type is None:
-                self.type = self.type_cc()
+                self.type_to_cc()
+            else:
+                self.cc_to_type()
 
     type = Quantity(
         type=MEnum(
             *[
-                f'{prefix}CC{base_order}{ext_order}{corr}'
+                f'{prefix}CC{base_order}{ext_order}-{corr}'
                 for prefix in ('', 'QV', 'B')
                 for base_order in ('D', 'SD')
                 for ext_order in ('', '(T)', '(Q)', 'T', 'Q')
@@ -530,8 +556,7 @@ class CoupledCluster(ModelMethodElectronic):
     solver = Quantity(
         type=MEnum(
             'variational',
-            'quasi-variational',
-            'Brueckner',
+            *solver_map.keys(),
         ),
         default='variational',
         description="""
