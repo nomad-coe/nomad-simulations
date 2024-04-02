@@ -91,9 +91,9 @@ class Outputs(ArchiveSection):
     )
 
     outputs_ref = Quantity(
-        type=Reference(SectionProxy('BaseOutputs')),
+        type=Reference(SectionProxy('Outputs')),
         description="""
-        Reference to the `BaseOutputs` section from which the output property was derived. This is only
+        Reference to the `Outputs` section from which the output property was derived. This is only
         relevant if `is_derived` is set to True.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
