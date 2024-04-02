@@ -104,11 +104,11 @@ class Program(Entity):
 class BaseSimulation(Activity):
     """
     A computational simulation that produces output data from a given input model system
-    and methodological parameters.
+    and input methodological parameters.
 
     Synonyms:
-     - computation
-     - calculation
+        - computation
+        - calculation
     """
 
     m_def = Section(
@@ -166,9 +166,21 @@ class BaseSimulation(Activity):
 
 
 class Simulation(BaseSimulation, EntryData):
-    """ """
+    """
+    A `Simulation` is a computational calculation that produces output data from a given input model system
+    and input (model) methodological parameters. The output properties obtained from the simulation are stored
+    in a list under `outputs`.
 
-    # m_def = Section(extends_base_section=True)
+    Each sub-section of `Simulation` is defined in their corresponding modules: `model_system.py`, `model_method.py`,
+    and `outputs.py`.
+
+    The basic entry data for a `Simulation`, known as `SinglePoint` workflow, contains all the self-consistent (SCF) steps
+    performed to converge the calculation, i.e., we do not split each SCF step in its own entry but rather group them in a general one.
+
+    Synonyms:
+        - calculation
+        - computation
+    """
 
     model_system = SubSection(sub_section=ModelSystem.m_def, repeats=True)
 
