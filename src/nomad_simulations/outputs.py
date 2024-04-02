@@ -32,7 +32,7 @@ from .numerical_settings import SelfConsistency
 class BaseOutputs(ArchiveSection):
     """
     Base section to define the output properties of a simulation. This is used as a placeholder for both
-    final `Outputs` properties and the self-consistent (SCF) steps, see `Outputs` base section definition.
+    final `Outputs` properties and the self-consistent (SCF) steps of an output property, see `Outputs` base section definition.
     """
 
     # TODO add time quantities
@@ -42,7 +42,7 @@ class BaseOutputs(ArchiveSection):
     name = Quantity(
         type=str,
         description="""
-        Name of the output property. This is used for easier identification of the property and is conneceted
+        Name of the output property. This is used for easier identification of the property and is connected
         with the class name of each output property class, e.g., `'ElectronicBandGap'`, `'ElectronicBandStructure'`, etc.
         """,
         a_eln=ELNAnnotation(component='StringEditQuantity'),
@@ -54,6 +54,7 @@ class BaseOutputs(ArchiveSection):
         Reference to the `OrbitalsState` section on which the simulation is performed and the
         output property is calculated.
         """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     atoms_state_ref = Quantity(
@@ -62,6 +63,7 @@ class BaseOutputs(ArchiveSection):
         Reference to the `AtomsState` section on which the simulation is performed and the
         output property is calculated.
         """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     model_system_ref = Quantity(
@@ -70,6 +72,7 @@ class BaseOutputs(ArchiveSection):
         Reference to the `ModelSystem` section on which the simulation is performed and the
         output property is calculated.
         """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     is_derived = Quantity(
@@ -92,6 +95,7 @@ class BaseOutputs(ArchiveSection):
         Reference to the `BaseOutputs` section from which the output property was derived. This is only
         relevant if `is_derived` is set to True.
         """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     def check_is_derived(self, is_derived: bool, outputs_ref) -> Optional[bool]:
