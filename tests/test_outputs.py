@@ -56,19 +56,19 @@ class TestOutputs:
     """
 
     @pytest.mark.parametrize(
-        'is_converged, result',
+        'is_scf_converged, result',
         [
             (False, False),
             (True, True),
         ],
     )
-    def test_normalize(self, is_converged, result):
+    def test_normalize(self, is_scf_converged, result):
         """
         Test the `normalize` method.
         """
         scf_outputs = SCFOutputs()
-        # ! This testing is repetivite, but `check_is_converged` should eventually contain more complex logic and be separated in its own testing method.
-        assert scf_outputs.check_is_converged(is_converged, logger) == result
-        scf_outputs.is_converged = is_converged
+        # ! This testing is repetivite, but `check_is_scf_converged` should eventually contain more complex logic and be separated in its own testing method.
+        assert scf_outputs.check_is_scf_converged(is_scf_converged, logger) == result
+        scf_outputs.is_scf_converged = is_scf_converged
         scf_outputs.normalize(None, logger)
-        assert scf_outputs.is_converged == result
+        assert scf_outputs.is_scf_converged == result

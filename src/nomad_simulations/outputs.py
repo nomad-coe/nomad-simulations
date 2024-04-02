@@ -177,7 +177,9 @@ class SCFOutputs(Outputs):
     )
 
     # TODO add more functionality to automatically check convergence from `self_consistency_ref` and the last `scf_step[-1]`
-    def check_is_converged(self, is_converged: bool, logger: BoundLogger) -> bool:
+    def check_is_scf_converged(
+        self, is_scf_converged: bool, logger: BoundLogger
+    ) -> bool:
         """
         Check if the output property is converged or not.
 
@@ -188,8 +190,8 @@ class SCFOutputs(Outputs):
         Returns:
             (bool): The flag indicating whether the output property is converged or not.
         """
-        if not is_converged:
-            logger.info('The output property is not converged.')
+        if not is_scf_converged:
+            logger.info('The output property is not converged after the SCF process.')
             return False
         return True
 
@@ -197,4 +199,6 @@ class SCFOutputs(Outputs):
         super().normalize(archive, logger)
 
         # Set if the output property `is_converged` or not.
-        self.is_converged = self.check_is_converged(self.is_converged, logger)
+        self.is_scf_converged = self.check_is_scf_converged(
+            self.is_scf_converged, logger
+        )
