@@ -51,8 +51,8 @@ class BaseOutputs(ArchiveSection):
     orbitals_state_ref = Quantity(
         type=OrbitalsState,
         description="""
-        Reference to the `OrbitalsState` section on which the simulation is performed and the
-        output property is calculated.
+        Reference to the `OrbitalsState` section to which the output property references to and on
+        on which the simulation is performed.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
@@ -60,8 +60,8 @@ class BaseOutputs(ArchiveSection):
     atoms_state_ref = Quantity(
         type=AtomsState,
         description="""
-        Reference to the `AtomsState` section on which the simulation is performed and the
-        output property is calculated.
+        Reference to the `AtomsState` section to which the output property references to and on
+        on which the simulation is performed.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
@@ -69,8 +69,8 @@ class BaseOutputs(ArchiveSection):
     model_system_ref = Quantity(
         type=ModelSystem,
         description="""
-        Reference to the `ModelSystem` section on which the simulation is performed and the
-        output property is calculated.
+        Reference to the `ModelSystem` section to which the output property references to and on
+        on which the simulation is performed.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
@@ -99,6 +99,16 @@ class BaseOutputs(ArchiveSection):
     )
 
     def check_is_derived(self, is_derived: bool, outputs_ref) -> Optional[bool]:
+        """
+        Check if the output property is derived or not.
+
+        Args:
+            is_derived (bool): The flag indicating whether the output property is derived or not.
+            outputs_ref (_type_): The reference to the `BaseOutputs` section from which the output property was derived.
+
+        Returns:
+            Optional[bool]: The flag indicating whether the output property is derived or not, or whether there are missing references exists (returns None).
+        """
         if not is_derived:
             if outputs_ref is not None:
                 return True
@@ -110,6 +120,7 @@ class BaseOutputs(ArchiveSection):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # Check if the output property `is_derived` or not, or if there are missing references.
         check_derived = self.check_is_derived(self.is_derived, self.outputs_ref)
         if check_derived is not None:
             self.is_derived = check_derived
@@ -122,15 +133,25 @@ class BaseOutputs(ArchiveSection):
 
 class Outputs(BaseOutputs):
     """
-    Output properties of a simulation.
+    Output properties of a simulation. This base class can be used for inheritance in any of the output properties
+    defined in this schema.
 
-    # ! add more description once we defined the output properties
+    This section contains the self-consistent (SCF) steps performed to converge
+    an output property, as well as the information if the output property `is_converged` or not, depending on the
+    settings in the `SelfConsistency` base class defined in `numerical_settings.py`.
+
+    For simplicity, we contain the SCF steps of a simulation as part of the minimal workflow defined in NOMAD,
+    the `SinglePoint`, i.e., we do not split each SCF step in its own entry. Thus, each `SinglePoint`
+    `Simulation` entry in NOMAD contains the final output properties and all the SCF steps.
+
+    # ! Add example usage once we have more properties defined.
     """
 
     n_scf_steps = Quantity(
         type=np.int32,
         description="""
-        Number of self-consistent steps to converge the output property.
+        Number of self-consistent steps to converge the output property. Note that the SCF steps belong to
+        the same minimal `Simulation` workflow entry which is known as `SinglePoint`.
         """,
     )
 
@@ -138,7 +159,8 @@ class Outputs(BaseOutputs):
         sub_section=BaseOutputs.m_def,
         repeats=True,
         description="""
-        Self-consistent (SCF) steps performed for converging a given output property.
+        Self-consistent (SCF) steps performed for converging a given output property. Note that the SCF steps belong to
+        the same minimal `Simulation` workflow entry which is known as `SinglePoint`.
         """,
     )
 
@@ -160,6 +182,16 @@ class Outputs(BaseOutputs):
 
     # ? Can we add more functionality to automatically check convergence from `self_consistency_ref` and the last `scf_step[-1]`
     def check_is_converged(self, is_converged: bool, logger: BoundLogger) -> bool:
+        """
+        Check if the output property is converged or not.
+
+        Args:
+            is_converged (bool): The flag indicating whether the output property is converged or not.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (bool): The flag indicating whether the output property is converged or not.
+        """
         if not is_converged:
             logger.info('The output property is not converged.')
             return False
@@ -168,4 +200,5 @@ class Outputs(BaseOutputs):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # Set if the output property `is_converged` or not.
         self.is_converged = self.check_is_converged(self.is_converged, logger)
