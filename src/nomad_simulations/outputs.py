@@ -29,10 +29,13 @@ from .model_system import ModelSystem
 from .numerical_settings import SelfConsistency
 
 
-class BaseOutputs(ArchiveSection):
+class Outputs(ArchiveSection):
     """
-    Base section to define the output properties of a simulation. This is used as a placeholder for both
-    final `Outputs` properties and the self-consistent (SCF) steps of an output property, see `Outputs` base section definition.
+    Output properties of a simulation. This base class can be used for inheritance in any of the output properties
+    defined in this schema.
+
+    It contains references to the specific sections used to obtain the output properties, as well as
+    information if the output `is_derived` from another output section or directly parsed from the simulation output files.
     """
 
     # TODO add time quantities
@@ -80,11 +83,9 @@ class BaseOutputs(ArchiveSection):
         default=False,
         description="""
         Flag indicating whether the output property is derived from other output properties. We make
-        the distinction between directly parsed, derived, and post-processing output properties:
+        the distinction between directly parsed and derived output properties:
             - Directly parsed: the output property is directly parsed from the simulation output files.
             - Derived: the output property is derived from other output properties. No extra numerical settings
-                are required to calculate the output property.
-            - Post-processing: the output property is derived from other output properties. Extra numerical settings
                 are required to calculate the output property.
         """,
     )
@@ -131,20 +132,15 @@ class BaseOutputs(ArchiveSection):
             return
 
 
-class Outputs(BaseOutputs):
+class SCFOutputs(Outputs):
     """
-    Output properties of a simulation. This base class can be used for inheritance in any of the output properties
-    defined in this schema.
-
-    This section contains the self-consistent (SCF) steps performed to converge
-    an output property, as well as the information if the output property `is_converged` or not, depending on the
+    This section contains the self-consistent (SCF) steps performed to converge an output property,
+    as well as the information if the output property `is_converged` or not, depending on the
     settings in the `SelfConsistency` base class defined in `numerical_settings.py`.
 
     For simplicity, we contain the SCF steps of a simulation as part of the minimal workflow defined in NOMAD,
     the `SinglePoint`, i.e., we do not split each SCF step in its own entry. Thus, each `SinglePoint`
     `Simulation` entry in NOMAD contains the final output properties and all the SCF steps.
-
-    # ! Add example usage once we have more properties defined.
     """
 
     n_scf_steps = Quantity(
@@ -156,7 +152,7 @@ class Outputs(BaseOutputs):
     )
 
     scf_step = SubSection(
-        sub_section=BaseOutputs.m_def,
+        sub_section=Outputs.m_def,
         repeats=True,
         description="""
         Self-consistent (SCF) steps performed for converging a given output property. Note that the SCF steps belong to
@@ -164,10 +160,10 @@ class Outputs(BaseOutputs):
         """,
     )
 
-    is_converged = Quantity(
+    is_scf_converged = Quantity(
         type=bool,
         description="""
-        Flag indicating whether the output property is converged or not. This quantity is connected
+        Flag indicating whether the output property is converged or not after a SCF process. This quantity is connected
         with `SelfConsistency` defined in the `numerical_settings.py` module.
         """,
     )
@@ -180,7 +176,7 @@ class Outputs(BaseOutputs):
         """,
     )
 
-    # ? Can we add more functionality to automatically check convergence from `self_consistency_ref` and the last `scf_step[-1]`
+    # TODO add more functionality to automatically check convergence from `self_consistency_ref` and the last `scf_step[-1]`
     def check_is_converged(self, is_converged: bool, logger: BoundLogger) -> bool:
         """
         Check if the output property is converged or not.

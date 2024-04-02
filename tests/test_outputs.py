@@ -67,6 +67,7 @@ class TestOutputs:
         Test the `normalize` method.
         """
         outputs = Outputs()
+        # ! This testing is repetivite, but `check_is_converged` should eventually contain more complex logic and be separated in its own testing method.
         assert outputs.check_is_converged(is_converged, logger) == result
         outputs.is_converged = is_converged
         outputs.normalize(None, logger)
