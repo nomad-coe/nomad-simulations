@@ -15,24 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#
-# Copyright The NOMAD Authors.
-#
-# This file is part of NOMAD.
-# See https://nomad-lab.eu for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 
 import numpy as np
 
@@ -104,11 +86,11 @@ class Program(Entity):
 class BaseSimulation(Activity):
     """
     A computational simulation that produces output data from a given input model system
-    and methodological parameters.
+    and input methodological parameters.
 
     Synonyms:
-     - computation
-     - calculation
+        - computation
+        - calculation
     """
 
     m_def = Section(
@@ -166,9 +148,21 @@ class BaseSimulation(Activity):
 
 
 class Simulation(BaseSimulation, EntryData):
-    """ """
+    """
+    A `Simulation` is a computational calculation that produces output data from a given input model system
+    and input (model) methodological parameters. The output properties obtained from the simulation are stored
+    in a list under `outputs`.
 
-    # m_def = Section(extends_base_section=True)
+    Each sub-section of `Simulation` is defined in their corresponding modules: `model_system.py`, `model_method.py`,
+    and `outputs.py`.
+
+    The basic entry data for a `Simulation`, known as `SinglePoint` workflow, contains all the self-consistent (SCF) steps
+    performed to converge the calculation, i.e., we do not split each SCF step in its own entry but rather group them in a general one.
+
+    Synonyms:
+        - calculation
+        - computation
+    """
 
     model_system = SubSection(sub_section=ModelSystem.m_def, repeats=True)
 
