@@ -21,7 +21,8 @@ from typing import Optional
 from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, SectionProxy
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.metainfo import Quantity, SubSection, SectionProxy, Reference
 
 from .atoms_state import AtomsState, OrbitalsState
 from .model_system import ModelSystem
@@ -35,6 +36,15 @@ class BaseOutputs(ArchiveSection):
     """
 
     normalizer_level = 2
+
+    name = Quantity(
+        type=str,
+        description="""
+        Name of the output property. This is used for easier identification of the property and is conneceted
+        with the class name of each output property class, e.g., `'ElectronicBandGap'`, `'ElectronicBandStructure'`, etc.
+        """,
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
+    )
 
     orbitals_state_ref = Quantity(
         type=OrbitalsState,
@@ -75,7 +85,7 @@ class BaseOutputs(ArchiveSection):
     )
 
     outputs_ref = Quantity(
-        type=SectionProxy('BaseOutputs'),
+        type=Reference(SectionProxy('BaseOutputs')),
         description="""
         Reference to the `BaseOutputs` section from which the output property was derived. This is only
         relevant if `is_derived` is set to True.
@@ -83,11 +93,13 @@ class BaseOutputs(ArchiveSection):
     )
 
     def check_is_derived(self, is_derived: bool, outputs_ref) -> Optional[bool]:
-        if not is_derived and outputs_ref is not None:
+        if not is_derived:
+            if outputs_ref is not None:
+                return True
+            return False
+        elif is_derived and outputs_ref is not None:
             return True
-        if is_derived and outputs_ref is None:
-            return None
-        return False
+        return None
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
