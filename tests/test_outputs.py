@@ -20,7 +20,7 @@ import pytest
 
 from . import logger
 
-from nomad_simulations.outputs import BaseOutputs
+from nomad_simulations.outputs import BaseOutputs, Outputs
 
 
 class TestBaseOutputs:
@@ -48,3 +48,26 @@ class TestBaseOutputs:
         outputs.normalize(None, logger)
         if result is not None:
             assert outputs.is_derived == result
+
+
+class TestOutputs:
+    """
+    Test the `Outputs` class defined in `outputs.py`.
+    """
+
+    @pytest.mark.parametrize(
+        'is_converged, result',
+        [
+            (False, False),
+            (True, True),
+        ],
+    )
+    def test_normalize(self, is_converged, result):
+        """
+        Test the `normalize` method.
+        """
+        outputs = Outputs()
+        assert outputs.check_is_converged(is_converged, logger) == result
+        outputs.is_converged = is_converged
+        outputs.normalize(None, logger)
+        assert outputs.is_converged == result
