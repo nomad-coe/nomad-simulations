@@ -43,31 +43,11 @@ from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
 from nomad.metainfo.metainfo import DirectQuantity, Dimension
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from outputs import Outputs
-from property import BaseProperty
+from .outputs import Outputs
+from .property import BaseProperty
+from .atoms_state import AtomsState
 
 
-
-#
-# Copyright The NOMAD Authors.
-#
-# This file is part of NOMAD. See https://nomad-lab.eu for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
-import numpy as np
-from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.common import (
     FastAccess,
     PropertySection,
@@ -87,52 +67,14 @@ from nomad.metainfo import (
     SubSection,
 )
 
-from .method import HoppingMatrix, Method
-from .system import AtomsGroup, System
-
-m_package = Package()
+from .model_system import ModelSystem
 
 
-
-class EnergyValue(MCategory):
-    """
-    This metadata stores an energy value.
-    """
-
-    m_def = Category()
-
-
-class EnergyTypeReference(MCategory):
-    """
-    This metadata stores an energy used as reference point.
-    """
-
-    m_def = Category(categories=[EnergyValue])
-
-
-class ErrorEstimateContribution(MCategory):
-    """
-    An estimate of a partial quantity contributing to the error for a given quantity.
-    """
-
-    m_def = Category()
-
-
-class Atomic(MSection):
+class AtomicProperty(BaseProperty):
     """
     Generic section containing the values and information reqarding an atomic quantity
     such as charges, forces, multipoles.
     """
-
-    m_def = Section(validate=False)
-
-    kind = Quantity(
-        type=str,
-        shape=[],
-        description="""
-        Kind of the quantity.
-        """,
-    )
 
     n_orbitals = Quantity(
         type=np.int32,
@@ -141,12 +83,31 @@ class Atomic(MSection):
         Number of orbitals used in the projection.
         """,
     )
+    # ? Is "the projection" general/clear?
 
+    # TODO we should make clear in these descriptions that it is preferred to reference the relevant sub-system if existing,
+    # TODO otherwise these quantities can be populated "by hand"
     n_atoms = Quantity(
         type=np.int32,
         shape=[],
         description="""
-        Number of atoms.
+        Number of atoms used to determine/calculate the property.
+        """,
+    )
+
+    atom_labels = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Labels of the atomic species corresponding to the atomic quantity.
+        """,
+    )
+
+    atom_indices = Quantity(
+        type=np.dtype(np.int32),
+        shape=[],
+        description="""
+        Index of the atomic species corresponding to the atomic quantity.
         """,
     )
 
@@ -158,112 +119,53 @@ class Atomic(MSection):
         """,
     )
 
-
-class AtomicValues(ArchiveSection):
-    """
-    Generic section containing information regarding the values of an atomic quantity.
-    """
-
-    m_def = Section(validate=False)
-
-    # TODO rename this to spin_channel
-    spin = Quantity(
+    spin_channels = Quantity(
         type=np.dtype(np.int32),
         shape=[],
         description="""
-        Spin channel corresponding to the atomic quantity.
+        Spin channels corresponding to the atomic quantity.
         """,
     )
 
-    atom_label = Quantity(
-        type=str,
-        shape=[],
+    atoms_state_ref = Quantity(
+        type=AtomsState,
         description="""
-        Label of the atomic species corresponding to the atomic quantity.
+        Reference to the AtomsState section for the atoms involved in this property.
         """,
     )
 
-    atom_index = Quantity(
-        type=np.dtype(np.int32),
-        shape=[],
-        description="""
-        Index of the atomic species corresponding to the atomic quantity.
-        """,
-    )
+    # ? below deprecated by atoms_state?
+    # m_kind = Quantity(
+    #     type=str,
+    #     shape=[],
+    #     description="""
+    #     String describing what the integer numbers of $m$ lm mean used in orbital
+    #     projections. The allowed values are listed in the [m_kind wiki page]
+    #     (https://gitlab.rzg.mpg.de/nomad-lab/nomad-meta-info/wikis/metainfo/m-kind).
+    #     """,
+    # )
 
-    m_kind = Quantity(
-        type=str,
-        shape=[],
-        description="""
-        String describing what the integer numbers of $m$ lm mean used in orbital
-        projections. The allowed values are listed in the [m_kind wiki page]
-        (https://gitlab.rzg.mpg.de/nomad-lab/nomad-meta-info/wikis/metainfo/m-kind).
-        """,
-    )
+    # lm = Quantity(
+    #     type=np.dtype(np.int32),
+    #     shape=[2],
+    #     description="""
+    #     Tuples of $l$ and $m$ values for which the atomic quantity are given. For
+    #     the quantum number $l$ the conventional meaning of azimuthal quantum number is
+    #     always adopted. For the integer number $m$, besides the conventional use as
+    #     magnetic quantum number ($l+1$ integer values from $-l$ to $l$), a set of
+    #     different conventions is accepted (see the [m_kind wiki
+    #     page](https://gitlab.rzg.mpg.de/nomad-lab/nomad-meta-info/wikis/metainfo/m-kind).
+    #     The adopted convention is specified by m_kind.
+    #     """,
+    # )
 
-    lm = Quantity(
-        type=np.dtype(np.int32),
-        shape=[2],
-        description="""
-        Tuples of $l$ and $m$ values for which the atomic quantity are given. For
-        the quantum number $l$ the conventional meaning of azimuthal quantum number is
-        always adopted. For the integer number $m$, besides the conventional use as
-        magnetic quantum number ($l+1$ integer values from $-l$ to $l$), a set of
-        different conventions is accepted (see the [m_kind wiki
-        page](https://gitlab.rzg.mpg.de/nomad-lab/nomad-meta-info/wikis/metainfo/m-kind).
-        The adopted convention is specified by m_kind.
-        """,
-    )
-
-    orbital = Quantity(
-        type=str,
-        shape=[],
-        description="""
-        String representation of the of the atomic orbital.
-        """,
-    )
-
-
-class AtomicGroup(MSection):
-    """
-    Generic section containing the values and information reqarding a molecular or sub-molecular
-    quantity that is a function of an atomic group such as radius of gyration...
-    """
-
-    m_def = Section(validate=False)
-
-    kind = Quantity(
-        type=str,
-        shape=[],
-        description="""
-        Kind of the quantity.
-        """,
-    )
-
-
-class AtomicGroupValues(MSection):
-    """
-    Generic section containing information regarding the values of a trajectory property.
-    """
-
-    m_def = Section(validate=False)
-
-    label = Quantity(
-        type=str,
-        shape=[],
-        description="""
-        Describes the atoms or molecule types involved in determining the property.
-        """,
-    )
-
-    atomsgroup_ref = Quantity(
-        type=Reference(AtomsGroup.m_def),
-        shape=[1],
-        description="""
-        References to the atoms_group section containing the molecule for which Rg was calculated.
-        """,
-    )
-
+    # orbital = Quantity(
+    #     type=str,
+    #     shape=[],
+    #     description="""
+    #     String representation of the of the atomic orbital.
+    #     """,
+    # )
 
 class EnergyEntry(Atomic):
     """
@@ -1543,6 +1445,3 @@ class Calculation(BaseCalculation):
     )
 
     scf_iteration = SubSection(sub_section=ScfIteration.m_def, repeats=True)
-
-
-m_package.__init_metainfo__()

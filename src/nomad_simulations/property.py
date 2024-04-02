@@ -39,11 +39,12 @@ import numpy as np
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
+from nomad.metainfo import Quantity, SubSection, Reference
 from nomad.metainfo.metainfo import DirectQuantity, Dimension
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from outputs import Outputs
+from .model_system import ModelSystem
+from .outputs import Outputs
 
 class BaseErrors(ArchiveSection):
     """
@@ -108,8 +109,7 @@ class BaseProperty(ArchiveSection):
     type = Quantity(
         type=str,
         description="""
-        Categorization of the property. Previously used to distinguish "molecular" vs. "atomic" properties.
-        But could have a variety of uses depending on the context.
+        Categorization of the property.
         """,
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
@@ -188,6 +188,14 @@ class BaseProperty(ArchiveSection):
         shape=[],
         description="""
         Unit of the property, using UnitRegistry() notation.
+        """,
+    )
+
+    system_ref = Quantity(
+        type=Reference(ModelSystem.m_def),
+        shape=[1],
+        description="""
+        References to the (sub)system section containing the atoms relevant for this property.
         """,
     )
 
