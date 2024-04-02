@@ -191,6 +191,7 @@ class SCFOutputs(Outputs):
             (bool): The flag indicating whether the output property is converged or not.
         """
         if not is_scf_converged:
+            # ? It will be nice if some of this logger messages can be checked or be used when querying data
             logger.info('The output property is not converged after the SCF process.')
             return False
         return True
