@@ -441,7 +441,8 @@ class CoupledCluster(ModelMethodElectronic):
     """
 
     order_map = {k: v for k, v in enumerate(('S', 'D', 'T', 'Q'))}
-    solver_map = {'quasi-variational': 'QV', 'Brueckner': 'B'}
+    solver_map = {'QV': 'quasi-variational', 'B': 'Brueckner'}
+    map_solver = {v: k for k, v in solver_map.items()}
 
     def check_orders(self, logger) -> bool:
         """Perform a sanity check on the excitation and perturbation order.
@@ -462,7 +463,7 @@ class CoupledCluster(ModelMethodElectronic):
                 return False
         return True
 
-    def type_to_cc(self) -> None:
+    def cc_to_type(self) -> None:
         """Produce an educated guess based on the other parameters."""
         name = 'CC'
         # cover the basic cases
@@ -480,53 +481,64 @@ class CoupledCluster(ModelMethodElectronic):
         if self.explicit_correlation is not None:
             name += self.explicit_correlation
         # cover specific solver approaches
-        if self.solver in self.solver_map:
+        if self.solver in self.map_solver:
             name = self.solver_map[self.solver] + name
 
-    def cc_to_type(self) -> None:
+    def type_to_cc(self) -> None:
         """Try to extract the excitation and perturbation orders from the type."""
-        self.type = self.type.upper()
         match = re.match(
-            r'(?:(QV|B))CC(S)?(D)?(?:(T|\(T\)))(?:(Q|\(Q\)))(?:-(F12|R12))', self.type
+            r'(QV|B)?CC(S)?(D)?(T|\(T\))?(Q|\(Q\))?(-F12|-R12)?', self.type
         )
         if match is None:
             return
-        self.excitation_order = []
-        self.perturbative_order = []
+
+        ptb_initialized, exc_initialized = False, False
         for i in range(2, 6):
             if abbrev := match.group(i):
+                order = i - 1
                 if abbrev[0] == '(':
-                    self.perturbative_order.append(i)
+                    if not ptb_initialized:
+                        self.perturbative_order = []
+                        ptb_initialized = True
+                    self.perturbative_order = np.append(self.perturbative_order, order)
                 else:
-                    self.excitation_order.append(i)
+                    if not exc_initialized:
+                        self.excitation_order = []
+                        exc_initialized = True
+                    self.excitation_order = np.append(self.excitation_order, order)
         if match.group(1) in self.solver_map:
             self.solver = self.solver_map[match.group(1)]
         if match.group(6):
-            self.explicit_correlation = match.group(6)
+            self.explicit_correlation = match.group(6)[1:]  # remove the dash
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-        if self.check_excitation_order(logger):
-            if type is None:
-                self.type_to_cc()
-            else:
+        if self.type is None:
+            if self.check_orders(logger):
                 self.cc_to_type()
+        else:
+            self.type_to_cc()
+        if isinstance(self.excitation_order, list):
+            self.excitation_order = np.sort(self.excitation_order)
+        if isinstance(self.perturbative_order, list):
+            self.perturbative_order = np.sort(self.perturbative_order)
 
     type = Quantity(
         type=MEnum(
             *[
-                f'{prefix}CC{base_order}{ext_order}-{corr}'
+                f'{prefix}CC{base_order}{triples}{quadruples}{corr}'
                 for prefix in ('', 'QV', 'B')
-                for base_order in ('D', 'SD')
-                for ext_order in ('', '(T)', '(Q)', 'T', 'Q')
-                for corr in ('', 'F12', 'R12')
+                for base_order in ('', 'D', 'SD')
+                for triples in ('', '(T)', 'T')
+                for quadruples in ('', '(Q)', 'Q')
+                for corr in ('', '-F12', '-R12')
             ]
         ),
         description="""
         Coupled Cluster method.
         """,
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
-    )  # TODO: add combos with solvers
+    )  # TODO: is too generous, remove non-sensical combinations
 
     excitation_order = Quantity(
         type=np.int32,
@@ -556,7 +568,7 @@ class CoupledCluster(ModelMethodElectronic):
     solver = Quantity(
         type=MEnum(
             'variational',
-            *solver_map.keys(),
+            *solver_map.values(),
         ),
         default='variational',
         description="""
@@ -566,8 +578,8 @@ class CoupledCluster(ModelMethodElectronic):
     )
 
     explicit_correlation = Quantity(
-        type=MEnum('F12', 'R12', None),
-        default=None,
+        type=MEnum('F12', 'R12', ''),
+        default='',
         description="""
         Explicit correlation treatment.
         """,
