@@ -35,6 +35,8 @@ class BaseOutputs(ArchiveSection):
     final `Outputs` properties and the self-consistent (SCF) steps, see `Outputs` base section definition.
     """
 
+    # TODO add time quantities
+
     normalizer_level = 2
 
     name = Quantity(
