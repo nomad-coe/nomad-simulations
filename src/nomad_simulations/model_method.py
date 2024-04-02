@@ -438,6 +438,54 @@ class CoupledCluster(ModelMethodElectronic):
     A base section used to define the parameters of a Coupled Cluster calculation.
     """
 
+    def check_orders(self, logger) -> bool:
+        """Perform a sanity check on the excitation and perturbation order.
+        Raise a logging error if any inconsistency is found.
+        """
+        if self.excitation_order is None:
+            logger.warning('`CoupledCluster.excitation_order` is undefined.')
+            return False
+        if len(self.excitation_order) > 1:
+            if 2 not in self.excitation_order:
+                logger.error('Coupled Cluster typically starts from doubles.')
+                return False
+        for order in (3, 4):
+            if order in self.excitation_order and order in self.perturbative_order:
+                logger.error(
+                    f'Order {order} is defined as both excitation and perturbative.'
+                )
+                return False
+        return True
+
+    def type_cc(self) -> str:
+        """Produce an educated guess based on the other parameters."""
+        name = 'CC'
+        # cover the basic cases
+        if 2 in self.excitation_order:
+            if 1 in self.excitation_order:
+                name += 'SD'
+            name += 'D'
+        # cover extended excitations
+        for order, abbrev in {3: 'T', 4: 'Q'}.items():
+            if order in self.excitation_order:
+                name += abbrev
+            elif order in self.perturbative_order:
+                name += f'({abbrev})'
+        # cover explicit correlation
+        if self.explicit_correlation is not None:
+            name += self.explicit_correlation
+        # cover specific solver approaches
+        if self.solver == 'quasi-variational':
+            name = 'QV' + name
+        elif self.solver == 'Brueckner':
+            name = 'B' + name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        if self.check_excitation_order(logger):
+            if type is None:
+                self.type = self.type_cc()
+
     type = Quantity(
         type=MEnum(
             *[
@@ -487,7 +535,7 @@ class CoupledCluster(ModelMethodElectronic):
         ),
         default='variational',
         description="""
-        Solvers of the coupled cluster equations.
+        Solvers of / approaches to the coupled cluster equations.
         """,
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
@@ -509,7 +557,7 @@ class CoupledCluster(ModelMethodElectronic):
         which denotes restrictions on the ground state.
         """,
         a_eln=ELNAnnotation(component='BoolEditQuantity'),
-    )  # this should go into a knowledge base
+    )
 
     is_size_extensive = Quantity(
         type=bool,
