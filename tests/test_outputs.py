@@ -20,7 +20,7 @@ import pytest
 
 from . import logger
 
-from nomad_simulations.outputs import BaseOutputs, Outputs
+from nomad_simulations.outputs import Outputs, SCFOutputs
 
 
 class TestBaseOutputs:
@@ -31,9 +31,9 @@ class TestBaseOutputs:
     @pytest.mark.parametrize(
         'is_derived, outputs_ref, result',
         [
-            (False, BaseOutputs(), True),
+            (False, Outputs(), True),
             (False, None, False),
-            (True, BaseOutputs(), True),
+            (True, Outputs(), True),
             (True, None, None),
         ],
     )
@@ -41,7 +41,7 @@ class TestBaseOutputs:
         """
         Test the `normalize` and `check_is_derived` methods.
         """
-        outputs = BaseOutputs()
+        outputs = Outputs()
         assert outputs.check_is_derived(is_derived, outputs_ref) == result
         outputs.is_derived = is_derived
         outputs.outputs_ref = outputs_ref
@@ -66,9 +66,9 @@ class TestOutputs:
         """
         Test the `normalize` method.
         """
-        outputs = Outputs()
+        scf_outputs = SCFOutputs()
         # ! This testing is repetivite, but `check_is_converged` should eventually contain more complex logic and be separated in its own testing method.
-        assert outputs.check_is_converged(is_converged, logger) == result
-        outputs.is_converged = is_converged
-        outputs.normalize(None, logger)
-        assert outputs.is_converged == result
+        assert scf_outputs.check_is_converged(is_converged, logger) == result
+        scf_outputs.is_converged = is_converged
+        scf_outputs.normalize(None, logger)
+        assert scf_outputs.is_converged == result
