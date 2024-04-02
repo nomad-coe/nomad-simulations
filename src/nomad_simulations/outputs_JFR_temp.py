@@ -69,6 +69,15 @@ from nomad.metainfo import (
 
 from .model_system import ModelSystem
 
+class ScalarProperty(BaseProperty):
+    """
+    Generic section containing the values and information for any scalar property.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        # TODO check that all variable and bin quantities are None
 
 class AtomicProperty(BaseProperty):
     """
@@ -172,8 +181,6 @@ class EnergyEntry(Atomic):
     Section describing a type of energy or a contribution to the total energy.
     """
 
-    m_def = Section(validate=False)
-
     reference = Quantity(
         type=np.dtype(np.float64),
         shape=[],
@@ -260,12 +267,10 @@ class EnergyEntry(Atomic):
     )
 
 
-class Energy(MSection):
+class Energy(ArchiveSection):
     """
     Section containing all energy types and contributions.
     """
-
-    m_def = Section(validate=False)
 
     total = SubSection(
         sub_section=EnergyEntry.m_def,
@@ -579,7 +584,6 @@ class Energy(MSection):
         Contains the value and information regarding the instantaneous pV work.
         """,
     )
-
 
 class ForcesEntry(Atomic):
     """
@@ -996,22 +1000,33 @@ class MultipolesEntry(Atomic):
     orbital_projected = SubSection(sub_section=MultipolesValues.m_def, repeats=True)
 
 
-# TODO remove this section
-class Thermodynamics(MSection):
+class Enthalpy(ScalarProperty):
     """
-    Section containing results related to a thermodynamics calculation.
+    Section containing the enthalpy (i.e. energy_total + pressure * volume.) of a (sub)system.
     """
 
-    m_def = Section(validate=False)
-
-    enthalpy = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
+    value = Quantity(
+        type=np.float64,
         unit='joule',
-        description="""
-        Value of the calculated enthalpy per cell i.e. energy_total + pressure * volume.
-        """,
     )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule'
+
+class Entropy(ScalarProperty):
+    """
+    Section containing the entropy of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        unit='joule',
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule'
 
     entropy = Quantity(
         type=np.dtype(np.float64),

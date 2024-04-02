@@ -191,6 +191,8 @@ class BaseProperty(ArchiveSection):
         """,
     )
 
+    # TODO Add value_per_particle?
+
     system_ref = Quantity(
         type=Reference(ModelSystem.m_def),
         shape=[1],
