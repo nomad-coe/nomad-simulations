@@ -444,85 +444,6 @@ class CoupledCluster(ModelMethodElectronic):
     solver_map = {'QV': 'quasi-variational', 'B': 'Brueckner'}
     map_solver = {v: k for k, v in solver_map.items()}
 
-    def check_orders(self, logger) -> bool:
-        """Perform a sanity check on the excitation and perturbation order.
-        Raise a logging error if any inconsistency is found.
-        """
-        if self.excitation_order is None:
-            logger.warning('`CoupledCluster.excitation_order` is undefined.')
-            return False
-        if len(self.excitation_order) > 1:
-            if 2 not in self.excitation_order:
-                logger.error('Coupled Cluster typically starts from doubles.')
-                return False
-        for order in (3, 4):
-            if order in self.excitation_order and order in self.perturbative_order:
-                logger.error(
-                    f'Order {order} is defined as both excitation and perturbative.'
-                )
-                return False
-        return True
-
-    def cc_to_type(self) -> None:
-        """Produce an educated guess based on the other parameters."""
-        name = 'CC'
-        # cover the basic cases
-        if 2 in self.excitation_order:
-            if 1 in self.excitation_order:
-                name += 'SD'
-            name += 'D'
-        # cover extended excitations
-        for order, abbrev in {3: 'T', 4: 'Q'}.items():
-            if order in self.excitation_order:
-                name += abbrev
-            elif order in self.perturbative_order:
-                name += f'({abbrev})'
-        # cover explicit correlation
-        if self.explicit_correlation is not None:
-            name += self.explicit_correlation
-        # cover specific solver approaches
-        if self.solver in self.map_solver:
-            name = self.solver_map[self.solver] + name
-
-    def type_to_cc(self) -> None:
-        """Try to extract the excitation and perturbation orders from the type."""
-        match = re.match(
-            r'(QV|B)?CC(S)?(D)?(T|\(T\))?(Q|\(Q\))?(-F12|-R12)?', self.type
-        )
-        if match is None:
-            return
-
-        ptb_initialized, exc_initialized = False, False
-        for i in range(2, 6):
-            if abbrev := match.group(i):
-                order = i - 1
-                if abbrev[0] == '(':
-                    if not ptb_initialized:
-                        self.perturbative_order = []
-                        ptb_initialized = True
-                    self.perturbative_order = np.append(self.perturbative_order, order)
-                else:
-                    if not exc_initialized:
-                        self.excitation_order = []
-                        exc_initialized = True
-                    self.excitation_order = np.append(self.excitation_order, order)
-        if match.group(1) in self.solver_map:
-            self.solver = self.solver_map[match.group(1)]
-        if match.group(6):
-            self.explicit_correlation = match.group(6)[1:]  # remove the dash
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-        if self.type is None:
-            if self.check_orders(logger):
-                self.cc_to_type()
-        else:
-            self.type_to_cc()
-        if isinstance(self.excitation_order, list):
-            self.excitation_order = np.sort(self.excitation_order)
-        if isinstance(self.perturbative_order, list):
-            self.perturbative_order = np.sort(self.perturbative_order)
-
     type = Quantity(
         type=MEnum(
             *[
@@ -603,6 +524,85 @@ class CoupledCluster(ModelMethodElectronic):
         """,
         a_eln=ELNAnnotation(component='BoolEditQuantity'),
     )  # this should go into a knowledge base
+
+    def check_orders(self, logger) -> bool:
+        """Perform a sanity check on the excitation and perturbation order.
+        Raise a logging error if any inconsistency is found.
+        """
+        if self.excitation_order is None:
+            logger.warning('`CoupledCluster.excitation_order` is undefined.')
+            return False
+        if len(self.excitation_order) > 1:
+            if 2 not in self.excitation_order:
+                logger.error('Coupled Cluster typically starts from doubles.')
+                return False
+        for order in (3, 4):
+            if order in self.excitation_order and order in self.perturbative_order:
+                logger.error(
+                    f'Order {order} is defined as both excitation and perturbative.'
+                )
+                return False
+        return True
+
+    def cc_to_type(self) -> None:
+        """Produce an educated guess based on the other parameters."""
+        name = 'CC'
+        # cover the basic cases
+        if 2 in self.excitation_order:
+            if 1 in self.excitation_order:
+                name += 'SD'
+            name += 'D'
+        # cover extended excitations
+        for order, abbrev in {3: 'T', 4: 'Q'}.items():
+            if order in self.excitation_order:
+                name += abbrev
+            elif order in self.perturbative_order:
+                name += f'({abbrev})'
+        # cover explicit correlation
+        if self.explicit_correlation is not None:
+            name += self.explicit_correlation
+        # cover specific solver approaches
+        if self.solver in self.map_solver:
+            name = self.solver_map[self.solver] + name
+
+    def type_to_cc(self) -> None:
+        """Try to extract the excitation and perturbation orders from the type."""
+        match = re.match(
+            r'(QV|B)?CC(S)?(D)?(T|\(T\))?(Q|\(Q\))?(-F12|-R12)?', self.type
+        )
+        if match is None:
+            return
+
+        ptb_initialized, exc_initialized = False, False
+        for i in range(2, 6):
+            if abbrev := match.group(i):
+                order = i - 1
+                if abbrev[0] == '(':
+                    if not ptb_initialized:
+                        self.perturbative_order = []
+                        ptb_initialized = True
+                    self.perturbative_order = np.append(self.perturbative_order, order)
+                else:
+                    if not exc_initialized:
+                        self.excitation_order = []
+                        exc_initialized = True
+                    self.excitation_order = np.append(self.excitation_order, order)
+        if match.group(1) in self.solver_map:
+            self.solver = self.solver_map[match.group(1)]
+        if match.group(6):
+            self.explicit_correlation = match.group(6)[1:]  # remove the dash
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        if self.type is None:
+            if self.check_orders(logger):
+                self.cc_to_type()
+        else:
+            self.type_to_cc()
+        if isinstance(self.excitation_order, list):
+            self.excitation_order = np.sort(self.excitation_order)
+        if isinstance(self.perturbative_order, list):
+            self.perturbative_order = np.sort(self.perturbative_order)
 
 
 class TB(ModelMethodElectronic):
