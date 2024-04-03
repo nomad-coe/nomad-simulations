@@ -10,10 +10,10 @@ This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base secti
 
 ## Getting started
 
-
 ### Install the dependencies
 
 Clone the project and in the workspace folder, create a virtual environment (note this project uses Python 3.9):
+
 ```sh
 git clone https://github.com/nomad-coe/nomad-schema-plugin-simulation-data.git
 cd nomad-schema-plugin-simulation-data
@@ -22,6 +22,7 @@ python3.9 -m venv .pyenv
 ```
 
 Install the `nomad-lab` package:
+
 ```sh
 pip install --upgrade pip
 pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
@@ -98,13 +99,11 @@ ruff format . --check
 
 Ruff auto-formatting is also a part of the GitHub workflow actions. Make sure that before you make a Pull Request, `ruff format . --check` runs in your local without any errors otherwise the workflow action will fail.
 
-Alternatively, if you are using VSCode as your IDE, we added the settings configuration file, `.vscode/settings.json`, such that it performs `ruff format` whenever you save progress in a file.
-
 ### Debugging
 
 For interactive debugging of the tests, use `pytest` with the `--pdb` flag.
-The officially recommended IDE is VSCode..
-When debgugging in there, add the following snippet to the `launch.json` jobs:
+We recommend using an IDE for debugging, e.g., _VSCode_.
+If using VSCode, you can add the following snippet to your `.vscode/launch.json`:
 
 ```json
 {
@@ -129,5 +128,6 @@ When debgugging in there, add the following snippet to the `launch.json` jobs:
 }
 ```
 
-where `${workspaceFolder}` is located in the NOMAD root0.
-`_PYTEST_RAISE`, meanwhile, ensures the capture of any error thrown.
+where `${workspaceFolder}` refers to the NOMAD root.
+
+The settings configuration file `.vscode/settings.json` performs automatically applies the linting upon saving the file progress.
