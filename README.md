@@ -71,8 +71,8 @@ Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/
 You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
 
 ```yaml
-plugin_type: schema
-name: schema/nomad_simulations
+plugin_type: schemas
+name: schemas/nomad_simulations
 description: |
   This is a collection of NOMAD schemas for simulation data.
 ```
@@ -81,7 +81,8 @@ and define the ```nomad.yaml``` configuration file of your NOMAD instance in the
 
 ```yaml
 plugins:
-  include: 'schemas/nomad_simulations'
+  include:
+    - schemas/nomad_simulations
   options:
     schemas/nomad_simulations:
       python_package: nomad_simulations
@@ -90,7 +91,7 @@ plugins:
 You also need to add the package folder to the `PYTHONPATH` of the Python environment of your local NOMAD installation. This can be done by specifying the relative path to this repository. Either run the following command every time you start a new terminal for running the appworker, or add it to your virtual environment in `<path-to-local-nomad-installation>/.pyenv/bin/activate` file:
 
 ```sh
-export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>"
+export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>/src"
 ```
 
 If you are working in this repository, you just need to activate the environment to start working using the ```nomad_simulations``` package.
