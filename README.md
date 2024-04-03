@@ -40,14 +40,6 @@ python -m pytest -sv
 ```
 
 where the `-s` and `-v` options toggle the output verbosity.
-For interactive debugging, use the `--pdb` flag.
-When debgugging in the VSCode IDE, add the following to the `launch.json` jobs:
-
-```json
-"env": {
-    "_PYTEST_RAISE": "1"
-}
-```
 
 Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages.
 To emulate this locally, perform:
@@ -66,6 +58,7 @@ pip install -e .[dev] --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/21
 ```
 
 ### Setting up plugin on your local installation
+
 Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/howto/oasis/plugins_install.html) for all details on how to deploy the plugin on your NOMAD instance.
 
 You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
@@ -106,3 +99,35 @@ ruff format . --check
 Ruff auto-formatting is also a part of the GitHub workflow actions. Make sure that before you make a Pull Request, `ruff format . --check` runs in your local without any errors otherwise the workflow action will fail.
 
 Alternatively, if you are using VSCode as your IDE, we added the settings configuration file, `.vscode/settings.json`, such that it performs `ruff format` whenever you save progress in a file.
+
+### Debugging
+
+For interactive debugging of the tests, use `pytest` with the `--pdb` flag.
+The officially recommended IDE is VSCode..
+When debgugging in there, add the following snippet to the `launch.json` jobs:
+
+```json
+{
+  "configurations": [
+      {
+        "name": "<descriptive tag>",
+        "type": "debugpy",
+        "request": "launch",
+        "cwd": "${workspaceFolder}",
+        "program": "${workspaceFolder}/.pyenv/bin/pytest",
+        "justMyCode": true,
+        "env": {
+            "_PYTEST_RAISE": "1"
+        },
+        "args": [
+            "-sv",
+            "--pdb",
+            "<path to plugin tests>",
+        ]
+    }
+  ]
+}
+```
+
+where `${workspaceFolder}` is located in the NOMAD root0.
+`_PYTEST_RAISE`, meanwhile, ensures the capture of any error thrown.
