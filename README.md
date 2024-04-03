@@ -61,7 +61,7 @@ Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/
 You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
 ```yaml
 plugin_type: schema
-name: schemas/nomad_simulations
+name: schema/nomad_simulations
 description: |
   This is a collection of NOMAD schemas for simulation data.
 ```
@@ -93,4 +93,3 @@ ruff format . --check
 Ruff auto-formatting is also a part of the GitHub workflow actions. Make sure that before you make a Pull Request, `ruff format . --check` runs in your local without any errors otherwise the workflow action will fail.
 
 Alternatively, if you are using VSCode as your IDE, we added the settings configuration file, `.vscode/settings.json`, such that it performs `ruff format` whenever you save progress in a file.
-
