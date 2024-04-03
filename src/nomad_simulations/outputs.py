@@ -99,37 +99,25 @@ class Outputs(ArchiveSection):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    def check_is_derived(self, is_derived: bool, outputs_ref) -> Optional[bool]:
+    def resolve_is_derived(self, outputs_ref) -> bool:
         """
-        Check if the output property is derived or not.
+        Resolves if the output property is derived or not.
 
         Args:
-            is_derived (bool): The flag indicating whether the output property is derived or not.
-            outputs_ref (_type_): The reference to the `BaseOutputs` section from which the output property was derived.
+            outputs_ref (_type_): The reference to the `Outputs` section from which the output property was derived.
 
         Returns:
-            Optional[bool]: The flag indicating whether the output property is derived or not, or whether there are missing references exists (returns None).
+            bool: The flag indicating whether the output property is derived or not.
         """
-        if not is_derived:
-            if outputs_ref is not None:
-                return True
-            return False
-        elif is_derived and outputs_ref is not None:
+        if outputs_ref is not None:
             return True
-        return None
+        return False
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Check if the output property `is_derived` or not, or if there are missing references.
-        check_derived = self.check_is_derived(self.is_derived, self.outputs_ref)
-        if check_derived is not None:
-            self.is_derived = check_derived
-        else:
-            logger.error(
-                'A derived output property must have a reference to another `Outputs` section.'
-            )
-            return
+        # Resolve if the output property `is_derived` or not.
+        self.is_derived = self.resolve_is_derived(self.outputs_ref)
 
 
 class SCFOutputs(Outputs):
@@ -143,15 +131,7 @@ class SCFOutputs(Outputs):
     `Simulation` entry in NOMAD contains the final output properties and all the SCF steps.
     """
 
-    n_scf_steps = Quantity(
-        type=np.int32,
-        description="""
-        Number of self-consistent steps to converge the output property. Note that the SCF steps belong to
-        the same minimal `Simulation` workflow entry which is known as `SinglePoint`.
-        """,
-    )
-
-    scf_step = SubSection(
+    scf_steps = SubSection(
         sub_section=Outputs.m_def,
         repeats=True,
         description="""
@@ -176,30 +156,7 @@ class SCFOutputs(Outputs):
         """,
     )
 
-    # TODO add more functionality to automatically check convergence from `self_consistency_ref` and the last `scf_step[-1]`
-    def check_is_scf_converged(
-        self, is_scf_converged: bool, logger: BoundLogger
-    ) -> bool:
-        """
-        Check if the output property is converged or not.
-
-        Args:
-            is_converged (bool): The flag indicating whether the output property is converged or not.
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (bool): The flag indicating whether the output property is converged or not.
-        """
-        if not is_scf_converged:
-            # ? It will be nice if some of this logger messages can be checked or be used when querying data
-            logger.info('The output property is not converged after the SCF process.')
-            return False
-        return True
+    # TODO add more functionality to automatically check convergence from `self_consistency_ref` and the last two `scf_steps`
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-
-        # Set if the output property `is_converged` or not.
-        self.is_scf_converged = self.check_is_scf_converged(
-            self.is_scf_converged, logger
-        )
