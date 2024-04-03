@@ -22,7 +22,6 @@ from typing import Optional
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
@@ -43,7 +42,7 @@ def resolve_output(section, section_instance):
     return quantity
 
 
-class Outputs(ArchiveSection):
+class Outputs(PhysicalProperty):
     """
     Output properties of a simulation. This base class can be used for inheritance in any of the output properties
     defined in this schema.
@@ -117,7 +116,7 @@ class Outputs(ArchiveSection):
         return None
 
     def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
+        # super().normalize(archive, logger)
 
         # Set ref to the last ModelSystem if this is not set in the output
         if self.model_system_ref is None:

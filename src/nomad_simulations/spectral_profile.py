@@ -18,6 +18,7 @@
 
 import numpy as np
 from structlog.stdlib import BoundLogger
+from typing import Optional
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
@@ -30,10 +31,10 @@ from nomad.metainfo import (
     JSON,
 )
 
-from .outputs import Outputs, PhysicalProperty
+from .outputs import resolve_output_value, Outputs, PhysicalProperty, FermiLevel
 
 
-class SpectralProfile(Outputs, PhysicalProperty):
+class SpectralProfile(Outputs):
     """
     A base section used to define the spectral profile.
     """
@@ -66,7 +67,7 @@ class SpectralProfile(Outputs, PhysicalProperty):
         return True
 
     def normalize(self, archive, logger) -> None:
-        super(Outputs).normalize(archive, logger)
+        super().normalize(archive, logger)
 
         if self.is_valid_spectral_profile() is False:
             logger.error(
@@ -171,8 +172,42 @@ class ElectronicDOS(ElectronicSpectralProfile):
         # Set the name of the section
         self.name = self.m_def.name
 
+    def resolve_fermi_level(self) -> Optional[np.float64]:
+        """
+        Resolve the Fermi level from the output `FermiLevel` section, if present.
+
+        Returns:
+            (Optional[np.float64]): The resolved Fermi level.
+        """
+        fermi_level = self.fermi_level
+        if fermi_level is None:
+            fermi_level = resolve_output_value(self, FermiLevel)
+        return fermi_level
+
+    def check_spin_polarized(self) -> bool:
+        """
+        Check if the simulation `is_spin_polarized`.
+
+        Returns:
+            (bool): True if the simulation is spin-polarized, False otherwise.
+        """
+        if self.m_parent is not None:
+            for method in self.m_parent.model_method:
+                if method.is_spin_polarized:
+                    return True
+        return False
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Resolve `fermi_level`
+        self.fermi_level = self.resolve_fermi_level()
+
+        # Check if `is_spin_polarized` but `spin_channel` is not set
+        if self.check_spin_polarized() and self.spin_channel is None:
+            logger.warning(
+                'Spin-polarized calculation detected but the `spin_channel` is not set.'
+            )
 
 
 class XASSpectra(ElectronicSpectralProfile):
