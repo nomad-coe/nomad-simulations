@@ -69,9 +69,9 @@ description: |
 and define the ```nomad.yaml``` configuration file of your NOMAD instance in the root folder with the following content:
 ```yaml
 plugins:
-  include: 'schema/nomad_simulations'
+  include: 'schemas/nomad_simulations'
   options:
-    schema/nomad_simulations:
+    schemas/nomad_simulations:
       python_package: nomad_simulations
 ```
 
@@ -80,7 +80,7 @@ You also need to add the package folder to the `PYTHONPATH` of the Python enviro
 export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>"
 ```
 
-If you are working in this repository, you just need to activate the environment to start working using the ```nomad-nomad_simulations``` package.
+If you are working in this repository, you just need to activate the environment to start working using the ```nomad_simulations``` package.
 
 ### Run linting and auto-formatting
 
