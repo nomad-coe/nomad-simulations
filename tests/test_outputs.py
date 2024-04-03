@@ -20,34 +20,7 @@ import pytest
 
 from . import logger
 
-from nomad_simulations.outputs import Outputs, SCFOutputs
-
-
-class TestBaseOutputs:
-    """
-    Test the `BaseOutputs` class defined in `outputs.py`.
-    """
-
-    @pytest.mark.parametrize(
-        'is_derived, outputs_ref, result',
-        [
-            (False, Outputs(), True),
-            (False, None, False),
-            (True, Outputs(), True),
-            (True, None, None),
-        ],
-    )
-    def test_normalize(self, is_derived, outputs_ref, result):
-        """
-        Test the `normalize` and `check_is_derived` methods.
-        """
-        outputs = Outputs()
-        assert outputs.check_is_derived(is_derived, outputs_ref) == result
-        outputs.is_derived = is_derived
-        outputs.outputs_ref = outputs_ref
-        outputs.normalize(None, logger)
-        if result is not None:
-            assert outputs.is_derived == result
+from nomad_simulations.outputs import Outputs
 
 
 class TestOutputs:
@@ -56,19 +29,18 @@ class TestOutputs:
     """
 
     @pytest.mark.parametrize(
-        'is_scf_converged, result',
+        'outputs_ref, result',
         [
-            (False, False),
-            (True, True),
+            (Outputs(), True),
+            (None, False),
         ],
     )
-    def test_normalize(self, is_scf_converged, result):
+    def test_normalize(self, outputs_ref, result):
         """
-        Test the `normalize` method.
+        Test the `normalize` and `resolve_is_derived` methods.
         """
-        scf_outputs = SCFOutputs()
-        # ! This testing is repetivite, but `check_is_scf_converged` should eventually contain more complex logic and be separated in its own testing method.
-        assert scf_outputs.check_is_scf_converged(is_scf_converged, logger) == result
-        scf_outputs.is_scf_converged = is_scf_converged
-        scf_outputs.normalize(None, logger)
-        assert scf_outputs.is_scf_converged == result
+        outputs = Outputs()
+        assert outputs.resolve_is_derived(outputs_ref) == result
+        outputs.outputs_ref = outputs_ref
+        outputs.normalize(None, logger)
+        assert outputs.is_derived == result
