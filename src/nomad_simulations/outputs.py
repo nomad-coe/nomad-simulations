@@ -31,6 +31,18 @@ from .properties import (
 )
 
 
+def resolve_output(section, section_instance):
+    quantity = None
+    if section.m_parent is None:
+        return quantity
+    for output in section.m_parent.outputs:
+        if isinstance(output, section_instance):
+            quantity = output.value
+            if quantity is not None:
+                break
+    return quantity
+
+
 class Outputs(ArchiveSection):
     """
     Output properties of a simulation. This base class can be used for inheritance in any of the output properties
