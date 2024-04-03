@@ -34,10 +34,20 @@ sure to include NOMAD's internal package registry (via `--index-url` in the abov
 
 ### Run the tests
 
-You can the unit testing using the `pytest` package:
+You can run local tests using the `pytest` package:
 
 ```sh
 python -m pytest -sv
+```
+
+where the `-s` and `-v` options toggle the output verbosity.
+For interactive debugging, use the `--pdb` flag.
+When debgugging in the VSCode IDE, add the following to the `launch.json` jobs:
+
+```json
+"env": {
+    "_PYTEST_RAISE": "1"
+}
 ```
 
 We recommend to install the `coverage` and `coveralls` packages for a more comprehensive output of the testing:
