@@ -444,17 +444,12 @@ class QuasiparticlesFrequencyMesh(Mesh):
 class SelfConsistency(NumericalSettings):
     """
     A base section used to define the convergence settings of self-consistent field (SCF) calculation.
-    It determines the condictions for `is_converged` in properties `Outputs` (see outputs.py). The convergence
+    It determines the condictions for `is_scf_converged` in `SCFOutputs` (see outputs.py). The convergence
     criteria covered are:
 
         1. The number of iterations is smaller than or equal to `n_max_iterations`.
-
-    and one of the following:
-
-        2a. The total energy change between two subsequent self-consistent iterations is below
-        `threshold_energy_change`.
-        2b. The charge density change between two subsequent self-consistent iterations is below
-        `threshold_charge_density_change`.
+        2. The total change between two subsequent self-consistent iterations for an output property is below
+        `threshold_change`.
     """
 
     # TODO add examples or MEnum?
@@ -468,28 +463,24 @@ class SelfConsistency(NumericalSettings):
     n_max_iterations = Quantity(
         type=np.int32,
         description="""
-        Specifies the maximum number of allowed self-consistent iterations. The simulation `is_converged`
+        Specifies the maximum number of allowed self-consistent iterations. The simulation `is_scf_converged`
         if the number of iterations is not larger or equal than this quantity.
         """,
     )
 
-    # ? define class `Tolerance` for the different Scf tolerances types?
-    threshold_energy_change = Quantity(
+    threshold_change = Quantity(
         type=np.float64,
-        unit='joule',
         description="""
-        Specifies the threshold for the total energy change between two subsequent self-consistent iterations.
-        The simulation `is_converged` if the total energy change between two SCF cycles is below
+        Specifies the threshold for the change between two subsequent self-consistent iterations on
+        a given output property. The simulation `is_scf_converged` if this total change is below
         this threshold.
         """,
     )
 
-    threshold_charge_density_change = Quantity(
-        type=np.float64,
+    threshold_change_unit = Quantity(
+        type=str,
         description="""
-        Specifies the threshold for the average charge density change between two subsequent
-        self-consistent iterations. The simulation `is_converged` if the charge density change
-        between two SCF cycles is below this threshold.
+        Unit using the pint UnitRegistry() notation for the `threshold_change`.
         """,
     )
 
