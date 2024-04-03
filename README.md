@@ -50,7 +50,9 @@ When debgugging in the VSCode IDE, add the following to the `launch.json` jobs:
 }
 ```
 
-We recommend to install the `coverage` and `coveralls` packages for a more comprehensive output of the testing:
+Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages.
+To emulate this locally, perform:
+
 ```sh
 pip install coverage coveralls
 python -m coverage run -m pytest -sv
