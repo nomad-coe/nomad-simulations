@@ -43,8 +43,7 @@ from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
 from nomad.metainfo.metainfo import DirectQuantity, Dimension
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .outputs import MDOutputs
-from .property import BaseProperty
+from .outputs import Outputs, SCFOutputs, WorkflowOutputs, TrajectoryOutputs
 from .atoms_state import AtomsState
 
 
@@ -68,16 +67,6 @@ from nomad.metainfo import (
 )
 
 from .model_system import ModelSystem
-
-class ScalarProperty(BaseProperty):
-    """
-    Generic section containing the values and information for any scalar property.
-    """
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-        # TODO check that all variable and bin quantities are None
 
 class AtomicProperty(BaseProperty):
     """
@@ -1000,7 +989,7 @@ class MultipolesEntry(Atomic):
     orbital_projected = SubSection(sub_section=MultipolesValues.m_def, repeats=True)
 
 
-class Enthalpy(MDOutputs, ScalarProperty):
+class Enthalpy(TrajectoryOutputs):
     """
     Section containing the enthalpy (i.e. energy_total + pressure * volume.) of a (sub)system.
     """
@@ -1013,10 +1002,12 @@ class Enthalpy(MDOutputs, ScalarProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.value_unit = 'joule'
+        self.name = 'enthalpy'
+        self.is_scalar = True
 
-class Entropy(ScalarProperty):
+class Entropy(TrajectoryOutputs):
     """
-    Section containing the entropy of a (sub)system.
+    Section containing the (scalar) entropy of a (sub)system.
     """
 
     value = Quantity(
@@ -1027,24 +1018,12 @@ class Entropy(ScalarProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.value_unit = 'joule / kelvin'
+        self.name = 'entropy'
+        self.is_scalar = True
 
-class ChemicalPotential(ScalarProperty):
+class ChemicalPotential(TrajectoryOutputs):
     """
-    Section containing the chemical potential of a (sub)system.
-    """
-
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-    )
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-        self.value_unit = 'joule'
-
-class KineticEnergy(ScalarProperty):
-    """
-    Section containing the kinetic energy of a (sub)system.
+    Section containing the (scalar) chemical potential of a (sub)system.
     """
 
     value = Quantity(
@@ -1055,51 +1034,108 @@ class KineticEnergy(ScalarProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
         self.value_unit = 'joule'
+        self.name = 'chemical_potential'
+        self.is_scalar = True
+class KineticEnergy(TrajectoryOutputs):
+    """
+    Section containing the (scalar) kinetic energy of a (sub)system.
+    """
 
-    potential_energy = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
+    value = Quantity(
+        type=np.float64,
         unit='joule',
-        description="""
-        Value of the potential energy.
-        """,
     )
 
-    internal_energy = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule'
+        self.name = 'kinetic_energy'
+        self.is_scalar = True
+
+class PotentialEnergy(TrajectoryOutputs):
+    """
+    Section containing the (scalar) potential energy of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
         unit='joule',
-        description="""
-        Value of the internal energy.
-        """,
     )
 
-    vibrational_free_energy_at_constant_volume = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
-        unit='joule',
-        description="""
-        Value of the vibrational free energy per cell unit at constant volume.
-        """,
-    )
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule'
+        self.name = 'potential_energy'
+        self.is_scalar = True
 
-    pressure = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
+class Pressure(TrajectoryOutputs):
+    """
+    Section containing the (scalar) pressure of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
         unit='pascal',
-        description="""
-        Value of the pressure of the system.
-        """,
     )
 
-    temperature = Quantity(
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'pascal'
+        self.name = 'pressure'
+        self.is_scalar = True
+
+class PressureTensor(TrajectoryOutputs):
+    """
+    Section containing the pressure in terms of the x, y, z components of the (sub)system simulation cell.
+    Typically calculated as the difference between the kinetic energy and the virial.
+    """
+
+    value = Quantity(
         type=np.dtype(np.float64),
-        shape=[],
-        unit='kelvin',
-        description="""
-        Value of the temperature of the system at which the properties are calculated.
-        """,
+        shape=[3, 3],
+        unit='pascal',
     )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'pascal'
+        self.name = 'pressure_tensor'
+        self.variables = [['xx', 'xy', 'xz'], ['yx', 'yy', 'yz'], ['zx', 'zy', 'zz']]
+
+class VirialTensor(TrajectoryOutputs):
+    """
+    Section containing the virial in terms of the x, y, z components of the (sub)system simulation cell.
+    Typically calculated as the cross product between positions and forces.
+    """
+
+    value = Quantity(
+        type=np.dtype(np.float64),
+        shape=[3, 3],
+        unit='joule',
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule'
+        self.name = 'virial_tensor'
+        self.variables = [['xx', 'xy', 'xz'], ['yx', 'yy', 'yz'], ['zx', 'zy', 'zz']]
+
+class Temperature(TrajectoryOutputs):
+    """
+    Section containing the (scalar) temperature of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        unit='kelvin',
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'kelvin'
+        self.name = 'temperature'
+        self.is_scalar = True
+
 
     volume = Quantity(
         type=np.dtype(np.float64),
@@ -1128,13 +1164,27 @@ class KineticEnergy(ScalarProperty):
         """,
     )
 
-    time_step = Quantity(
-        type=int,
+
+    internal_energy = Quantity(
+        type=np.dtype(np.float64),
         shape=[],
+        unit='joule',
         description="""
-        The number of time steps with respect to the start of the calculation.
+        Value of the internal energy.
         """,
     )
+
+    vibrational_free_energy_at_constant_volume = Quantity(
+        type=np.dtype(np.float64),
+        shape=[],
+        unit='joule',
+        description="""
+        Value of the vibrational free energy per cell unit at constant volume.
+        """,
+    )
+
+
+
 
 
 class RadiusOfGyrationValues(AtomicGroupValues):
@@ -1377,15 +1427,7 @@ class BaseCalculation(ArchiveSection):
         """,
     )
 
-    virial_tensor = Quantity(
-        type=np.dtype(np.float64),
-        shape=[3, 3],
-        unit='joule',
-        description="""
-        Value of the virial in terms of the x, y, z components of the simulation cell.
-        Typically calculated as the cross product between positions and forces.
-        """,
-    )
+
 
     enthalpy = Quantity(
         type=np.dtype(np.float64),

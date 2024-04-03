@@ -46,7 +46,7 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from .model_system import ModelSystem
 from .outputs import Outputs
 
-class BaseErrors(ArchiveSection):
+class Errors(ArchiveSection):
     """
     A base section used to define errors.
     """
@@ -71,7 +71,7 @@ class BaseErrors(ArchiveSection):
         super().normalize(archive, logger)
 
 
-class BaseSmoothing(ArchiveSection):
+class Smoothing(ArchiveSection):
     """
     A base section used to define data smoothing procedures.
     """
@@ -84,13 +84,13 @@ class BaseSmoothing(ArchiveSection):
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
-    parameters = SubSection(sub_section=BaseErrors.m_def, repeats=True)
+    parameters = SubSection(sub_section=ParameterEntry.m_def, repeats=True)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
 
-class BaseProperty(ArchiveSection):
+class PhysicalPropery(ArchiveSection):
     """
     A base section used to define properties.
     """
@@ -193,16 +193,26 @@ class BaseProperty(ArchiveSection):
 
     # TODO Add value_per_particle?
 
-    system_ref = Quantity(
-        type=Reference(ModelSystem.m_def),
-        shape=[1],
+    is_scalar = Quantity(
+        type=bool,
+        default=False,
         description="""
-        References to the (sub)system section containing the atoms relevant for this property.
+        Flag indicating whether the output property is a scalar. If yes, variable and bin quantities
+        are ensured to not be populated.
         """,
     )
 
-    errors = SubSection(sub_section=BaseErrors.m_def, repeats=True)
+    errors = SubSection(sub_section=Errors.m_def, repeats=True)
+    smoothing = SubSection(sub_section=Smoothing.m_def, repeats=True)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        if self.is_scalar:
+            if self.variables is not None:
+                self.variables = None
+                # TODO throw warning/error
+            if self.bins is not None:
+                self.bins = None
+                # TODO throw warning/error
+                # TODO ...

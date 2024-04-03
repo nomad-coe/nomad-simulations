@@ -23,6 +23,9 @@ from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.metainfo import Quantity, SubSection, SectionProxy, Reference
+# ? are we planning to enforce a dependency on simulationworkflowschema?
+from nomad.dependencies.simulationworkflowschema import SimulationWorkflow, MolecularDynamics
 
 from nomad_simulations.model_system import ModelSystem
 from nomad_simulations.physical_property import PhysicalProperty
@@ -43,7 +46,7 @@ from nomad_simulations.properties import (
 )
 
 
-class Outputs(ArchiveSection):
+class Outputs(PhysicalProperty):
     """
     Output properties of a simulation. This base class can be used for inheritance in any of the output properties
     defined in this schema.
@@ -282,3 +285,37 @@ class SCFOutputs(Outputs):
                     physical_property=phys_property,
                     logger=logger,
                 )
+class MDOutputs(Outputs):
+class WorkflowOutputs(Outputs):
+    """
+    This section contains output properties that depend on a single system, but were
+    calculated as part of a workflow. Examples include geometry optimization and molecular dynamics.
+    """
+
+    step = Quantity(
+        type=np.int32,
+        description="""
+        The step number with respect to the workflow.
+        """,
+    )
+
+    workflow_ref = Quantity(
+        type=SimulationWorkflow,
+        description="""
+        Reference to the `SelfConsistency` section that defines the numerical settings to converge the
+        output property.
+        """,
+    )
+
+class TrajectoryOutputs(WorkflowOutputs):
+    """
+    This section contains output properties that depend on a single system, but were
+    calculated as part of a workflow. Examples include geometry optimization and molecular dynamics.
+    """
+
+    time = Quantity(
+        type=np.float64,
+        description="""
+        The elapsed simulated physical time since the start of the trajectory.
+        """,
+    )
