@@ -43,7 +43,7 @@ from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum
 from nomad.metainfo.metainfo import DirectQuantity, Dimension
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .outputs import Outputs
+from .outputs import MDOutputs
 from .property import BaseProperty
 from .atoms_state import AtomsState
 
@@ -1000,7 +1000,7 @@ class MultipolesEntry(Atomic):
     orbital_projected = SubSection(sub_section=MultipolesValues.m_def, repeats=True)
 
 
-class Enthalpy(ScalarProperty):
+class Enthalpy(MDOutputs, ScalarProperty):
     """
     Section containing the enthalpy (i.e. energy_total + pressure * volume.) of a (sub)system.
     """
@@ -1021,6 +1021,20 @@ class Entropy(ScalarProperty):
 
     value = Quantity(
         type=np.float64,
+        unit='joule / kelvin',
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule / kelvin'
+
+class ChemicalPotential(ScalarProperty):
+    """
+    Section containing the chemical potential of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
         unit='joule',
     )
 
@@ -1028,32 +1042,19 @@ class Entropy(ScalarProperty):
         super().normalize(archive, logger)
         self.value_unit = 'joule'
 
-    entropy = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
-        unit='joule / kelvin',
-        description="""
-        Value of the entropy.
-        """,
+class KineticEnergy(ScalarProperty):
+    """
+    Section containing the kinetic energy of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        unit='joule',
     )
 
-    chemical_potential = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
-        unit='joule',
-        description="""
-        Value of the chemical potential.
-        """,
-    )
-
-    kinetic_energy = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
-        unit='joule',
-        description="""
-        Value of the kinetic energy.
-        """,
-    )
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule'
 
     potential_energy = Quantity(
         type=np.dtype(np.float64),
