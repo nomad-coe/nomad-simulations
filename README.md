@@ -71,7 +71,7 @@ Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/
 You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
 
 ```yaml
-plugin_type: schemas
+plugin_type: schema
 name: schemas/nomad_simulations
 description: |
   This is a collection of NOMAD schemas for simulation data.
