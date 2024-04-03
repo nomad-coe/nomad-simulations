@@ -17,6 +17,7 @@
 #
 
 import numpy as np
+from structlog.stdlib import BoundLogger
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
@@ -53,14 +54,25 @@ class SpectralProfile(Outputs, PhysicalProperty):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
-        super(Outputs).__init__(m_def, m_context, **kwargs)
-        super(PhysicalProperty).__init__(m_def, m_context, **kwargs)
-        # Set the name of the section
-        self.name = self.m_def.name
+    def is_valid_spectral_profile(self) -> bool:
+        """
+        Check if the spectral profile is valid, i.e., if the `intensities` are defined positive.
+
+        Returns:
+            (bool): True if the spectral profile is valid, False otherwise.
+        """
+        if (self.intensities < 0.0).any():
+            return False
+        return True
 
     def normalize(self, archive, logger) -> None:
         super(Outputs).normalize(archive, logger)
+
+        if self.is_valid_spectral_profile() is False:
+            logger.error(
+                'Invalid negative intensities found: could not validate spectral profile.'
+            )
+            return
 
 
 class ElectronicSpectralProfile(SpectralProfile):
@@ -89,36 +101,46 @@ class ElectronicSpectralProfile(SpectralProfile):
         type=np.float64,
         unit='joule',
         description="""
-        Origin of reference for the energies. This quantity is used to set the `energies` to zero at the origin.
+        Origin of reference for the energies.
         """,
     )
 
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
 
-class ElectronicDensityOfStates(ElectronicSpectralProfile):
+
+class ElectronicDOS(ElectronicSpectralProfile):
     """
     Electronic Density of States (DOS).
     """
 
-    energy_fermi = Quantity(
+    fermi_level = Quantity(
         type=np.float64,
         unit='joule',
         description="""
-        Fermi energy.
+        The Fermi level is the highest occupied energy level at zero temperature. For insulators and semiconductors,
+        some codes have some difficulty in determining the Fermi level, and it is often set to the middle of the band gap,
+        at the top of the valence band, or even in the bottom of the conduction band.
+
+        We set the `energies_origin` to the top of the valence band, thus, `energies_origin` and `fermi_level` might
+        not coincide.
         """,
     )
 
     spin_channel = Quantity(
         type=np.int32,
         description="""
-        Spin channel of the corresponding DOS. It can take values of 0 or 1.
+        Spin channel of the corresponding DOS. It can take values of 0 or 1. This quantity is set only if
+        `ModelMethod.is_spin_polarized` is `True`.
         """,
     )
 
     normalization_factor = Quantity(
         type=np.float64,
         description="""
-        Normalization factor for DOS values to get a cell-independent intensive DOS,
-        defined as the DOS integral from the lowest energy state to the Fermi level for a neutrally charged system.
+        Normalization factor for electronic DOS to get a cell-independent intensive DOS. The cell-independent
+        intensive DOS is as the integral from the lowest (most negative) energy to the `fermi_level` for a neutrally
+        charged system (i.e., the sum of `AtomsState.charge` is zero).
         """,
     )
 
@@ -126,6 +148,56 @@ class ElectronicDensityOfStates(ElectronicSpectralProfile):
         type=np.float64,
         shape=['n_energies'],
         description="""
-        A cumulative DOS starting from the mimunum energy available up to the energy level specified in `energies`.
+        The cumulative intensities integrated from from the lowest (most negative) energy to the `fermi_level`.
         """,
     )
+
+    projected_dos = SubSection(
+        sub_section=ElectronicSpectralProfile.m_def,
+        repeats=True,
+        description="""
+        Projected DOS. It can be species- (same elements in the unit cell), atom- (different elements in the unit cell),
+        or orbital-projected. These can be calculated in a cascade as:
+            - If the total DOS is not present, we can sum all species-projected DOS to obtain it.
+            - If the species-projected DOS is not present, we can sum all atom-projected DOS to obtain it.
+            - If the atom-projected DOS is not present, we can sum all orbital-projected DOS to obtain it.
+        The `name` of the projected DOS is set to the species, atom, or orbital name from the corresponding `atoms_state_ref`
+        or `orbitals_state_ref`.
+        """,
+    )
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class XASSpectra(ElectronicSpectralProfile):
+    """
+    X-ray Absorption Spectra (XAS).
+    """
+
+    xanes_spectra = SubSection(
+        sub_section=ElectronicSpectralProfile.m_def,
+        description="""
+        X-ray Absorption Near Edge Structure (XANES) spectra.
+        """,
+    )
+
+    exafs_spectra = SubSection(
+        sub_section=ElectronicSpectralProfile.m_def,
+        description="""
+        Extended X-ray Absorption Fine Structure (EXAFS) spectra.
+        """,
+    )
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
