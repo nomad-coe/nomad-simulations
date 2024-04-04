@@ -10,10 +10,10 @@ This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base secti
 
 ## Getting started
 
-
 ### Install the dependencies
 
 Clone the project and in the workspace folder, create a virtual environment (note this project uses Python 3.9):
+
 ```sh
 git clone https://github.com/nomad-coe/nomad-schema-plugin-simulation-data.git
 cd nomad-schema-plugin-simulation-data
@@ -22,6 +22,7 @@ python3.9 -m venv .pyenv
 ```
 
 Install the `nomad-lab` package:
+
 ```sh
 pip install --upgrade pip
 pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
@@ -31,16 +32,19 @@ pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/218
 Until we have an official pypi NOMAD release with the plugins functionality. Make
 sure to include NOMAD's internal package registry (via `--index-url` in the above command).
 
-
 ### Run the tests
 
-You can the unit testing using the `pytest` package:
+You can run local tests using the `pytest` package:
 
 ```sh
 python -m pytest -sv
 ```
 
-We recommend to install the `coverage` and `coveralls` packages for a more comprehensive output of the testing:
+where the `-s` and `-v` options toggle the output verbosity.
+
+Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages.
+To emulate this locally, perform:
+
 ```sh
 pip install coverage coveralls
 python -m coverage run -m pytest -sv
@@ -54,11 +58,12 @@ The plugin is still under development. If you would like to contribute, install 
 pip install -e .[dev] --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
-
 ### Setting up plugin on your local installation
+
 Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/howto/oasis/plugins_install.html) for all details on how to deploy the plugin on your NOMAD instance.
 
 You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
+
 ```yaml
 plugin_type: schema
 name: schemas/nomad_simulations
@@ -67,17 +72,20 @@ description: |
 ```
 
 and define the ```nomad.yaml``` configuration file of your NOMAD instance in the root folder with the following content:
+
 ```yaml
 plugins:
-  include: 'schemas/nomad_simulations'
+  include:
+    - schemas/nomad_simulations
   options:
     schemas/nomad_simulations:
       python_package: nomad_simulations
 ```
 
 You also need to add the package folder to the `PYTHONPATH` of the Python environment of your local NOMAD installation. This can be done by specifying the relative path to this repository. Either run the following command every time you start a new terminal for running the appworker, or add it to your virtual environment in `<path-to-local-nomad-installation>/.pyenv/bin/activate` file:
+
 ```sh
-export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>"
+export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>/src"
 ```
 
 If you are working in this repository, you just need to activate the environment to start working using the ```nomad_simulations``` package.
@@ -86,11 +94,40 @@ If you are working in this repository, you just need to activate the environment
 
 ```sh
 ruff check .
-```
-```sh
 ruff format . --check
 ```
+
 Ruff auto-formatting is also a part of the GitHub workflow actions. Make sure that before you make a Pull Request, `ruff format . --check` runs in your local without any errors otherwise the workflow action will fail.
 
-Alternatively, if you are using VSCode as your IDE, we added the settings configuration file, `.vscode/settings.json`, such that it performs `ruff format` whenever you save progress in a file.
+### Debugging
 
+For interactive debugging of the tests, use `pytest` with the `--pdb` flag.
+We recommend using an IDE for debugging, e.g., _VSCode_.
+If using VSCode, you can add the following snippet to your `.vscode/launch.json`:
+
+```json
+{
+  "configurations": [
+      {
+        "name": "<descriptive tag>",
+        "type": "debugpy",
+        "request": "launch",
+        "cwd": "${workspaceFolder}",
+        "program": "${workspaceFolder}/.pyenv/bin/pytest",
+        "justMyCode": true,
+        "env": {
+            "_PYTEST_RAISE": "1"
+        },
+        "args": [
+            "-sv",
+            "--pdb",
+            "<path to plugin tests>",
+        ]
+    }
+  ]
+}
+```
+
+where `${workspaceFolder}` refers to the NOMAD root.
+
+The settings configuration file `.vscode/settings.json` performs automatically applies the linting upon saving the file progress.
