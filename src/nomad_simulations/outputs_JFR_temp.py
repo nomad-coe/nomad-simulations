@@ -1100,7 +1100,8 @@ class PressureTensor(TrajectoryOutputs):
         super().normalize(archive, logger)
         self.value_unit = 'pascal'
         self.name = 'pressure_tensor'
-        self.variables = [['xx', 'xy', 'xz'], ['yx', 'yy', 'yz'], ['zx', 'zy', 'zz']]
+        self.bins = None
+        self.variables = [['x', 'y', 'z'], ['x', 'y', 'z']] # ? [['xx', 'xy', 'xz'], ['yx', 'yy', 'yz'], ['zx', 'zy', 'zz']]
 
 class VirialTensor(TrajectoryOutputs):
     """
@@ -1118,7 +1119,7 @@ class VirialTensor(TrajectoryOutputs):
         super().normalize(archive, logger)
         self.value_unit = 'joule'
         self.name = 'virial_tensor'
-        self.variables = [['xx', 'xy', 'xz'], ['yx', 'yy', 'yz'], ['zx', 'zy', 'zz']]
+        self.variables = [['x', 'y', 'z'], ['x', 'y', 'z']] # ? [['xx', 'xy', 'xz'], ['yx', 'yy', 'yz'], ['zx', 'zy', 'zz']]
 
 class Temperature(TrajectoryOutputs):
     """
@@ -1136,15 +1137,114 @@ class Temperature(TrajectoryOutputs):
         self.name = 'temperature'
         self.is_scalar = True
 
+class Volume(TrajectoryOutputs):
+    """
+    Section containing the (scalar) temperature of a (sub)system.
+    """
 
-    volume = Quantity(
-        type=np.dtype(np.float64),
-        shape=[],
+    value = Quantity(
+        type=np.float64,
         unit='m ** 3',
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'm ** 3'
+        self.name = 'volume'
+        self.is_scalar = True
+
+class Hessian(TrajectoryOutputs):
+    """
+    Section containing the Hessian matrix, i.e., 2nd derivatives with respect to atomic displacements,
+    of the potential energy of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.dtype(np.float64),
+        shape=['n_atoms', 'n_atoms', 3, 3],
+        unit='joule / m ** 2',
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        self.value_unit = 'joule / m ** 2'
+        self.name = 'hessian'
+        self.variables = [['atom_index'], ['atom_index'], ['x', 'y', 'z'], ['x', 'y', 'z']]
+        self.bins = [np.range(self.n_atoms), np.range(self.n_atoms)]
+
+
+
+
+
+class RadialDistributionFunction(TrajectoryOutputs):
+    """
+    Section containing information about the calculation of
+    radial distribution functions (rdfs).
+    """
+
+    value = Quantity(
+        type=np.dtype(np.float64),
+        shape=['*'],
+    )
+
+    variables = Quantity(
+        type=str,
+        shape=[1],
         description="""
-        Value of the volume of the system at which the properties are calculated.
+        Name/description of the variables along which the property is defined.
         """,
     )
+
+    bins = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='m',
+        description="""
+        Distances along which the rdf was calculated.
+        """,
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+        self.variables = ['distance']
+        assert len(self.bins) == len(self.value)
+
+
+class Forces(TrajectoryOutputs):
+    """
+    Section describing a contribution to or type of atomic forces.
+    """
+
+    value = Quantity(
+        type=np.dtype(np.float64),
+        shape=['n_atoms', 3],
+        unit='newton',
+        description="""
+        Value of the forces acting on the atoms. This is calculated as minus gradient of
+        the corresponding energy type or contribution **including** constraints, if
+        present. The derivatives with respect to displacements of nuclei are evaluated in
+        Cartesian coordinates.  In addition, these are obtained by filtering out the
+        unitary transformations (center-of-mass translations and rigid rotations for
+        non-periodic systems, see value_raw for the unfiltered counterpart).
+        """,
+    )
+
+    variables = Quantity(
+        type=str,
+        shape=['*'],
+        description="""
+        Name/description of the variables along which the property is defined.
+        """,
+    )
+
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+        self.bins = None
+        self.variables = ['atoms', 'x', 'y', 'z']
+        assert len(self.bins) == len(self.value)
+
+
+
 
     heat_capacity_c_v = Quantity(
         type=np.dtype(np.float64),
@@ -1228,82 +1328,10 @@ class BaseCalculation(ArchiveSection):
     can be accessed in section workflow.
     """
 
-    m_def = Section(validate=False)
 
-    system_ref = Quantity(
-        type=Reference(System.m_def),
-        shape=[],
-        description="""
-        Links the calculation to a section system.
-        """,
-        categories=[FastAccess],
-    )
 
-    method_ref = Quantity(
-        type=Reference(Method.m_def),
-        shape=[],
-        description="""
-        Links the calculation to a section method.
-        """,
-        categories=[FastAccess],
-    )
 
-    starting_calculation_ref = Quantity(
-        type=Reference(SectionProxy('Calculation')),
-        shape=[],
-        description="""
-        Links the current section calculation to the starting calculation.
-        """,
-        categories=[FastAccess],
-    )
 
-    n_references = Quantity(
-        type=np.dtype(np.int32),
-        shape=[],
-        description="""
-         Number of references to the current section calculation.
-        """,
-    )
-
-    calculations_ref = Quantity(
-        type=Reference(SectionProxy('Calculation')),
-        shape=['n_references'],
-        description="""
-        Links the current section calculation to other section calculations. Such a link
-        is necessary for example if the referenced calculation is a self-consistent
-        calculation that serves as a starting point or a calculation is part of a domain
-        decomposed simulation that needs to be connected.
-        """,
-        categories=[FastAccess],
-    )
-
-    calculations_path = Quantity(
-        type=str,
-        shape=['n_references'],
-        description="""
-        Links the current section calculation to other section calculations. Such a link
-        is necessary for example if the referenced calculation is a self-consistent
-        calculation that serves as a starting point or a calculation is part of a domain
-        decomposed simulation that needs to be connected.
-        """,
-    )
-
-    calculation_converged = Quantity(
-        type=bool,
-        shape=[],
-        description="""
-        Indicates whether a the calculation is converged.
-        """,
-    )
-
-    hessian_matrix = Quantity(
-        type=np.dtype(np.float64),
-        shape=['number_of_atoms', 'number_of_atoms', 3, 3],
-        description="""
-        The matrix with the second derivative of the energy with respect to atom
-        displacements.
-        """,
-    )
 
     spin_S2 = Quantity(
         type=np.dtype(np.float64),
