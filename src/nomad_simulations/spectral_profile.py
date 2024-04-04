@@ -19,6 +19,7 @@
 import numpy as np
 from structlog.stdlib import BoundLogger
 from typing import Optional
+import pint
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
@@ -197,6 +198,26 @@ class ElectronicDOS(ElectronicSpectralProfile):
                     return True
         return False
 
+    def resolve_energies_origin(self) -> Optional[pint.Quantity]:
+        """
+        Resolve the origin of reference for the energies from the `Eigenvalues` output property, or if this does not exist,
+        from the `FermiLevel` output property.
+
+        Returns:
+            (Optional[pint.Quantity]): The resolved origin of reference for the energies.
+        """
+        energies_origin = self.energies_origin
+        # ! We need schema for `Eigenvalues` to store `highest_occupied` and `lowest_occupied` to use in `ElectronicBandGap` and `ElectronicDOS`
+        # if energies_origin is None:
+        #     fermi_level = self.resolve_fermi_level()
+        #     if fermi_level is not None:
+        #         energies_origin = fermi_level
+        #     else:
+        #         eigenvalues = resolve_output_value(self, Eigenvalues)
+        #         if eigenvalues is not None:
+        #             energies_origin = eigenvalues.highest_occupied
+        return energies_origin
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
@@ -208,6 +229,9 @@ class ElectronicDOS(ElectronicSpectralProfile):
             logger.warning(
                 'Spin-polarized calculation detected but the `spin_channel` is not set.'
             )
+
+        # Resolve `energies_origin`
+        self.energies_origin = self.resolve_energies_origin()
 
 
 class XASSpectra(ElectronicSpectralProfile):
