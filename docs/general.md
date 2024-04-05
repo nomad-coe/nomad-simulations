@@ -12,7 +12,7 @@ In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/how
     </label>
 </div>
 
-The detailed UML diagram of quantities and functions defined for `Simulation` is:
+In fact, `Simulation` inherits from a further abstract concept, `BaseSimulation`. This class contains the general information about the `Program` used, as well as general times of the simulation, e.g., the datetime at which it started (`datetime`) and ended (`datetime_end`). The detailed UML diagram of quantities and functions defined for `Simulation` is thus:
 
 <div class="click-zoom">
     <label>
@@ -28,14 +28,14 @@ We use double inheritance from `EntryData` in order to populate the `data` secti
 The `Simulation` base class is composed of 4 main sub-sections:
 
 1. `Program`: contains all the program information, e.g., `name` of the program, `version`, etc.
-2. `ModelSystem`: contains all the system information about geometrical positions of atoms, their states, unit cells, symmetry information, etc.
-3. `ModelMethod`: contains all the methodological information, and it is divided in two main aspects: the model Hamiltonian or approximation used in the simulation (e.g., DFT, GW, ForceFields, etc.) and the numerical settings used to compute the properties (e.g., meshes, self-consistent conditions, basis sets, etc.).
-4. `Outputs`: contains all the output properties, as well as references to the `ModelSystem` and `ModelMethod` used to obtain such properties. It might also contain information which will populate `ModelSystem` (e.g., atomic occupations, atomic moments, crystal field energies, etc.).
+2. `ModelSystem`: contains all the system information about geometrical positions of atoms, their states, simulation cells, symmetry information, etc.
+3. `ModelMethod`: contains all the methodological information, and it is divided in two main aspects: the mathematical model or approximation used in the simulation (e.g., `DFT`, `GW`, `ForceFields`, etc.) and the numerical settings used to compute the properties (e.g., meshes, self-consistent parameters, basis sets settings, etc.).
+4. `Outputs`: contains all the output properties, as well as references to the `ModelSystem` used to obtain such properties. It might also contain information which will populate `ModelSystem` (e.g., atomic occupations, atomic moments, crystal field energies, etc.).
 
 !!! note "Self-consistent steps, SinglePoint entries, and more complex workflows."
-    In NOMAD, we consider the minimal unit for storing the data in the archive (i.e., an *entry*) as any calculation containing all the self-consistent steps of itself. This is what we call, `SinglePoint`. Thus, we do not split each self-consistent step in its own entry in the NOMAD archive, but rather store them under the same entry in the archive. Any other complex calculation which combines several differentiated self-consistent calculations must be considered a **workflow** (e.g., a `GW` calculation is usually composed of 2 `SinglePoint` entries: the `DFT SinglePoint` self-consistent calculation + the `GW SinglePoint` self-consistent calculations). You can check the [NOMAD simulations workflow schema](https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow) for more information.
+    In NOMAD, we consider the minimal unit for storing the data in the archive (i.e., an *entry*) as any calculation containing all the self-consistent steps of itself. This is what we call, **`SinglePoint`**. Thus, we do not split each self-consistent step in its own entry in the NOMAD archive, but rather store them under the same entry in the archive. Any other complex calculation which combines several differentiated self-consistent calculations must be considered a **workflow** (e.g., a `GW` calculation is usually composed of 2 `SinglePoint` entries: the `DFT SinglePoint` self-consistent calculation + the `GW SinglePoint` self-consistent calculations). You can check the [NOMAD simulations workflow schema](https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow) for more information.
 
-The simplified schematics for a `Simulation` data section will then be:
+The simplified schematics for a `Simulation` data section will then be (note that the arrows here are a simple way of visually defining _inputs_ and _outputs_):
 
 <div class="click-zoom">
     <label>
@@ -55,47 +55,39 @@ The `Program` base class section contains all the information about the program 
     </label>
 </div>
 
-When [writing a parser](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/parsers.html), we recommend to start by instantiating the `Program` section and populating its quantities to get acquaintant and learn how to use the NOMAD infrastructure. For example:
+When [writing a parser](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/parsers.html), we recommend to start by instantiating the `Program` section and populating its quantities to get acquaintant and learn how to use the NOMAD infrastructure.
 
+For example, imagine we have a file, `output_file.txt`, which we want to parse and with the following information:
+```txt
+! * * * * * * *
+! Welcome to SUPERCODE, version 7.0
+...
+```
 
-<!-- Maybe better to have a more direct and standalone example even if it is a dummy text which is then passed using TextParser?-->
+Then, we can parse the program `name` and `version` by matching the texts:
 
 ```python
-from nomad.parsing.file_parser import XMLParser, TextParser
+from nomad.parsing.file_parser import TextParser
 from nomad_simulations import Simulation, Program
 
 
-class VASPParser:
+class MyProgramParser:
     """
-    Class responsible to populate the NOMAD `archive` from the files given by
-    a VASP simulation.
+    Class responsible to populate the NOMAD `archive` from the files given by a
+    SUPERCODE simulation.
     """
 
     def parse(self, filepath, archive, logger):
-        # Note that we are skipping part of the logic for simplicity here. In
-        # this case, `main_output_parser` contains logic to recognized the XML
-        # mainfile output by VASP, and if this is not present in an upload, it
-        # will fallback to the OUTCAR mainfile output. The `key` defined for
-        # `main_output_parser.header` should be defined using the corresponding
-        # XML or  Text parser classes.
-        if filepath.endswith('xml'):
-            main_output_parser = XMLParser()
-        elif filepath.endswith('OUTCAR'):
-            main_output_parser = TextParser()
-        else:
-            logger.error(f'Parser {filepath} not recognized by `VASPParser`.')
-            return
-        main_output_parser.mainfile = filepath
+        output_parser = TextParser(
+            quantities=[
 
-        version = ' '.join(
-            [
-                main_output_parser.header.get(key, '')
-                for key in ['version', 'subversion', 'platform']
             ]
-        ).strip()
+        )
+        output_parser.mainfile = filepath
+
         simulation = Simulation()
         simulation.program = Program(
-            name='VASP',
-            version=version,
+            name=output_parser.get('program_name'),
+            version=output_parser.get('program_version'),
         )
 ```
