@@ -17,6 +17,8 @@
 #
 
 import numpy as np
+from typing import Optional
+from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, Section, Context
@@ -53,17 +55,35 @@ class Variables(ArchiveSection):
 
     # grid_points_error = Quantity()
 
+    def get_n_grid_points(
+        self, grid_points: Optional[list], logger: BoundLogger
+    ) -> Optional[int]:
+        """
+        Get the number of grid points from the `grid_points` list. If `n_grid_points` is previously defined
+        and does not coincide with the length of `grid_points`, a warning is issued and this function re-assigns `n_grid_points`
+        as the length of `grid_points`.
+
+        Args:
+            grid_points (Optional[list]): The grid points in which the variable is discretized.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[int]): The number of grid points.
+        """
+        if grid_points is not None and len(grid_points) > 0:
+            if self.n_grid_points != len(grid_points):
+                logger.warning(
+                    f'The stored `n_grid_points`, {self.n_grid_points}, does not coincide with the length of `grid_points`, '
+                    f'{len(grid_points)}. We will re-assign `n_grid_points` as the length of `grid_points`.'
+                )
+            return len(grid_points)
+        return self.n_grid_points
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Setting `n_bins` if these are not defined
-        if self.grid_points is not None:
-            if self.n_grid_points != len(self.grid_points):
-                logger.warning(
-                    f'The stored `n_grid_points`, {self.n_grid_points}, does not coincide with the length of `grid_points`, '
-                    f'{len(self.grid_points)}. We will re-assign `n_grid_points` as the length of `grid_points`.'
-                )
-            self.n_grid_points = len(self.grid_points)
+        # Setting `n_grid_points` if these are not defined
+        self.n_grid_points = self.get_n_grid_points(self.grid_points, logger)
 
 
 class Temperature(Variables):
