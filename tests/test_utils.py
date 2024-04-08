@@ -30,21 +30,20 @@ def test_get_sibling_section():
     """
     parent_section = ModelSystem()
     section = AtomicCell(type='original')
-    parent_section.atomic_cell.append(section)
+    parent_section.cell.append(section)
     sibling_section = Symmetry()
     parent_section.symmetry.append(sibling_section)
     assert get_sibling_section(section, '', logger) is None
     assert get_sibling_section(section, 'symmetry', logger) == sibling_section
-    assert get_sibling_section(sibling_section, 'atomic_cell', logger) == section
+    assert get_sibling_section(sibling_section, 'cell', logger) == section
     assert get_sibling_section(section, 'symmetry', logger, index_sibling=2) is None
     section2 = AtomicCell(type='primitive')
-    parent_section.atomic_cell.append(section2)
+    parent_section.cell.append(section2)
     assert (
-        get_sibling_section(sibling_section, 'atomic_cell', logger, index_sibling=0)
-        == section
+        get_sibling_section(sibling_section, 'cell', logger, index_sibling=0) == section
     )
     assert (
-        get_sibling_section(sibling_section, 'atomic_cell', logger, index_sibling=1)
+        get_sibling_section(sibling_section, 'cell', logger, index_sibling=1)
         == section2
     )
 
@@ -56,3 +55,6 @@ def test_is_not_representative():
     assert is_not_representative(None, logger) is None
     assert is_not_representative(ModelSystem(), logger)
     assert not is_not_representative(ModelSystem(is_representative=True), logger)
+
+
+# ! Missing test for RusselSandersState (but this class will probably be deprecated)
