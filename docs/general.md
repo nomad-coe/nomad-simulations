@@ -8,7 +8,7 @@ In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/how
 <div class="click-zoom">
     <label>
         <input type="checkbox">
-        <img src="../assets/simulation_base.drawio.png" alt="Simulation base section diagram." width="80%" title="Click to zoom in">
+        <img src="../assets/simulation_base.png" alt="Simulation base section diagram." width="80%" title="Click to zoom in">
     </label>
 </div>
 
@@ -17,7 +17,7 @@ In fact, `Simulation` inherits from a further abstract concept, `BaseSimulation`
 <div class="click-zoom">
     <label>
         <input type="checkbox">
-        <img src="../assets/simulation.drawio.png" alt="Simulation quantities and functions UML diagram." width="50%" title="Click to zoom in">
+        <img src="../assets/simulation.png" alt="Simulation quantities and functions UML diagram." width="50%" title="Click to zoom in">
     </label>
 </div>
 
@@ -51,7 +51,7 @@ The `Program` base class section contains all the information about the program 
 <div class="click-zoom">
     <label>
         <input type="checkbox">
-        <img src="../assets/program.drawio.png" alt="Program quantities and functions UML diagram." width="75%" title="Click to zoom in">
+        <img src="../assets/program.png" alt="Program quantities and functions UML diagram." width="75%" title="Click to zoom in">
     </label>
 </div>
 
@@ -64,14 +64,14 @@ For example, imagine we have a file, `output_file.txt`, which we want to parse a
 ...
 ```
 
-Then, we can parse the program `name` and `version` by matching the texts:
+Then, we can parse the program `name` and `version` by matching the texts (see, e.g., [Wikipedia page for Regular expressions, also called _regex_](https://en.wikipedia.org/wiki/Regular_expression)):
 
 ```python
-from nomad.parsing.file_parser import TextParser
+from nomad.parsing.file_parser import TextParser, Quantity
 from nomad_simulations import Simulation, Program
 
 
-class MyProgramParser:
+class SUPERCODEParser:
     """
     Class responsible to populate the NOMAD `archive` from the files given by a
     SUPERCODE simulation.
@@ -80,14 +80,14 @@ class MyProgramParser:
     def parse(self, filepath, archive, logger):
         output_parser = TextParser(
             quantities=[
-
+                Quantity('program_version', r'version *([\d\.]+) *', repeats=False)
             ]
         )
         output_parser.mainfile = filepath
 
         simulation = Simulation()
         simulation.program = Program(
-            name=output_parser.get('program_name'),
+            name='SUPERCODE',
             version=output_parser.get('program_version'),
         )
 ```

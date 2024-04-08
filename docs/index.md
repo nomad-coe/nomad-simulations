@@ -16,6 +16,6 @@ When designing the sections, we follow [SOLID principles](https://www.geeksforge
 
     Dr. Nathan Daelman, [ndaelman@physik.hu-berlin.de](mailto:ndaelman@physik.hu-berlin.de)
 
-    Dr. Bernadette Mohr, _missing institutional e-mail_
+    Dr. Bernadette Mohr, [mohrbern@physik.hu-berlin.de](mailto:mohrbern@physik.hu-berlin.de)
 
     Dr. Joseph F. Rudzinski, [joseph.rudzinski@physik.hu-berlin.de](mailto:joseph.rudzinski@physik.hu-berlin.de)
