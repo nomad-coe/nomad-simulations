@@ -77,16 +77,9 @@ class PhysicalProperty(ArchiveSection):
         """,
     )
 
-    variables = SubSection(
-        type=Variables.m_def,
-        description="""
-        Variables over which the physical property varies. These are defined as binned, i.e., discretized
-        values by `n_bins` and `bins`. The `variables` are used to calculate the `variables_shape` of the physical property.
-        """,
-        repeats=True,
-    )
+    variables = SubSection(type=Variables.m_def, repeats=True)
 
-    # ! this is not working for now, because I want to m_set the values of `n_bins` and `bins` like `MSection` has implemented
+    # ! When having an underlying structure, the `DataType` inheritance is not enough, as we want to anyways `m_set` the quantities defined in `Variables` (`bins`, `bins_errors`)
     # variables = Quantity(
     #     type=Variables,
     #     shape=['*'],

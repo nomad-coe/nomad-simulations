@@ -23,24 +23,65 @@ from nomad.metainfo import Quantity, Section, Context
 
 
 class Variables(ArchiveSection):
-    """ """
+    """
+    Variables over which the physical property varies. These are defined as binned, i.e., discretized
+    values by `n_bins` and `bins`. These are used to calculate the `shape` of the physical property.
+    """
 
-    name = Quantity(type=str, default='custom')
-    n_bins = Quantity(type=int)
-    bins = Quantity(type=np.float64, shape=['n_bins'])
+    name = Quantity(
+        type=str,
+        default='Custom',
+        description="""
+        Name of the variable.
+        """,
+    )
+
+    n_bins = Quantity(
+        type=int,
+        description="""
+        Number of bins.
+        """,
+    )
+
+    bins = Quantity(
+        type=np.float64,
+        shape=['n_bins'],
+        description="""
+        Bins of the variable.
+        """,
+    )
+
     # bins_error = Quantity()
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # Setting `n_bins` if these are not defined
+        if self.bins is not None:
+            if self.n_bins != len(self.bins):
+                logger.warning(
+                    f'The stored `n_bins`, {self.n_bins}, does not coincide with the length of `bins`, {len(self.bins)}. We will re-assign `n_bins` as the length of `bins`.'
+                )
+            self.n_bins = len(self.bins)
 
-class Temperatures(Variables):
+
+class Temperature(Variables):
+    """ """
+
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
 
-class Energies(Variables):
+
+class Energy(Variables):
+    """ """
+
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)

@@ -29,7 +29,7 @@ from .model_system import ModelSystem
 from .numerical_settings import SelfConsistency
 from .physical_property import PhysicalProperty
 
-from .variables import Variables, Temperatures  # ? delete these imports
+from .variables import Variables, Temperature  # ? delete these imports
 
 
 class ElectronicBandGap(PhysicalProperty):
@@ -80,9 +80,9 @@ class Outputs(ArchiveSection):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # List of properties
-
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 
     def normalize(self, archive, logger) -> None:
@@ -137,7 +137,7 @@ class SCFOutputs(Outputs):
 # Playing with `PhysicalProperty`
 band_gap = ElectronicBandGap(source='simulation', type='direct', label='DFT')
 n_bins = 3
-temperature = Temperatures(n_bins=n_bins, bins=np.linspace(0, 100, n_bins))
+temperature = Temperature(n_bins=n_bins, bins=np.linspace(0, 100, n_bins))
 band_gap.variables.append(temperature)
 n_bins = 2
 custom_bins = Variables(n_bins=n_bins, bins=np.linspace(0, 100, n_bins))
