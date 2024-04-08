@@ -17,25 +17,20 @@
 #
 
 import numpy as np
-from typing import Any
 from structlog.stdlib import BoundLogger
 
-from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection, MEnum
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .model_system import ModelSystem
-from .numerical_settings import SelfConsistency
 from .physical_property import PhysicalProperty
-
-from .variables import Variables, Temperature  # ? delete these imports
 
 
 class ElectronicBandGap(PhysicalProperty):
     """ """
 
-    shape = [3]
+    shape = []
 
     type = Quantity(
         type=MEnum('direct', 'indirect'),
@@ -52,7 +47,7 @@ class ElectronicBandGap(PhysicalProperty):
         """,
     )
 
-    # Add more functionalities here
+    # TODO add more functionalities here
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -94,9 +89,7 @@ class Outputs(ArchiveSection):
 
 class SCFOutputs(Outputs):
     """
-    This section contains the self-consistent (SCF) steps performed to converge an output property,
-    as well as the information if the output property `is_converged` or not, depending on the
-    settings in the `SelfConsistency` base class defined in `numerical_settings.py`.
+    This section contains the self-consistent (SCF) steps performed to converge an output property.
 
     For simplicity, we contain the SCF steps of a simulation as part of the minimal workflow defined in NOMAD,
     the `SinglePoint`, i.e., we do not split each SCF step in its own entry. Thus, each `SinglePoint`
@@ -112,41 +105,52 @@ class SCFOutputs(Outputs):
         """,
     )
 
-    is_scf_converged = Quantity(
-        type=bool,
-        description="""
-        Flag indicating whether the output property is converged or not after a SCF process. This quantity is connected
-        with `SelfConsistency` defined in the `numerical_settings.py` module.
-        """,
-    )
+    def resolve_is_derived(self, logger: BoundLogger) -> bool:
+        """
+        Resolves if the physical property is converged or not after a SCF process.
 
-    self_consistency_ref = Quantity(
-        type=SelfConsistency,
-        description="""
-        Reference to the `SelfConsistency` section that defines the numerical settings to converge the
-        output property.
-        """,
-    )
+        Returns:
+            (bool): The flag indicating whether the physical property is converged or not after a SCF process.
+        """
+        for property_name in self.m_def.all_sub_sections.keys():  # ! Check this
+            # We get the property of `SCFOutputs` that we want to check
+            prop = getattr(self, property_name)
 
-    # TODO add more functionality to automatically check convergence from `self_consistency_ref` and the last two `scf_steps`
+            # If it is None or does not contain a `self_consistency_ref` quantity we continue
+            if prop is None:
+                continue
+            scf_parameters = prop.self_consistency_ref
+            if scf_parameters is None:
+                continue
+
+            # We check the last 2 `scf_steps` values of such property
+            scf_steps_convergence = self.scf_steps[:-2]
+            scf_props = []
+            for scf_step in scf_steps_convergence:
+                scf_prop = getattr(scf_step, property_name)
+                if scf_prop is None:
+                    logger.warning(f'The `scf_step.{property_name}` does not exist.')
+                    break
+                if scf_prop.value.unit != scf_parameters.threshold_unit:
+                    logger.error(
+                        f'The units of the `scf_step.{property_name}.value` does not coincide with the units of the `self_consistency_ref.threshold_unit`.'
+                    )
+                    return
+                scf_props.append(scf_prop.value.magnitude)  # we use only the magnitude
+
+            # We check if the property `is_scf_converged` checking its difference with respect to `self_consistency_ref.threshold_change`
+            threshold = scf_parameters.threshold_change
+            scf_diff = abs(scf_props[0] - scf_props[1])
+            if scf_diff <= threshold:
+                prop.is_scf_converged = True
+            else:
+                logger.info(
+                    f'The SCF process for the property `{property_name}` did not converge.'
+                )
+                prop.is_scf_converged = False
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-
-# Playing with `PhysicalProperty`
-band_gap = ElectronicBandGap(source='simulation', type='direct', label='DFT')
-n_bins = 3
-temperature = Temperature(n_bins=n_bins, bins=np.linspace(0, 100, n_bins))
-band_gap.variables.append(temperature)
-n_bins = 2
-custom_bins = Variables(n_bins=n_bins, bins=np.linspace(0, 100, n_bins))
-band_gap.variables.append(custom_bins)
-# band_gap.value_unit = 'joule'
-band_gap.value = [
-    [[1, 2, 3], [1, 2, 3]],
-    [[1, 2, 3], [1, 2, 3]],
-    [[1, 2, 3], [1, 2, 3]],
-] * ureg.eV
-# band_gap.value = [1, 2, 3] * ureg.eV
-print(band_gap)
+        # Resolve the `is_scf_converged` flag for all SCF obtained properties
+        self.resolve_is_derived(logger)

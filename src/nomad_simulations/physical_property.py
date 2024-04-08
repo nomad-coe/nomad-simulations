@@ -32,10 +32,18 @@ from nomad.metainfo.metainfo import DirectQuantity, Dimension
 from nomad.datamodel.metainfo.basesections import Entity
 
 from .variables import Variables
+from .numerical_settings import SelfConsistency
 
 
 class PhysicalProperty(ArchiveSection):
-    """ """
+    """
+    A base section used to define the physical properties obtained in a simulation, experiment, or in a post-processing
+    analysis. Besides its `value`, it also contains:
+        - Quantities that are string identifiers: `source`, `type`, `label`
+        - Quantities for calculating the shape of the physical property: `shape`, `variables`
+        - Quantities for referencing and establishing the character of a physical property: `outputs_ref`, `entity_ref`, `self_consistent_ref`,
+        `is_derived`, `is_scf_converged`
+    """
 
     source = Quantity(
         type=MEnum('simulation', 'measurement', 'analysis'),
@@ -79,19 +87,7 @@ class PhysicalProperty(ArchiveSection):
 
     variables = SubSection(type=Variables.m_def, repeats=True)
 
-    # ! When having an underlying structure, the `DataType` inheritance is not enough, as we want to anyways `m_set` the quantities defined in `Variables` (`bins`, `bins_errors`)
-    # variables = Quantity(
-    #     type=Variables,
-    #     shape=['*'],
-    #     description="""
-    #     Variables over which the physical property varies. These are defined as binned, i.e., discretized
-    #     values by `n_bins` and `bins`. The `variables` are used to calculate the `variables_shape` of the physical property.
-    #     """,
-    # )
-
-    # overwrite this with the specific description of the physical property
-    value = Quantity()
-    # value_unit = Quantity(type=str)
+    value = Quantity()  # overwrite this with the specific physical property value
 
     entity_ref = Quantity(
         type=Entity,
@@ -100,10 +96,10 @@ class PhysicalProperty(ArchiveSection):
         """,
     )
 
-    outputs_ref = Quantity(
+    physical_property_ref = Quantity(
         type=Reference(SectionProxy('PhysicalProperty')),
         description="""
-        Reference to the `PhysicalProperty` section from which the physical property was derived. If `outputs_ref`
+        Reference to the `PhysicalProperty` section from which the physical property was derived. If `physical_property_ref`
         is populated, the quantity `is_derived` is set to True via normalization.
         """,
     )
@@ -120,11 +116,27 @@ class PhysicalProperty(ArchiveSection):
         """,
     )
 
+    is_scf_converged = Quantity(
+        type=bool,
+        description="""
+        Flag indicating whether the physical property is converged or not after a SCF process. This quantity is connected
+        with `SelfConsistency` defined in the `numerical_settings.py` module.
+        """,
+    )
+
+    self_consistency_ref = Quantity(
+        type=SelfConsistency,
+        description="""
+        Reference to the `SelfConsistency` section that defines the numerical settings to converge the
+        physical property.
+        """,
+    )
+
     @property
     def get_variables_shape(self) -> list:
         """
         Shape of the variables over which the physical property varies. This is extracted from
-        `Variables.n_bins` and appended in a list.
+        `Variables.n_grid_points` and appended in a list.
 
         Example, a physical property which varies with `Temperature` and `ElectricField` will
         return `variables_shape = [n_temperatures, n_electric_fields]`.
@@ -132,7 +144,7 @@ class PhysicalProperty(ArchiveSection):
         Returns:
             (list): The shape of the variables over which the physical property varies.
         """
-        return [v.n_bins for v in self.variables]
+        return [v.n_grid_points for v in self.variables]
 
     @property
     def get_full_shape(self) -> list:
@@ -181,7 +193,8 @@ class PhysicalProperty(ArchiveSection):
 
             if value_shape != _full_shape:
                 raise ValueError(
-                    f'The shape of the stored `value` {value_shape} does not match the full shape {_full_shape} extracted from the variables `n_bins` and the `shape` defined in `PhysicalProperty`.'
+                    f'The shape of the stored `value` {value_shape} does not match the full shape {_full_shape} '
+                    f'extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
                 )
             self._new_value.shape = _full_shape
             self._new_value = val.magnitude * val.u
@@ -190,15 +203,12 @@ class PhysicalProperty(ArchiveSection):
 
     def _is_derived(self) -> bool:
         """
-        Resolves if the output property is derived or not.
-
-        Args:
-            outputs_ref (_type_): The reference to the `Outputs` section from which the output property was derived.
+        Resolves if the physical property is derived or not.
 
         Returns:
-            bool: The flag indicating whether the output property is derived or not.
+            (bool): The flag indicating whether the physical property is derived or not.
         """
-        if self.outputs_ref is not None:
+        if self.physical_property_ref is not None:
             return True
         return False
 
