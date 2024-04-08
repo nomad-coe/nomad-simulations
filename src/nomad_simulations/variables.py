@@ -36,37 +36,47 @@ class Variables(ArchiveSection):
         """,
     )
 
-    n_bins = Quantity(
+    n_grid_points = Quantity(
         type=int,
         description="""
-        Number of bins.
+        Number of grid points in which the variable is discretized.
         """,
     )
 
-    bins = Quantity(
+    grid_points = Quantity(
         type=np.float64,
         shape=['n_bins'],
         description="""
-        Bins of the variable.
+        Grid points in which the variable is discretized. It might be overwritten with specific units.
         """,
     )
 
-    # bins_error = Quantity()
+    # grid_points_error = Quantity()
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Setting `n_bins` if these are not defined
-        if self.bins is not None:
-            if self.n_bins != len(self.bins):
+        if self.grid_points is not None:
+            if self.n_grid_points != len(self.grid_points):
                 logger.warning(
-                    f'The stored `n_bins`, {self.n_bins}, does not coincide with the length of `bins`, {len(self.bins)}. We will re-assign `n_bins` as the length of `bins`.'
+                    f'The stored `n_grid_points`, {self.n_grid_points}, does not coincide with the length of `grid_points`, '
+                    f'{len(self.grid_points)}. We will re-assign `n_grid_points` as the length of `grid_points`.'
                 )
-            self.n_bins = len(self.bins)
+            self.n_grid_points = len(self.grid_points)
 
 
 class Temperature(Variables):
     """ """
+
+    grid_points = Quantity(
+        type=np.float64,
+        unit='kelvin',
+        shape=['n_bins'],
+        description="""
+        Grid points in which the temperature is discretized.
+        """,
+    )
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
@@ -78,6 +88,15 @@ class Temperature(Variables):
 
 class Energy(Variables):
     """ """
+
+    grid_points = Quantity(
+        type=np.float64,
+        unit='joule',
+        shape=['n_bins'],
+        description="""
+        Grid points in which the energy is discretized.
+        """,
+    )
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
