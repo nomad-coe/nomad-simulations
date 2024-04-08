@@ -19,7 +19,6 @@
 from structlog.stdlib import BoundLogger
 from typing import Optional, List
 
-from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
