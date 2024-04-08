@@ -40,7 +40,7 @@ class TestOutputs:
         Test the `normalize` and `resolve_is_derived` methods.
         """
         # dummy test until we implement the unit testing with the new schema
-        assert True == True
+        assert True
         # outputs = Outputs()
         # assert outputs.resolve_is_derived(outputs_ref) == result
         # outputs.outputs_ref = outputs_ref

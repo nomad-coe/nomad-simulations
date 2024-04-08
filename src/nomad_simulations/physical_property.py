@@ -16,8 +16,9 @@
 # limitations under the License.
 #
 
-from typing import Any
+from typing import Any, Optional
 
+from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import (
     Quantity,
@@ -33,6 +34,10 @@ from nomad.datamodel.metainfo.basesections import Entity
 
 from .variables import Variables
 from .numerical_settings import SelfConsistency
+
+
+# We add `logger` for the `PhysicalProperty.variables_shape` method
+logger = utils.get_logger(__name__)
 
 
 class PhysicalProperty(ArchiveSection):
@@ -133,7 +138,7 @@ class PhysicalProperty(ArchiveSection):
     )
 
     @property
-    def get_variables_shape(self) -> list:
+    def variables_shape(self) -> Optional[list]:
         """
         Shape of the variables over which the physical property varies. This is extracted from
         `Variables.n_grid_points` and appended in a list.
@@ -144,15 +149,17 @@ class PhysicalProperty(ArchiveSection):
         Returns:
             (list): The shape of the variables over which the physical property varies.
         """
-        return [v.n_grid_points for v in self.variables]
+        if self.variables is not None:
+            return [v.get_n_grid_points(v.grid_points, logger) for v in self.variables]
+        return []
 
     @property
-    def get_full_shape(self) -> list:
+    def full_shape(self) -> list:
         """
         Full shape of the physical property. This quantity is calculated as:
             `full_shape = variables_shape + shape`
         where `shape` is passed as an attribute of the `PhysicalProperty` and is related with the order of
-        the tensor of `value`, and `variables_shape` is obtained from `get_variables_shape` and is
+        the tensor of `value`, and `variables_shape` is obtained from `variables_shape` and is
         related with the shapes of the `variables` over which the physical property varies.
 
         Example: a physical property which is a 3D vector and varies with `variables=[Temperature, ElectricField]`
@@ -162,7 +169,7 @@ class PhysicalProperty(ArchiveSection):
         Returns:
             (list): The full shape of the physical property.
         """
-        return self.get_variables_shape + self.shape
+        return self.variables_shape + self.shape
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
@@ -182,21 +189,18 @@ class PhysicalProperty(ArchiveSection):
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`
         if name == 'value':
-            # * This setattr logic for `value` only works if `variables` and `shape` have been stored BEFORE the `value` is set
-            _full_shape = self.get_full_shape
-
             # non-scalar or scalar `val`
             try:
                 value_shape = list(val.shape)
             except AttributeError:
                 value_shape = []
 
-            if value_shape != _full_shape:
+            if value_shape != self.full_shape:
                 raise ValueError(
-                    f'The shape of the stored `value` {value_shape} does not match the full shape {_full_shape} '
+                    f'The shape of the stored `value` {value_shape} does not match the full shape {self.full_shape} '
                     f'extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
                 )
-            self._new_value.shape = _full_shape
+            self._new_value.shape = self.full_shape
             self._new_value = val.magnitude * val.u
             return super().__setattr__(name, self._new_value)
         return super().__setattr__(name, val)
