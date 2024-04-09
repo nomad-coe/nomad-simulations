@@ -47,7 +47,7 @@ class Variables(ArchiveSection):
 
     grid_points = Quantity(
         type=np.float64,
-        shape=['n_bins'],
+        shape=['n_grid_points'],
         description="""
         Grid points in which the variable is discretized. It might be overwritten with specific units.
         """,
@@ -92,7 +92,7 @@ class Temperature(Variables):
     grid_points = Quantity(
         type=np.float64,
         unit='kelvin',
-        shape=['n_bins'],
+        shape=['n_grid_points'],
         description="""
         Grid points in which the temperature is discretized.
         """,
@@ -112,7 +112,7 @@ class Energy(Variables):
     grid_points = Quantity(
         type=np.float64,
         unit='joule',
-        shape=['n_bins'],
+        shape=['n_grid_points'],
         description="""
         Grid points in which the energy is discretized.
         """,

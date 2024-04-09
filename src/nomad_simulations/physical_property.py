@@ -65,6 +65,7 @@ class PhysicalProperty(ArchiveSection):
         Type categorization of the physical property. Example: an `ElectronicBandGap` can be `'direct'`
         or `'indirect'`.
         """,
+        # ! add more examples in the description
     )
 
     label = Quantity(
@@ -73,6 +74,7 @@ class PhysicalProperty(ArchiveSection):
         Label for additional classification of the physical property. Example: an `ElectronicBandGap`
         can be labeled as `'DFT'` or `'GW'` depending on the methodology used to calculate it.
         """,
+        # ! add more examples in the description
     )
 
     shape = DirectQuantity(
