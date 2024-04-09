@@ -50,6 +50,13 @@ class PhysicalProperty(ArchiveSection):
         `is_derived`, `is_scf_converged`
     """
 
+    name = Quantity(
+        type=str,
+        description="""
+        Name of the physical property. Example: `'ElectronicBandGap'`.
+        """,
+    )
+
     source = Quantity(
         type=MEnum('simulation', 'measurement', 'analysis'),
         default='simulation',
