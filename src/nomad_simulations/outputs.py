@@ -23,9 +23,9 @@ from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import Quantity, SubSection, SectionProxy, Reference
+from nomad.metainfo import Quantity, SubSection
 # ? are we planning to enforce a dependency on simulationworkflowschema?
-from nomad.dependencies.simulationworkflowschema import SimulationWorkflow, MolecularDynamics
+from simulationworkflowschema import SimulationWorkflow
 
 from nomad_simulations.model_system import ModelSystem
 from nomad_simulations.physical_property import PhysicalProperty
@@ -307,6 +307,9 @@ class WorkflowOutputs(Outputs):
         """,
     )
 
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
 class TrajectoryOutputs(WorkflowOutputs):
     """
     This section contains output properties that depend on a single system, but were
@@ -319,3 +322,6 @@ class TrajectoryOutputs(WorkflowOutputs):
         The elapsed simulated physical time since the start of the trajectory.
         """,
     )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
