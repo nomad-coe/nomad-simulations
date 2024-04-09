@@ -285,7 +285,7 @@ class SCFOutputs(Outputs):
                     physical_property=phys_property,
                     logger=logger,
                 )
-class MDOutputs(Outputs):
+
 class WorkflowOutputs(Outputs):
     """
     This section contains output properties that depend on a single system, but were
