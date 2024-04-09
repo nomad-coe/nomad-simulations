@@ -71,16 +71,17 @@ description: |
   This is a collection of NOMAD schemas for simulation data.
 ```
 
-and define the ```nomad.yaml``` configuration file of your NOMAD instance in the root folder with the following content:
+and register the plugin in the ```nomad.yaml``` configuration file of your NOMAD root folder:
 
 ```yaml
 plugins:
-  include:
-    - schemas/nomad_simulations
   options:
     schemas/nomad_simulations:
       python_package: nomad_simulations
 ```
+
+If you want to administer your plugins, you can use `include` or `exclude` flags.
+ATTENTION: when using `include`, any plugin not specified will not be loaded.
 
 You also need to add the package folder to the `PYTHONPATH` of the Python environment of your local NOMAD installation. This can be done by specifying the relative path to this repository. Either run the following command every time you start a new terminal for running the appworker, or add it to your virtual environment in `<path-to-local-nomad-installation>/.pyenv/bin/activate` file:
 
