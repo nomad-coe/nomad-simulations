@@ -18,13 +18,15 @@
 
 import numpy as np
 from structlog.stdlib import BoundLogger
+from typing import Optional
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, MEnum
+from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
+from .numerical_settings import SelfConsistency
 
 
 class ElectronicBandGap(PhysicalProperty):
@@ -48,6 +50,10 @@ class ElectronicBandGap(PhysicalProperty):
     )
 
     # TODO add more functionalities here
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -73,6 +79,14 @@ class Outputs(ArchiveSection):
         on which the simulation is performed.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
+    custom_physical_property = SubSection(
+        sub_section=PhysicalProperty.m_def,
+        repeats=True,
+        description="""
+        A custom physical property used to store properties not yet covered by the NOMAD schema.
+        """,
     )
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -105,52 +119,106 @@ class SCFOutputs(Outputs):
         """,
     )
 
-    def resolve_is_derived(self, logger: BoundLogger) -> bool:
+    def get_last_scf_steps_value(
+        self,
+        scf_last_steps: list,
+        property_name: str,
+        i_property: int,
+        scf_parameters: SelfConsistency,
+        logger: BoundLogger,
+    ) -> Optional[list]:
         """
-        Resolves if the physical property is converged or not after a SCF process.
+        Get the last two SCF values' magnitudes of a physical property and appends then in a list.
+
+        Args:
+            scf_last_steps (list): The list of the last two SCF steps.
+            property_name (str): The name of the physical property.
+            i_property (int): The index of the physical property.
+
+        Returns:
+            (Optional[list]): The list of the last two SCF values' magnitudes of a physical property.
+        """
+        scf_values = []
+        for step in scf_last_steps:
+            scf_phys_property = getattr(step, property_name)[i_property]
+            try:
+                if scf_phys_property.value.u != scf_parameters.threshold_change_unit:
+                    logger.error(
+                        f'The units of the `scf_step.{property_name}.value` does not coincide with the units of the `self_consistency_ref.threshold_unit`.'
+                    )
+                    return []
+            except Exception:
+                return []
+            scf_values.append(scf_phys_property.value.magnitude)
+        return scf_values
+
+    def resolve_is_scf_converged(
+        self,
+        property_name: str,
+        i_property: int,
+        phys_property: PhysicalProperty,
+        logger: BoundLogger,
+    ) -> Optional[bool]:
+        """
+        Resolves if the physical property is converged or not after a SCF process. This is only ran
+        when there are at least two `scf_steps` elements.
 
         Returns:
             (bool): The flag indicating whether the physical property is converged or not after a SCF process.
         """
-        for property_name in self.m_def.all_sub_sections.keys():  # ! Check this
-            # We get the property of `SCFOutputs` that we want to check
-            prop = getattr(self, property_name)
+        # If there are not at least 2 `scf_steps`, return None
+        if len(self.scf_steps) < 2:
+            logger.warning('The SCF normalization needs at least two SCF steps.')
+            return None
+        scf_last_steps = self.scf_steps[-2:]
 
-            # If it is None or does not contain a `self_consistency_ref` quantity we continue
-            if prop is None:
-                continue
-            scf_parameters = prop.self_consistency_ref
-            if scf_parameters is None:
-                continue
+        # If there is not `self_consistency_ref` section, return None
+        scf_parameters = phys_property.self_consistency_ref
+        if scf_parameters is None:
+            return None
 
-            # We check the last 2 `scf_steps` values of such property
-            scf_steps_convergence = self.scf_steps[:-2]
-            scf_props = []
-            for scf_step in scf_steps_convergence:
-                scf_prop = getattr(scf_step, property_name)
-                if scf_prop is None:
-                    logger.warning(f'The `scf_step.{property_name}` does not exist.')
-                    break
-                if scf_prop.value.unit != scf_parameters.threshold_unit:
-                    logger.error(
-                        f'The units of the `scf_step.{property_name}.value` does not coincide with the units of the `self_consistency_ref.threshold_unit`.'
-                    )
-                    return
-                scf_props.append(scf_prop.value.magnitude)  # we use only the magnitude
+        # Extract the value.magnitude of the phys_property to be checked if converged or not
+        scf_values = self.get_last_scf_steps_value(
+            scf_last_steps, property_name, i_property, scf_parameters, logger
+        )
+        if scf_values is None or len(scf_values) != 2:
+            logger.warning(
+                f'The SCF normalization could not resolve the SCF values for the property `{property_name}`.'
+            )
+            return None
 
-            # We check if the property `is_scf_converged` checking its difference with respect to `self_consistency_ref.threshold_change`
-            threshold = scf_parameters.threshold_change
-            scf_diff = abs(scf_props[0] - scf_props[1])
-            if scf_diff <= threshold:
-                prop.is_scf_converged = True
-            else:
-                logger.info(
-                    f'The SCF process for the property `{property_name}` did not converge.'
-                )
-                prop.is_scf_converged = False
+        # Compare with the `threshold_change`
+        scf_diff = abs(scf_values[0] - scf_values[1])
+        threshold_change = scf_parameters.threshold_change
+        if scf_diff <= threshold_change:
+            return True
+        else:
+            logger.info(
+                f'The SCF process for the property `{property_name}` did not converge.'
+            )
+            return False
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Resolve the `is_scf_converged` flag for all SCF obtained properties
-        self.resolve_is_derived(logger)
+        for property_name in self.m_def.all_sub_sections.keys():
+            # Skip the `scf_steps` and `custom_physical_property` sub-sections
+            if (
+                property_name == 'scf_steps'
+                or property_name == 'custom_physical_property'
+            ):
+                continue
+
+            # Check if the physical property with that property name is populated
+            phys_properties = getattr(self, property_name)
+            if phys_properties is None:
+                continue
+            if not isinstance(phys_properties, list):
+                phys_properties = [phys_properties]
+
+            # Loop over the physical property of the same m_def type and set `is_scf_converged`
+            for i_property, phys_property in enumerate(phys_properties):
+                phys_property.is_scf_converged = self.resolve_is_scf_converged(
+                    property_name, i_property, phys_property, logger
+                )

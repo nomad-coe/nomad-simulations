@@ -17,10 +17,30 @@
 #
 
 import pytest
+import numpy as np
 
 from . import logger
+from .conftest import get_scf_electronic_band_gap_template
 
-from nomad_simulations.outputs import Outputs
+from nomad.units import ureg
+from nomad.metainfo import Quantity
+from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.numerical_settings import SelfConsistency
+from nomad_simulations.outputs import Outputs, SCFOutputs, ElectronicBandGap
+
+
+class TotalEnergy(PhysicalProperty):
+    """Physical property class defined for testing purposes."""
+
+    shape = []
+    variables = []
+    value = Quantity(
+        type=np.float64,
+        unit='joule',
+        description="""
+        The total energy of the system.
+        """,
+    )
 
 
 class TestOutputs:
@@ -29,20 +49,40 @@ class TestOutputs:
     """
 
     @pytest.mark.parametrize(
-        'outputs_ref, result',
-        [
-            (Outputs(), True),
-            (None, False),
-        ],
+        'threshold_change, result',
+        [(1e-3, True), (1e-5, False)],
     )
-    def test_normalize(self, outputs_ref, result):
+    def test_is_scf_converged(self, threshold_change: float, result: bool):
         """
-        Test the `normalize` and `resolve_is_derived` methods.
+        Test the  `resolve_is_scf_converged` method.
         """
-        # dummy test until we implement the unit testing with the new schema
-        assert True
-        # outputs = Outputs()
-        # assert outputs.resolve_is_derived(outputs_ref) == result
-        # outputs.outputs_ref = outputs_ref
-        # outputs.normalize(None, logger)
-        # assert outputs.is_derived == result
+        scf_outputs = get_scf_electronic_band_gap_template(
+            threshold_change=threshold_change
+        )
+        is_scf_converged = scf_outputs.resolve_is_scf_converged(
+            property_name='electronic_band_gap',
+            i_property=0,
+            phys_property=scf_outputs.electronic_band_gap[0],
+            logger=logger,
+        )
+        assert is_scf_converged == result
+
+    @pytest.mark.parametrize(
+        'threshold_change, result',
+        [(1e-3, True), (1e-5, False)],
+    )
+    def test_normalize(self, threshold_change: float, result: bool):
+        """
+        Test the `normalize` method.
+        """
+        scf_outputs = get_scf_electronic_band_gap_template(
+            threshold_change=threshold_change
+        )
+        # Add a non-SCF calculated PhysicalProperty
+        scf_outputs.custom_physical_property = [
+            TotalEnergy(name='TotalEnergy', value=1 * ureg.joule)
+        ]
+
+        scf_outputs.normalize(None, logger)
+        assert scf_outputs.electronic_band_gap[0].is_scf_converged == result
+        assert scf_outputs.custom_physical_property[0].is_scf_converged is None
