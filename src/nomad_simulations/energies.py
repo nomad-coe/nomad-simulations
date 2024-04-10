@@ -39,6 +39,15 @@ from nomad.metainfo import Quantity, SubSection, MEnum
 from .physical_property import PhysicalProperty
 
 
+
+class EnergyContributions(PhysicalProperty):
+    """
+    Base section for all contribution groups to the total energy.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
 ####################################################
 # List of classical energy contribuions
 ####################################################
@@ -257,7 +266,7 @@ class ExternalEnergy(PhysicalProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-class EnergyContributionsClassical(PhysicalProperty):
+class EnergyContributionsClassical(EnergyContributions):
     """
     Section containing contributions to the potential energy from a classical force field.
     """
@@ -307,8 +316,6 @@ class ElectronicEnergy(PhysicalProperty):
         The value of the electronic energy.
         """,
     )
-
-    contributions = SubSection(sub_section=EnergyContributions.m_def, repeats=True)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -507,6 +514,9 @@ class EnergyTotalContributionsQuantum(EnergyContributions):
 
     nuclear_repulsion = SubSection(sub_section=NuclearRepulsionEnergy.m_def, repeats=False)
 
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
 ##########################
 # Other / General energies
 ##########################
@@ -525,9 +535,10 @@ class EnergyTotal(PhysicalProperty):
     )
     # ? Do we need these descriptions under value? It ends up simply duplicating the section info to some extent.
 
-    classical_contributions = SubSection(sub_section=EnergyContributionsClassical.m_def, repeats=False)
-
-    quantum_contributions = SubSection(sub_section=EnergyTotalContributionsQuantum.m_def, repeats=False)
+    # ? I think we want to allow some flexible to the contributions here, like so: ??
+    contributions = SubSection(sub_section=EnergyContributions.m_def, repeats=True)
+    # classical_contributions = SubSection(sub_section=EnergyContributionsClassical.m_def, repeats=False)
+    # quantum_contributions = SubSection(sub_section=EnergyTotalContributionsQuantum.m_def, repeats=False)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
