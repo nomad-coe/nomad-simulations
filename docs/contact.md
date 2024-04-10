@@ -14,6 +14,6 @@ You can reach us by different channels. You can send as directly an email to the
 
 Alternatively, you can also:
 
-- Open an [**issue**](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/issues) in the [Github project](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/).
+- Open an [**issue**](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/issues) in the [Github project](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/), and tag any of us.
 - Send an email to [support@nomad-lab.eu](mailto:support@nomad-lab.eu). Please, add in the subject "ATTN - Area C: Simulation schema".
 - If you are included as a contributor in the Github project, you can open new [**discussions**](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/discussions) regarding a new data schema or modelling you want to see covered.
