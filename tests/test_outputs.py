@@ -32,7 +32,7 @@ from nomad_simulations.outputs import Outputs, SCFOutputs, ElectronicBandGap
 class TotalEnergy(PhysicalProperty):
     """Physical property class defined for testing purposes."""
 
-    shape = []
+    rank = []
     variables = []
     value = Quantity(
         type=np.float64,
