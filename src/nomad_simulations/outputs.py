@@ -24,6 +24,9 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
+# ? are we planning to enforce a dependency on simulationworkflowschema?
+from simulationworkflowschema import SimulationWorkflow
+
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
@@ -222,3 +225,41 @@ class SCFOutputs(Outputs):
                 phys_property.is_scf_converged = self.resolve_is_scf_converged(
                     property_name, i_property, phys_property, logger
                 )
+class WorkflowOutputs(Outputs):
+    """
+    This section contains output properties that depend on a single system, but were
+    calculated as part of a workflow. Examples include geometry optimization and molecular dynamics.
+    """
+
+    step = Quantity(
+        type=np.int32,
+        description="""
+        The step number with respect to the workflow.
+        """,
+    )
+
+    workflow_ref = Quantity(
+        type=SimulationWorkflow,
+        description="""
+        Reference to the `SelfConsistency` section that defines the numerical settings to converge the
+        output property.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+class TrajectoryOutputs(WorkflowOutputs):
+    """
+    This section contains output properties that depend on a single system, but were
+    calculated as part of a workflow. Examples include geometry optimization and molecular dynamics.
+    """
+
+    time = Quantity(
+        type=np.float64,
+        description="""
+        The elapsed simulated physical time since the start of the trajectory.
+        """,
+    )
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
