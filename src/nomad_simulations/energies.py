@@ -319,7 +319,6 @@ class ElectronicEnergy(PhysicalProperty):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-        allowed_contributions = ['PotKin']
 
 class ElectronicKineticEnergy(PhysicalProperty):
     """
