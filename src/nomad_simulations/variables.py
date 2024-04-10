@@ -71,7 +71,10 @@ class Variables(ArchiveSection):
             (Optional[int]): The number of grid points.
         """
         if grid_points is not None and len(grid_points) > 0:
-            if self.n_grid_points != len(grid_points):
+            if (
+                self.n_grid_points != len(grid_points)
+                and self.n_grid_points is not None
+            ):
                 logger.warning(
                     f'The stored `n_grid_points`, {self.n_grid_points}, does not coincide with the length of `grid_points`, '
                     f'{len(grid_points)}. We will re-assign `n_grid_points` as the length of `grid_points`.'

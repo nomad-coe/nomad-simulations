@@ -29,7 +29,7 @@ from nomad.metainfo import (
     Context,
     MEnum,
 )
-from nomad.metainfo.metainfo import DirectQuantity, Dimension
+from nomad.metainfo.metainfo import DirectQuantity, Dimension, _placeholder_quantity
 from nomad.datamodel.metainfo.basesections import Entity
 
 from .variables import Variables
@@ -84,24 +84,23 @@ class PhysicalProperty(ArchiveSection):
         # ! add more examples in the description
     )
 
-    shape = DirectQuantity(
+    rank = DirectQuantity(
         type=Dimension,
         shape=['0..*'],
         default=[],
-        name='shape',
+        name='rank',
         description="""
-        Shape of the physical property. This quantity is related with the order of the tensor which
-        describes the physical property:
-            - scalars (tensor order 0) have `shape=[]` (`len(shape) = 0`),
-            - vectors (tensor order 1) have `shape=[a]` (`len(shape) = 1`),
-            - matrices (tensor order 2), have `shape=[a, b]` (`len(shape) = 2`),
+        Rank of the tensor describing the physical property. This quantity is stored as a Dimension:
+            - scalars (tensor rank 0) have `rank=[]` (`len(rank) = 0`),
+            - vectors (tensor rank 1) have `rank=[a]` (`len(rank) = 1`),
+            - matrices (tensor rank 2), have `rank=[a, b]` (`len(rank) = 2`),
             - etc.
         """,
     )
 
-    variables = SubSection(type=Variables.m_def, repeats=True)
+    variables = SubSection(sub_section=Variables.m_def, repeats=True)
 
-    value = Quantity()  # overwrite this with the specific physical property value
+    value: Quantity = _placeholder_quantity
 
     entity_ref = Quantity(
         type=Entity,
@@ -178,7 +177,7 @@ class PhysicalProperty(ArchiveSection):
         Returns:
             (list): The full shape of the physical property.
         """
-        return self.variables_shape + self.shape
+        return self.variables_shape + self.rank
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)

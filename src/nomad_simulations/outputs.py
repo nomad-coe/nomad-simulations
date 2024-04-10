@@ -32,7 +32,7 @@ from .numerical_settings import SelfConsistency
 class ElectronicBandGap(PhysicalProperty):
     """ """
 
-    shape = []
+    rank = []
 
     type = Quantity(
         type=MEnum('direct', 'indirect'),
