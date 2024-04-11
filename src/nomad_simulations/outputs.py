@@ -17,16 +17,46 @@
 #
 
 import numpy as np
-from typing import Optional
 from structlog.stdlib import BoundLogger
+from typing import Optional
 
 from nomad.datamodel.data import ArchiveSection
+from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import Quantity, SubSection, SectionProxy, Reference
 
-from .atoms_state import AtomsState, OrbitalsState
 from .model_system import ModelSystem
+from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
+
+
+class ElectronicBandGap(PhysicalProperty):
+    """ """
+
+    rank = []
+
+    type = Quantity(
+        type=MEnum('direct', 'indirect'),
+        description="""
+        Type categorization of the electronic band gap. The electronic band gap can be `'direct'` or `'indirect'`.
+        """,
+    )
+
+    value = Quantity(
+        type=np.float64,
+        unit='joule',
+        description="""
+        The value of the electronic band gap.
+        """,
+    )
+
+    # TODO add more functionalities here
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
 
 
 class Outputs(ArchiveSection):
@@ -42,33 +72,6 @@ class Outputs(ArchiveSection):
 
     normalizer_level = 2
 
-    name = Quantity(
-        type=str,
-        description="""
-        Name of the output property. This is used for easier identification of the property and is connected
-        with the class name of each output property class, e.g., `'ElectronicBandGap'`, `'ElectronicBandStructure'`, etc.
-        """,
-        a_eln=ELNAnnotation(component='StringEditQuantity'),
-    )
-
-    orbitals_state_ref = Quantity(
-        type=OrbitalsState,
-        description="""
-        Reference to the `OrbitalsState` section to which the output property references to and on
-        on which the simulation is performed.
-        """,
-        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
-    )
-
-    atoms_state_ref = Quantity(
-        type=AtomsState,
-        description="""
-        Reference to the `AtomsState` section to which the output property references to and on
-        on which the simulation is performed.
-        """,
-        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
-    )
-
     model_system_ref = Quantity(
         type=ModelSystem,
         description="""
@@ -78,53 +81,29 @@ class Outputs(ArchiveSection):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    is_derived = Quantity(
-        type=bool,
-        default=False,
+    custom_physical_property = SubSection(
+        sub_section=PhysicalProperty.m_def,
+        repeats=True,
         description="""
-        Flag indicating whether the output property is derived from other output properties. We make
-        the distinction between directly parsed and derived output properties:
-            - Directly parsed: the output property is directly parsed from the simulation output files.
-            - Derived: the output property is derived from other output properties. No extra numerical settings
-                are required to calculate the output property.
+        A custom physical property used to store properties not yet covered by the NOMAD schema.
         """,
     )
 
-    outputs_ref = Quantity(
-        type=Reference(SectionProxy('Outputs')),
-        description="""
-        Reference to the `Outputs` section from which the output property was derived. This is only
-        relevant if `is_derived` is set to True.
-        """,
-        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
-    )
-
-    def resolve_is_derived(self, outputs_ref) -> bool:
-        """
-        Resolves if the output property is derived or not.
-
-        Args:
-            outputs_ref (_type_): The reference to the `Outputs` section from which the output property was derived.
-
-        Returns:
-            bool: The flag indicating whether the output property is derived or not.
-        """
-        if outputs_ref is not None:
-            return True
-        return False
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # List of properties
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Resolve if the output property `is_derived` or not.
-        self.is_derived = self.resolve_is_derived(self.outputs_ref)
+        # self.is_derived = self.resolve_is_derived(self.outputs_ref)
 
 
 class SCFOutputs(Outputs):
     """
-    This section contains the self-consistent (SCF) steps performed to converge an output property,
-    as well as the information if the output property `is_converged` or not, depending on the
-    settings in the `SelfConsistency` base class defined in `numerical_settings.py`.
+    This section contains the self-consistent (SCF) steps performed to converge an output property.
 
     For simplicity, we contain the SCF steps of a simulation as part of the minimal workflow defined in NOMAD,
     the `SinglePoint`, i.e., we do not split each SCF step in its own entry. Thus, each `SinglePoint`
@@ -140,23 +119,106 @@ class SCFOutputs(Outputs):
         """,
     )
 
-    is_scf_converged = Quantity(
-        type=bool,
-        description="""
-        Flag indicating whether the output property is converged or not after a SCF process. This quantity is connected
-        with `SelfConsistency` defined in the `numerical_settings.py` module.
-        """,
-    )
+    def get_last_scf_steps_value(
+        self,
+        scf_last_steps: list,
+        property_name: str,
+        i_property: int,
+        scf_parameters: SelfConsistency,
+        logger: BoundLogger,
+    ) -> Optional[list]:
+        """
+        Get the last two SCF values' magnitudes of a physical property and appends then in a list.
 
-    self_consistency_ref = Quantity(
-        type=SelfConsistency,
-        description="""
-        Reference to the `SelfConsistency` section that defines the numerical settings to converge the
-        output property.
-        """,
-    )
+        Args:
+            scf_last_steps (list): The list of the last two SCF steps.
+            property_name (str): The name of the physical property.
+            i_property (int): The index of the physical property.
 
-    # TODO add more functionality to automatically check convergence from `self_consistency_ref` and the last two `scf_steps`
+        Returns:
+            (Optional[list]): The list of the last two SCF values' magnitudes of a physical property.
+        """
+        scf_values = []
+        for step in scf_last_steps:
+            scf_phys_property = getattr(step, property_name)[i_property]
+            try:
+                if scf_phys_property.value.u != scf_parameters.threshold_change_unit:
+                    logger.error(
+                        f'The units of the `scf_step.{property_name}.value` does not coincide with the units of the `self_consistency_ref.threshold_unit`.'
+                    )
+                    return []
+            except Exception:
+                return []
+            scf_values.append(scf_phys_property.value.magnitude)
+        return scf_values
+
+    def resolve_is_scf_converged(
+        self,
+        property_name: str,
+        i_property: int,
+        phys_property: PhysicalProperty,
+        logger: BoundLogger,
+    ) -> Optional[bool]:
+        """
+        Resolves if the physical property is converged or not after a SCF process. This is only ran
+        when there are at least two `scf_steps` elements.
+
+        Returns:
+            (bool): The flag indicating whether the physical property is converged or not after a SCF process.
+        """
+        # If there are not at least 2 `scf_steps`, return None
+        if len(self.scf_steps) < 2:
+            logger.warning('The SCF normalization needs at least two SCF steps.')
+            return None
+        scf_last_steps = self.scf_steps[-2:]
+
+        # If there is not `self_consistency_ref` section, return None
+        scf_parameters = phys_property.self_consistency_ref
+        if scf_parameters is None:
+            return None
+
+        # Extract the value.magnitude of the phys_property to be checked if converged or not
+        scf_values = self.get_last_scf_steps_value(
+            scf_last_steps, property_name, i_property, scf_parameters, logger
+        )
+        if scf_values is None or len(scf_values) != 2:
+            logger.warning(
+                f'The SCF normalization could not resolve the SCF values for the property `{property_name}`.'
+            )
+            return None
+
+        # Compare with the `threshold_change`
+        scf_diff = abs(scf_values[0] - scf_values[1])
+        threshold_change = scf_parameters.threshold_change
+        if scf_diff <= threshold_change:
+            return True
+        else:
+            logger.info(
+                f'The SCF process for the property `{property_name}` did not converge.'
+            )
+            return False
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Resolve the `is_scf_converged` flag for all SCF obtained properties
+        for property_name in self.m_def.all_sub_sections.keys():
+            # Skip the `scf_steps` and `custom_physical_property` sub-sections
+            if (
+                property_name == 'scf_steps'
+                or property_name == 'custom_physical_property'
+            ):
+                continue
+
+            # Check if the physical property with that property name is populated
+            phys_properties = getattr(self, property_name)
+            if phys_properties is None:
+                continue
+            if not isinstance(phys_properties, list):
+                phys_properties = [phys_properties]
+
+            # Loop over the physical property of the same m_def type and set `is_scf_converged`
+            for i_property, phys_property in enumerate(phys_properties):
+                phys_property.is_scf_converged = self.resolve_is_scf_converged(
+                    property_name, i_property, phys_property, logger
+                )
