@@ -530,11 +530,14 @@ class HubbardInteractions(ArchiveSection):
         Returns:
             (Optional[np.float64]): The effective U parameter.
         """
-        if self.u_interaction is None or self.j_local_exchange_interaction is None:
-            logger.warning(
-                'Could not find `HubbardInteractions.u_interaction` or `HubbardInteractions.j_local_exchange_interaction`.'
-            )
+        if self.u_interaction is None:
+            logger.warning('Could not find `HubbardInteractions.u_interaction`.')
             return None
+        if self.u_interaction.magnitude < 0.0:
+            logger.error('The `HubbardInteractions.u_interaction` must be positive.')
+            return None
+        if self.j_local_exchange_interaction is None:
+            self.j_local_exchange_interaction = 0.0 * ureg.eV
         return self.u_interaction - self.j_local_exchange_interaction
 
     def normalize(self, archive, logger) -> None:
