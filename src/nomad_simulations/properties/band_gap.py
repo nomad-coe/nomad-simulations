@@ -21,6 +21,7 @@ from structlog.stdlib import BoundLogger
 import pint
 from typing import Optional
 
+from nomad.units import ureg
 from nomad.metainfo import Quantity, MEnum, Section, Context
 
 from ..physical_property import PhysicalProperty
@@ -79,7 +80,44 @@ class ElectronicBandGap(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
-        self.rank = []
+        self.rank = []  # ? Is this here or in the attrs instantiation better?
+
+    def check_negative_values(self, logger: BoundLogger) -> pint.Quantity:
+        """
+        Checks if the electronic band gap is negative and sets it to 0 if it is.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+        """
+        if self.value < 0.0:
+            logger.error(
+                'The electronic band gap cannot be defined negative. We set it up to 0.'
+            )
+            return 0.0 * ureg.eV
+        return self.value
+
+    def resolve_type(self, logger: BoundLogger) -> Optional[str]:
+        """
+        Resolves the `type` of the electronic band gap based on the stored `momentum_transfer` values.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[str]): The resolved `type` of the electronic band gap.
+        """
+        if self.momentum_transfer is None and self.type == 'indirect':
+            logger.warning(
+                "The `momentum_transfer` is not defined for an `type='indirect'` electronic band gap."
+            )
+            return None
+        if self.momentum_transfer is not None:
+            momentum_difference = np.diff(self.momentum_transfer, axis=0)
+            if (momentum_difference == np.zeros(3)).all():
+                return 'direct'
+            else:
+                return 'indirect'
+        return self.type
 
     def _check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
