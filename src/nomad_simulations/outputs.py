@@ -19,13 +19,9 @@
 from structlog.stdlib import BoundLogger
 from typing import Optional, List
 
-from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import Quantity, SubSection
-# ? are we planning to enforce a dependency on simulationworkflowschema?
-from simulationworkflowschema import SimulationWorkflow
 
 from nomad_simulations.model_system import ModelSystem
 from nomad_simulations.physical_property import PhysicalProperty
@@ -46,7 +42,7 @@ from nomad_simulations.properties import (
 )
 
 
-class Outputs(PhysicalProperty):
+class Outputs(ArchiveSection):
     """
     Output properties of a simulation. This base class can be used for inheritance in any of the output properties
     defined in this schema.
