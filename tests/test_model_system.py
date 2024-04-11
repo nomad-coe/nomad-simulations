@@ -18,6 +18,7 @@
 
 import pytest
 import numpy as np
+from typing import List, Optional
 
 from nomad.datamodel import EntryArchive
 
@@ -82,12 +83,12 @@ class TestAtomicCell:
     )
     def test_generate_ase_atoms(
         self,
-        chemical_symbols,
-        atomic_numbers,
-        formula,
-        lattice_vectors,
-        positions,
-        periodic_boundary_conditions,
+        chemical_symbols: List[str],
+        atomic_numbers: List[int],
+        formula: str,
+        lattice_vectors: List[List[float]],
+        positions: List[List[float]],
+        periodic_boundary_conditions: List[bool],
     ):
         """
         Test the creation of `ase.Atoms` from `AtomicCell`.
@@ -175,13 +176,13 @@ class TestAtomicCell:
     )
     def test_geometric_space(
         self,
-        chemical_symbols,
-        atomic_numbers,
-        lattice_vectors,
-        positions,
-        vectors_results,
-        angles_results,
-        volume,
+        chemical_symbols: List[str],
+        atomic_numbers: List[int],
+        lattice_vectors: List[List[float]],
+        positions: List[List[float]],
+        vectors_results: List[Optional[float]],
+        angles_results: List[Optional[float]],
+        volume: Optional[float],
     ):
         """
         Test the `GeometricSpace` quantities normalization from `AtomicCell`.
@@ -262,7 +263,12 @@ class TestModelSystem:
             ),
         ],
     )
-    def test_chemical_formula(self, chemical_symbols, atomic_numbers, formulas):
+    def test_chemical_formula(
+        self,
+        chemical_symbols: List[str],
+        atomic_numbers: List[int],
+        formulas: List[str],
+    ):
         """
         Test the `ChemicalFormula` normalization if a sibling `AtomicCell` is created, and thus the `Formula` class can be used.
         """
@@ -314,7 +320,11 @@ class TestModelSystem:
         ],
     )
     def test_system_type_and_dimensionality(
-        self, positions, pbc, system_type, dimensionality
+        self,
+        positions: List[List[float]],
+        pbc: Optional[List[bool]],
+        system_type: str,
+        dimensionality: int,
     ):
         """
         Test the `ModelSystem` normalization of `type` and `dimensionality` from `AtomicCell`.
