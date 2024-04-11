@@ -43,11 +43,10 @@ logger = utils.get_logger(__name__)
 class PhysicalProperty(ArchiveSection):
     """
     A base section used to define the physical properties obtained in a simulation, experiment, or in a post-processing
-    analysis. Besides its `value`, it also contains:
-        - Quantities that are string identifiers: `source`, `type`, `label`
-        - Quantities for calculating the shape of the physical property: `shape`, `variables`
-        - Quantities for referencing and establishing the character of a physical property: `outputs_ref`, `entity_ref`, `self_consistent_ref`,
-        `is_derived`, `is_scf_converged`
+    analysis. The main quantity of the `PhysicalProperty` is `value`, whose instantiation has to be overwritten in the derived classes
+    when inheriting from `PhysicalProperty`. It also contains `rank`, to define the tensor rank of the physical property, and
+    `variables`, to define the variables over which the physical property varies (see variables.py). This class can also store several
+    string identifiers and quantities for referencing and establishing the character of a physical property.
     """
 
     name = Quantity(
@@ -61,8 +60,8 @@ class PhysicalProperty(ArchiveSection):
         type=MEnum('simulation', 'measurement', 'analysis'),
         default='simulation',
         description="""
-        Source of the physical property. Example: an `ElectronicBandGap` can be obtained from a `'simulation'`
-        or in an `'measurement'`.
+        Source of the physical property. This quantity is related with the `Activity` performed to obtain the physical
+        property. Example: an `ElectronicBandGap` can be obtained from a `'simulation'` or in a `'measurement'`.
         """,
     )
 
@@ -72,7 +71,7 @@ class PhysicalProperty(ArchiveSection):
         Type categorization of the physical property. Example: an `ElectronicBandGap` can be `'direct'`
         or `'indirect'`.
         """,
-        # ! add more examples in the description
+        # ! add more examples in the description to improve the understanding of this quantity
     )
 
     label = Quantity(
@@ -81,7 +80,7 @@ class PhysicalProperty(ArchiveSection):
         Label for additional classification of the physical property. Example: an `ElectronicBandGap`
         can be labeled as `'DFT'` or `'GW'` depending on the methodology used to calculate it.
         """,
-        # ! add more examples in the description
+        # ! add more examples in the description to improve the understanding of this quantity
     )
 
     rank = DirectQuantity(
@@ -100,12 +99,16 @@ class PhysicalProperty(ArchiveSection):
 
     variables = SubSection(sub_section=Variables.m_def, repeats=True)
 
+    # * `value` must be overwritten in the derived classes defining its type, unit, and description
     value: Quantity = _placeholder_quantity
 
     entity_ref = Quantity(
         type=Entity,
         description="""
-        Reference to the entity that the physical property refers to.
+        Reference to the entity that the physical property refers to. Examples:
+            - a simulated physical property might refer to the macroscopic system or instead of a specific atom in the unit
+            cell. In the first case, `outputs.model_system_ref` (see outputs.py) will point to the `ModelSystem` section,
+            while in the second case, `entity_ref` will point to `AtomsState` section (see atoms_state.py).
         """,
     )
 
@@ -141,7 +144,7 @@ class PhysicalProperty(ArchiveSection):
         type=SelfConsistency,
         description="""
         Reference to the `SelfConsistency` section that defines the numerical settings to converge the
-        physical property.
+        physical property (see numerical_settings.py).
         """,
     )
 
@@ -164,14 +167,17 @@ class PhysicalProperty(ArchiveSection):
     @property
     def full_shape(self) -> list:
         """
-        Full shape of the physical property. This quantity is calculated as:
-            `full_shape = variables_shape + shape`
-        where `shape` is passed as an attribute of the `PhysicalProperty` and is related with the order of
-        the tensor of `value`, and `variables_shape` is obtained from `variables_shape` and is
-        related with the shapes of the `variables` over which the physical property varies.
+        Full shape of the physical property. This quantity is calculated as a concatenation of the `variables_shape`
+        and `rank`:
+
+            `full_shape = variables_shape + rank`
+
+        where `rank` is passed as an attribute of the `PhysicalProperty` and is related with the order of
+        the tensor of `value`, and `variables_shape` is obtained from the property-decorated function `variables_shape()`
+        and is related with the shapes of the `variables` over which the physical property varies.
 
         Example: a physical property which is a 3D vector and varies with `variables=[Temperature, ElectricField]`
-        will have `shape = [3]`, `variables_shape=[n_temperatures, n_electric_fields]`, and thus
+        will have `rank=[3]`, `variables_shape=[n_temperatures, n_electric_fields]`, and thus
         `full_shape=[n_temperatures, n_electric_fields, 3]`.
 
         Returns:
