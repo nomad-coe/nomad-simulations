@@ -22,24 +22,13 @@ from typing import Optional
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
+
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
 from .properties import (
     ElectronicBandGap,
 )
-
-
-def resolve_output(section, section_instance):
-    quantity = None
-    if section.m_parent is None:
-        return quantity
-    for output in section.m_parent.outputs:
-        if isinstance(output, section_instance):
-            quantity = output.value
-            if quantity is not None:
-                break
-    return quantity
 
 
 class Outputs(ArchiveSection):

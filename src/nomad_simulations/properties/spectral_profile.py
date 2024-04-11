@@ -32,7 +32,7 @@ from nomad.metainfo import (
     JSON,
 )
 
-from .outputs import resolve_output_value, Outputs, PhysicalProperty, FermiLevel
+from ..outputs import resolve_output_value, Outputs, PhysicalProperty, FermiLevel
 
 
 class SpectralProfile(Outputs):

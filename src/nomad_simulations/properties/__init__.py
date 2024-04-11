@@ -17,3 +17,4 @@
 # limitations under the License.
 
 from .band_gap import ElectronicBandGap
+from .spectral_profile import SpectralProfile
