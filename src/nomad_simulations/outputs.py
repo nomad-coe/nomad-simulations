@@ -16,47 +16,17 @@
 # limitations under the License.
 #
 
-import numpy as np
 from structlog.stdlib import BoundLogger
 from typing import Optional
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
+from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
-
-
-class ElectronicBandGap(PhysicalProperty):
-    """ """
-
-    rank = []
-
-    type = Quantity(
-        type=MEnum('direct', 'indirect'),
-        description="""
-        Type categorization of the electronic band gap. The electronic band gap can be `'direct'` or `'indirect'`.
-        """,
-    )
-
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The value of the electronic band gap.
-        """,
-    )
-
-    # TODO add more functionalities here
-
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
-        self.name = self.m_def.name
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
+from .properties import ElectronicBandGap
 
 
 class Outputs(ArchiveSection):
