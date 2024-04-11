@@ -318,9 +318,8 @@ class TestHubbardInteractions:
         # Resolving Ueff from class method
         resolved_u_effective = hubbard_interactions.resolve_u_effective(logger)
         if resolved_u_effective is not None:
-            assert np.isclose(resolved_u_effective.to('eV').magnitude, u_effective)
-        else:
-            assert np.isclose(resolved_u_effective, u_effective)
+            resolved_u_effective = resolved_u_effective.to('eV').magnitude
+        assert np.isclose(resolved_u_effective, u_effective)
 
     def test_normalize(self):
         """

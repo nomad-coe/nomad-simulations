@@ -520,7 +520,7 @@ class HubbardInteractions(ArchiveSection):
         )
         return u_interaction, u_interorbital_interaction, j_hunds_coupling
 
-    def resolve_u_effective(self, logger: BoundLogger) -> Optional[np.float64]:
+    def resolve_u_effective(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
         Resolves the effective U parameter (u_interaction - j_local_exchange_interaction).
 
@@ -528,7 +528,7 @@ class HubbardInteractions(ArchiveSection):
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[np.float64]): The effective U parameter.
+            (Optional[pint.Quantity]): The effective U parameter.
         """
         if self.u_interaction is None:
             logger.warning('Could not find `HubbardInteractions.u_interaction`.')
