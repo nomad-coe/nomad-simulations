@@ -56,6 +56,14 @@ class PhysicalProperty(ArchiveSection):
         """,
     )
 
+    iri = Quantity(
+        type=str,
+        description="""
+        Internationalized Resource Identifier (IRI) of the physical property defined in the FAIRmat
+        taxonomy, https://fairmat-nfdi.github.io/fairmat-taxonomy/.
+        """,
+    )
+
     source = Quantity(
         type=MEnum('simulation', 'measurement', 'analysis'),
         default='simulation',
