@@ -284,9 +284,11 @@ class TestHubbardInteractions:
             assert np.isclose(u_interorbital_interaction.to('eV').magnitude, results[1])
             assert np.isclose(j_hunds_coupling.to('eV').magnitude, results[2])
         else:
-            assert np.isclose(u_interaction, results[0])
-            assert np.isclose(u_interorbital_interaction, results[1])
-            assert np.isclose(j_hunds_coupling, results[2])
+            assert (
+                u_interaction,
+                u_interorbital_interaction,
+                j_hunds_coupling,
+            ) == results
 
     @pytest.mark.parametrize(
         'u_interaction, j_local_exchange_interaction, u_effective',
@@ -318,8 +320,9 @@ class TestHubbardInteractions:
         # Resolving Ueff from class method
         resolved_u_effective = hubbard_interactions.resolve_u_effective(logger)
         if resolved_u_effective is not None:
-            resolved_u_effective = resolved_u_effective.to('eV').magnitude
-        assert np.isclose(resolved_u_effective, u_effective)
+            assert np.isclose(resolved_u_effective.to('eV').magnitude, u_effective)
+        else:
+            assert resolved_u_effective == u_effective
 
     def test_normalize(self):
         """

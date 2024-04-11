@@ -22,7 +22,6 @@ from typing import Optional
 from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel import EntryArchive
 
 
 def get_sibling_section(
