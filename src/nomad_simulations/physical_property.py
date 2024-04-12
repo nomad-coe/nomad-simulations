@@ -28,6 +28,7 @@ from nomad.metainfo import (
     Section,
     Context,
     MEnum,
+    URL,
 )
 from nomad.metainfo.metainfo import DirectQuantity, Dimension, _placeholder_quantity
 from nomad.datamodel.metainfo.basesections import Entity
@@ -57,7 +58,7 @@ class PhysicalProperty(ArchiveSection):
     )
 
     iri = Quantity(
-        type=str,
+        type=URL,
         description="""
         Internationalized Resource Identifier (IRI) of the physical property defined in the FAIRmat
         taxonomy, https://fairmat-nfdi.github.io/fairmat-taxonomy/.
@@ -195,9 +196,14 @@ class PhysicalProperty(ArchiveSection):
 
     @property
     def _new_value(self) -> Quantity:
-        # initialize a `_new_value` quantity copying the main attrs from the `_value` quantity (`type`, `unit`,
-        # `description`); this will then be used to setattr the `value` quantity to the `_new_value` one with the
-        # correct `shape=_full_shape`
+        """
+        Initialize a new `Quantity` object for the `value` quantity with the correct `shape` extracted from
+        the `full_shape` attribute. This copies the main attributes from `value` (`type`, `description`, `unit`).
+        It is used in the `__setattr__` method.
+
+        Returns:
+            (Quantity): The new `Quantity` object for setting the `value` quantity.
+        """
         for quant in self.m_def.quantities:
             if quant.name == 'value':
                 return Quantity(
@@ -208,7 +214,6 @@ class PhysicalProperty(ArchiveSection):
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
-        # self._new_value = self._new_value
 
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`

@@ -40,7 +40,7 @@ class TestElectronicBandGap:
         electronic_band_gap = ElectronicBandGap()
         assert (
             electronic_band_gap.iri
-            == 'https://fairmat-nfdi.github.io/fairmat-taxonomy/#/ElectronicBandGap'
+            == 'http://fairmat-nfdi.eu/taxonomy/ElectronicBandGap'
         )
         assert electronic_band_gap.name == 'ElectronicBandGap'
         assert electronic_band_gap.rank == []
@@ -48,6 +48,7 @@ class TestElectronicBandGap:
     @pytest.mark.parametrize(
         'value, result',
         [
+            (0.0, 0.0),
             (1.0, 1.0),
             (-1.0, 0.0),
         ],

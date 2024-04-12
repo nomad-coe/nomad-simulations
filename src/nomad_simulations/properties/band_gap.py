@@ -21,7 +21,6 @@ from structlog.stdlib import BoundLogger
 import pint
 from typing import Optional
 
-from nomad.units import ureg
 from nomad.metainfo import Quantity, MEnum, Section, Context
 
 from ..physical_property import PhysicalProperty
@@ -32,13 +31,13 @@ class ElectronicBandGap(PhysicalProperty):
     Energy difference between the highest occupied electronic state and the lowest unoccupied electronic state.
     """
 
-    iri = 'https://fairmat-nfdi.github.io/fairmat-taxonomy/#/ElectronicBandGap'
+    iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicBandGap'
 
     # ? can `type` change character depending on the `variables`?
     type = Quantity(
         type=MEnum('direct', 'indirect'),
         description="""
-        Type categorization of the `ElectronicBandGap`. This quantity is directly related with `momentum_transfer` as by
+        Type categorization of the electronic band gap. This quantity is directly related with `momentum_transfer` as by
         definition, the electronic band gap is `'direct'` for zero momentum transfer (or if `momentum_transfer` is `None`) and `'indirect'`
         for finite momentum transfer.
 
@@ -50,7 +49,7 @@ class ElectronicBandGap(PhysicalProperty):
         type=np.float64,
         shape=[2, 3],
         description="""
-        If the `ElectronicBandGap` is `'indirect'`, the reciprocal momentum transfer for which the band gap is defined
+        If the electronic band gap is `'indirect'`, the reciprocal momentum transfer for which the band gap is defined
         in units of the `reciprocal_lattice_vectors`. The initial and final momentum 3D vectors are given in the first
         and second element. Example, the momentum transfer in bulk Si2 happens between the Γ and the (approximately)
         X points in the Brillouin zone; thus:
@@ -63,15 +62,16 @@ class ElectronicBandGap(PhysicalProperty):
     spin_channel = Quantity(
         type=np.int32,
         description="""
-        Spin channel of the corresponding `ElectronicBandGap`. It can take values of 0 or 1.
+        Spin channel of the corresponding electronic band gap. It can take values of 0 or 1.
         """,
     )
 
     value = Quantity(
         type=np.float64,
-        unit='joule',
+        unit='joule',  # ! this units need to be fixed when we have dynamical units
         description="""
-        The value of the `ElectronicBandGap`.
+        The value of the electronic band gap. This value has to be positive, otherwise it will
+        be set to a 0 by the `normalize()` function.
         """,
     )
 
@@ -89,7 +89,9 @@ class ElectronicBandGap(PhysicalProperty):
         """
         value = self.value.magnitude
         if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
-            value = np.array([value])
+            value = np.array(
+                [value]
+            )  # ! check this when talking with Lauri and Theodore
 
         # Set the value to 0 when it is negative
         if (value < 0).any():
@@ -136,6 +138,9 @@ class ElectronicBandGap(PhysicalProperty):
         super().normalize(archive, logger)
 
         # Checks if the `value` is negative and sets it to 0 if it is.
+        if self.value is None:
+            logger.error('The `value` of the electronic band gap is not stored.')
+            return
         self.value = self.check_negative_values(logger)
 
         # Resolve the `type` of the electronic band gap from `momentum_transfer`, ONLY for scalar `value`
