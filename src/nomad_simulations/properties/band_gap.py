@@ -21,7 +21,6 @@ from structlog.stdlib import BoundLogger
 import pint
 from typing import Optional
 
-from nomad.units import ureg
 from nomad.metainfo import Quantity, MEnum, Section, Context
 
 from ..physical_property import PhysicalProperty
@@ -68,7 +67,7 @@ class ElectronicBandGap(PhysicalProperty):
 
     value = Quantity(
         type=np.float64,
-        unit='joule',
+        unit='joule',  # ! this units need to be fixed when we have dynamical units
         description="""
         The value of the electronic band gap. This value has to be positive, otherwise it will
         prop an error and be set to None by the `normalize()` function.
@@ -91,7 +90,9 @@ class ElectronicBandGap(PhysicalProperty):
         """
         value = self.value.magnitude
         if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
-            value = np.array([value])
+            value = np.array(
+                [value]
+            )  # ! check this when talking with Lauri and Theodore
 
         # Set the value to 0 when it is negative
         if (value < 0).any():
