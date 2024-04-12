@@ -67,7 +67,7 @@ class ElectronicBandGap(PhysicalProperty):
 
     value = Quantity(
         type=np.float64,
-        unit='joule',
+        unit='joule',  # ! this units need to be fixed when we have dynamical units
         description="""
         The value of the electronic band gap. This value has to be positive, otherwise it will
         prop an error and be set to None by the `normalize()` function.

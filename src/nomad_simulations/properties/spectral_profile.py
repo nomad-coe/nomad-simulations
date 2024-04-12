@@ -22,7 +22,6 @@ from typing import Optional
 import pint
 
 from nomad.units import ureg
-from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import (
     Quantity,
     SubSection,
@@ -32,38 +31,42 @@ from nomad.metainfo import (
     JSON,
 )
 
-from ..outputs import resolve_output_value, Outputs, PhysicalProperty, FermiLevel
+from ..physical_property import PhysicalProperty
 
 
-class SpectralProfile(Outputs):
+class SpectralProfile(PhysicalProperty):
     """
     A base section used to define the spectral profile.
     """
 
-    intensities = Quantity(
+    value = Quantity(
         type=np.float64,
-        shape=['*'],
         description="""
-        Intensities in arbitrary units.
+        Value of the intensities of a spectral profile in arbitrary units.
         """,
     )
 
-    intensities_units = Quantity(
-        type=str,
-        description="""
-        Unit using the pint UnitRegistry() notation for the `intensities`. Example, if the spectra `is_derived`
-        from the imaginary part of the dielectric function, `intensities_units` are `'F/m'`.
-        """,
-    )
+    # TODO implement this in PhysicalProperty (similar to shape)
+    # value_units = Quantity(
+    #     type=str,
+    #     description="""
+    #     Unit using the pint UnitRegistry() notation for the `value`. Example, if the spectra `is_derived`
+    #     from the imaginary part of the dielectric function, `value` are `'F/m'`.
+    #     """,
+    # )
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        self.rank = []  # ? Is this here or in the attrs instantiation better?
 
     def is_valid_spectral_profile(self) -> bool:
         """
-        Check if the spectral profile is valid, i.e., if the `intensities` are defined positive.
+        Check if the spectral profile is valid, i.e., if all `value` are defined positive.
 
         Returns:
             (bool): True if the spectral profile is valid, False otherwise.
         """
-        if (self.intensities < 0.0).any():
+        if (self.value < 0.0).any():
             return False
         return True
 
@@ -77,44 +80,20 @@ class SpectralProfile(Outputs):
             return
 
 
-class ElectronicSpectralProfile(SpectralProfile):
-    """
-    A base section used to define the electronic spectral profile variables. These are defined as the excitation energies.
-    """
-
-    n_energies = Quantity(
-        type=np.int32,
-        shape=[],
-        description="""
-        Number of energies.
-        """,
-    )
-
-    energies = Quantity(
-        type=np.float64,
-        shape=['n_energies'],
-        unit='joule',
-        description="""
-        Energies.
-        """,
-    )
-
-    energies_origin = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        Origin of reference for the energies.
-        """,
-    )
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class ElectronicDOS(ElectronicSpectralProfile):
+class ElectronicDensityOfStates(SpectralProfile):
     """
     Electronic Density of States (DOS).
     """
+
+    iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates'
+
+    spin_channel = Quantity(
+        type=np.int32,
+        description="""
+        Spin channel of the corresponding DOS. It can take values of 0 or 1. This quantity is set only if
+        `ModelMethod.is_spin_polarized` is `True`.
+        """,
+    )
 
     fermi_level = Quantity(
         type=np.float64,
@@ -129,14 +108,6 @@ class ElectronicDOS(ElectronicSpectralProfile):
         """,
     )
 
-    spin_channel = Quantity(
-        type=np.int32,
-        description="""
-        Spin channel of the corresponding DOS. It can take values of 0 or 1. This quantity is set only if
-        `ModelMethod.is_spin_polarized` is `True`.
-        """,
-    )
-
     normalization_factor = Quantity(
         type=np.float64,
         description="""
@@ -146,16 +117,15 @@ class ElectronicDOS(ElectronicSpectralProfile):
         """,
     )
 
-    intensities_integrated = Quantity(
+    value_integrated = Quantity(
         type=np.float64,
-        shape=['n_energies'],
         description="""
         The cumulative intensities integrated from from the lowest (most negative) energy to the `fermi_level`.
         """,
     )
 
     projected_dos = SubSection(
-        sub_section=ElectronicSpectralProfile.m_def,
+        sub_section=SpectralProfile.m_def,
         repeats=True,
         description="""
         Projected DOS. It can be species- (same elements in the unit cell), atom- (different elements in the unit cell),
@@ -170,7 +140,6 @@ class ElectronicDOS(ElectronicSpectralProfile):
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
-        # Set the name of the section
         self.name = self.m_def.name
 
     def resolve_fermi_level(self) -> Optional[np.float64]:
@@ -181,9 +150,9 @@ class ElectronicDOS(ElectronicSpectralProfile):
             (Optional[np.float64]): The resolved Fermi level.
         """
         fermi_level = self.fermi_level
-        if fermi_level is None:
-            fermi_level = resolve_output_value(self, FermiLevel)
-        return fermi_level
+        # if fermi_level is None:
+        #     fermi_level = resolve_output_value(self, FermiLevel)
+        # return fermi_level
 
     def check_spin_polarized(self) -> bool:
         """
@@ -234,23 +203,25 @@ class ElectronicDOS(ElectronicSpectralProfile):
         self.energies_origin = self.resolve_energies_origin()
 
 
-class XASSpectra(ElectronicSpectralProfile):
+class XASSpectra(SpectralProfile):
     """
     X-ray Absorption Spectra (XAS).
     """
 
     xanes_spectra = SubSection(
-        sub_section=ElectronicSpectralProfile.m_def,
+        sub_section=SpectralProfile.m_def,
         description="""
         X-ray Absorption Near Edge Structure (XANES) spectra.
         """,
+        repeats=False,
     )
 
     exafs_spectra = SubSection(
-        sub_section=ElectronicSpectralProfile.m_def,
+        sub_section=SpectralProfile.m_def,
         description="""
         Extended X-ray Absorption Fine Structure (EXAFS) spectra.
         """,
+        repeats=False,
     )
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
