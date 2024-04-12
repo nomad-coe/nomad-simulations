@@ -193,24 +193,27 @@ class PhysicalProperty(ArchiveSection):
         """
         return self.variables_shape + self.rank
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
-
+    @property
+    def _new_value(self) -> Quantity:
         # initialize a `_new_value` quantity copying the main attrs from the `_value` quantity (`type`, `unit`,
         # `description`); this will then be used to setattr the `value` quantity to the `_new_value` one with the
         # correct `shape=_full_shape`
         for quant in self.m_def.quantities:
             if quant.name == 'value':
-                self._new_value = Quantity(
+                return Quantity(
                     type=quant.type,
                     unit=quant.unit,  # ? this can be moved to __setattr__
                     description=quant.description,
                 )
-                break
+
+    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+        super().__init__(m_def, m_context, **kwargs)
+        # self._new_value = self._new_value
 
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`
         if name == 'value':
+            _new_value = self._new_value
             # non-scalar or scalar `val`
             try:
                 value_shape = list(val.shape)
@@ -222,9 +225,9 @@ class PhysicalProperty(ArchiveSection):
                     f'The shape of the stored `value` {value_shape} does not match the full shape {self.full_shape} '
                     f'extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
                 )
-            self._new_value.shape = self.full_shape
-            self._new_value = val.magnitude * val.u
-            return super().__setattr__(name, self._new_value)
+            _new_value.shape = self.full_shape
+            _new_value = val.magnitude * val.u
+            return super().__setattr__(name, _new_value)
         return super().__setattr__(name, val)
 
     def _is_derived(self) -> bool:

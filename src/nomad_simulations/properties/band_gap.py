@@ -34,12 +34,15 @@ class ElectronicBandGap(PhysicalProperty):
 
     iri = 'https://fairmat-nfdi.github.io/fairmat-taxonomy/#/ElectronicBandGap'
 
+    # ? can `type` change character depending on the `variables`?
     type = Quantity(
         type=MEnum('direct', 'indirect'),
         description="""
         Type categorization of the `ElectronicBandGap`. This quantity is directly related with `momentum_transfer` as by
         definition, the electronic band gap is `'direct'` for zero momentum transfer (or if `momentum_transfer` is `None`) and `'indirect'`
         for finite momentum transfer.
+
+        Note: in the case of finite `variables`, this quantity refers to all of the `value` in the array.
         """,
     )
 
@@ -52,6 +55,8 @@ class ElectronicBandGap(PhysicalProperty):
         and second element. Example, the momentum transfer in bulk Si2 happens between the Γ and the (approximately)
         X points in the Brillouin zone; thus:
             `momentum_transfer = [[0, 0, 0], [0.5, 0.5, 0]]`.
+
+        Note: this quantity only refers to scalar `value`, not to arrays of `value`.
         """,
     )
 
@@ -77,17 +82,25 @@ class ElectronicBandGap(PhysicalProperty):
 
     def check_negative_values(self, logger: BoundLogger) -> pint.Quantity:
         """
-        Checks if the electronic band gap is negative and sets it to 0 if it is.
+        Checks if the electronic band gaps is negative and sets them to 0 if they are.
 
         Args:
             logger (BoundLogger): The logger to log messages.
         """
-        if self.value < 0.0:
-            logger.error(
-                'The electronic band gap cannot be defined negative. We set it up to 0.'
+        value = self.value.magnitude
+        if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
+            value = np.array([value])
+
+        # Set the value to 0 when it is negative
+        if (value < 0).any():
+            logger.warning(
+                'The electronic band gap cannot be defined negative. We set them up to 0.'
             )
-            return 0.0 * ureg.eV
-        return self.value
+        value[value < 0] = 0
+
+        if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
+            value = value[0]
+        return value * self.value.u
 
     def resolve_type(self, logger: BoundLogger) -> Optional[str]:
         """
@@ -99,14 +112,21 @@ class ElectronicBandGap(PhysicalProperty):
         Returns:
             (Optional[str]): The resolved `type` of the electronic band gap.
         """
-        if self.momentum_transfer is None and self.type == 'indirect':
+        if (
+            self.momentum_transfer is None or len(self.momentum_transfer) < 2
+        ) and self.type == 'indirect':
             logger.warning(
-                "The `momentum_transfer` is not defined for an `type='indirect'` electronic band gap."
+                "The `momentum_transfer` is not properly defined for an `type='indirect'` electronic band gap."
             )
             return None
-        if self.momentum_transfer is not None:
+        if self.momentum_transfer is not None and len(self.momentum_transfer) > 0:
+            if len(self.momentum_transfer) == 1:
+                logger.warning(
+                    'The `momentum_transfer` should have at least two elements so that the difference can be calculated and the type of electronic band gap can be resolved.'
+                )
+                return None
             momentum_difference = np.diff(self.momentum_transfer, axis=0)
-            if (momentum_difference == np.zeros(3)).all():
+            if (np.isclose(momentum_difference, np.zeros(3))).all():
                 return 'direct'
             else:
                 return 'indirect'
@@ -118,5 +138,10 @@ class ElectronicBandGap(PhysicalProperty):
         # Checks if the `value` is negative and sets it to 0 if it is.
         self.value = self.check_negative_values(logger)
 
-        # Resolve the `type` of the electronic band gap.
-        self.type = self.resolve_type(logger)
+        # Resolve the `type` of the electronic band gap from `momentum_transfer`, ONLY for scalar `value`
+        if isinstance(self.value.magnitude, np.ndarray):
+            logger.info(
+                'Currently we do not support `type` which describe arrays of `value`.'
+            )
+        else:
+            self.type = self.resolve_type(logger)
