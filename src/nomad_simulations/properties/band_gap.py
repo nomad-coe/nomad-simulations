@@ -113,25 +113,29 @@ class ElectronicBandGap(PhysicalProperty):
         Returns:
             (Optional[str]): The resolved `type` of the electronic band gap.
         """
-        if (
-            self.momentum_transfer is None or len(self.momentum_transfer) < 2
-        ) and self.type == 'indirect':
+        mtr = self.momentum_transfer if self.momentum_transfer is not None else []
+
+        # Check if the `momentum_transfer` is [], and return the type and a warning in the log for `indirect` band gaps
+        if len(mtr) == 0:
+            if self.type == 'indirect':
+                logger.warning(
+                    'The `momentum_transfer` is not stored for an `indirect` band gap.'
+                )
+            return self.type
+
+        # Check if the `momentum_transfer` has at least two elements, and return None if it does not
+        if len(mtr) == 1:
             logger.warning(
-                "The `momentum_transfer` is not properly defined for an `type='indirect'` electronic band gap."
+                'The `momentum_transfer` should have at least two elements so that the difference can be calculated and the type of electronic band gap can be resolved.'
             )
             return None
-        if self.momentum_transfer is not None and len(self.momentum_transfer) > 0:
-            if len(self.momentum_transfer) == 1:
-                logger.warning(
-                    'The `momentum_transfer` should have at least two elements so that the difference can be calculated and the type of electronic band gap can be resolved.'
-                )
-                return None
-            momentum_difference = np.diff(self.momentum_transfer, axis=0)
-            if (np.isclose(momentum_difference, np.zeros(3))).all():
-                return 'direct'
-            else:
-                return 'indirect'
-        return self.type
+
+        # Resolve `type` from the difference between the initial and final momentum transfer
+        momentum_difference = np.diff(mtr, axis=0)
+        if (np.isclose(momentum_difference, np.zeros(3))).all():
+            return 'direct'
+        else:
+            return 'indirect'
 
     def _check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
