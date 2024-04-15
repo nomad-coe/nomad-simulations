@@ -46,6 +46,9 @@ Now, `MetainfoNormalizer` will be ran on the `ParentSection`. Applying **rule 1*
 
 ### Avoiding double execution of public functions
 
-When the `MetainfoNormalize` is ran, and the `normalize()` functions are executed, these usually have calls for calling private and public functions in the base classes which might have been used already during parsing the files. However, **we have checks to ensure that this will not happen**. As an user, you can decide whether running then in your parsers for helping you during the process, or leave it up to the `normalize()` functions to decide if these are ran or not.
+When the `MetainfoNormalize` is ran, and the `normalize()` functions are executed, these usually have calls for calling private and public functions in the base classes which might have been used already during parsing the files. However, we have checks to ensure that this will not happen. As an user, you can decide whether running then in your parsers for helping you during the process, or leave it up to the `normalize()` functions to decide if these are ran or not.
 
-**JMP: I realized we have to make sure that a function has not been used already. Probably we can use the m_cache for this, but most importantly: does this make sense? I.e., do we want to overwrite running public functions when normalize() is ran or do we want to avoid this? Maybe someone used wrongly the function, or do we simply overlook this and ignore it?**
+
+<!--
+JMP: I realized we have to make sure that a function has not been used already. Probably we can use the m_cache for this, but most importantly: does this make sense? I.e., do we want to overwrite running public functions when normalize() is ran or do we want to avoid this? Maybe someone used wrongly the function, or do we simply overlook this and ignore it?
+-->
