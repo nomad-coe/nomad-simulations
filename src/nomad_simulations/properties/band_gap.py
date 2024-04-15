@@ -96,10 +96,7 @@ class ElectronicBandGap(PhysicalProperty):
 
         # Set the value to 0 when it is negative
         if (value < 0).any():
-            logger.warning('The electronic band gap cannot be defined negative.')
-            # return None
-            # value[value < 0] = None
-            # return value * self.value.u
+            logger.error('The electronic band gap cannot be defined negative.')
             return None
 
         if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
