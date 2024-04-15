@@ -64,11 +64,28 @@ class Outputs(ArchiveSection):
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 
+    def extract_spin_polarized_property(self, property_name: str) -> list:
+        """
+        Extracts the spin-polarized properties if present from the property name and returns them as a list of two elements in
+        which each element refers to each `spin_channel`. If the return list is empty, it means that the simulation is not
+        spin-polarized (i.e., `spin_channel` is not defined).
+
+        Args:
+            property_name (str): The name of the property to be extracted.
+
+        Returns:
+            (list): The list of spin-polarized properties.
+        """
+        spin_polarized_properties = []
+        properties = getattr(self, property_name)
+        for prop in properties:
+            if prop.spin_channel is None:
+                continue
+            spin_polarized_properties.append(prop)
+        return spin_polarized_properties
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
-
-        # Resolve if the output property `is_derived` or not.
-        # self.is_derived = self.resolve_is_derived(self.outputs_ref)
 
 
 class SCFOutputs(Outputs):

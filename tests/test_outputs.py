@@ -25,8 +25,7 @@ from .conftest import get_scf_electronic_band_gap_template
 from nomad.units import ureg
 from nomad.metainfo import Quantity
 from nomad_simulations.physical_property import PhysicalProperty
-from nomad_simulations.numerical_settings import SelfConsistency
-from nomad_simulations.outputs import Outputs, SCFOutputs, ElectronicBandGap
+from nomad_simulations.outputs import Outputs, ElectronicBandGap
 
 
 class TotalEnergy(PhysicalProperty):
@@ -66,6 +65,31 @@ class TestOutputs:
             logger=logger,
         )
         assert is_scf_converged == result
+
+    def test_extract_spin_polarized_properties(self):
+        """
+        Test the `extract_spin_polarized_property` method.
+        """
+        outputs = Outputs()
+
+        # No spin-polarized band gap
+        band_gap_non_spin_polarized = ElectronicBandGap(variables=[])
+        band_gap_non_spin_polarized.value = 2.0 * ureg.joule
+        outputs.electronic_band_gap.append(band_gap_non_spin_polarized)
+        band_gaps = outputs.extract_spin_polarized_property('electronic_band_gap')
+        assert band_gaps == []
+
+        # Spin-polarized band gaps
+        band_gap_spin_1 = ElectronicBandGap(variables=[], spin_channel=0)
+        band_gap_spin_1.value = 1.0 * ureg.joule
+        outputs.electronic_band_gap.append(band_gap_spin_1)
+        band_gap_spin_2 = ElectronicBandGap(variables=[], spin_channel=1)
+        band_gap_spin_2.value = 1.5 * ureg.joule
+        outputs.electronic_band_gap.append(band_gap_spin_2)
+        band_gaps = outputs.extract_spin_polarized_property('electronic_band_gap')
+        assert len(band_gaps) == 2
+        assert band_gaps[0].value.magnitude == 1.0
+        assert band_gaps[1].value.magnitude == 1.5
 
     @pytest.mark.parametrize(
         'threshold_change, result',
