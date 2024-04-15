@@ -6,7 +6,7 @@ This function is ran within the NOMAD infrastructure by the [`MetainfoNormalizer
 
 1. The deepest child class `normalize()` function is ran before their parents' `normalize()` function.
 2. For sibling sections, the `normalize()` function is executed from the smaller to the larger `normalizer_level` attribute. If `normalizer_level` is not set up, the order is established by the attributes definition order in the parent class.
-3. Using `super().normalize(archive, logger)` runs the inherited class normalize function. It is _recommended_ that the super-class normalization happens at the beginning of the `normalize()` function to keep consistance and maintainability of the `normalize()` functions.  <!--is this last phrase true?-->
+3. Using `super().normalize(archive, logger)` runs the inherited class normalize function.
 
 Let's see some examples. Imagine having the following `Section` and `SubSection` structure:
 
@@ -27,7 +27,7 @@ class Section2(ArchiveSection):
 
     def normalize(self, achive, logger):
         super().normalize(archive, logger)
-        # Some operations here AFTER the super().normalize() call
+        # Some operations here or before `super().normalize(archive, logger)`
 
 
 class ParentSection(ArchiveSection):
@@ -38,10 +38,22 @@ class ParentSection(ArchiveSection):
 
     def normalize(self, achive, logger):
         super().normalize(archive, logger)
-        # Some operations here AFTER the super().normalize() call
+        # Some operations here or before `super().normalize(archive, logger)`
 ```
 
-Now, `MetainfoNormalizer` will be ran on the `ParentSection`. Applying **rule 1**, the `normalize()` functions of the `ParentSection`'s childs are executed first. The order of these functions is established by **rule 2** with the `normalizer_level` atrribute, i.e., all the `Section2` (note that `sub_section_2` is a list of sections) `normalize()` functions are ran first, then `Section1.normalize()`. In case we do not assign a value to `Section1.normalizer_level` and `Section2.normalizer_level`, all `Section1.normalize()` will run first and then `Section2.normalize()` due to the order of `SubSection` attributes in `ParentSection`. By checking on the `normalize()` functions and **rule 3**, we can establish whether `ArchiveSection.normalize()` will be ran or not. In `Section1.normalize()`, it will not, while in the other sections, `Section2` and `ParentSection`, it will.
+Now, `MetainfoNormalizer` will be ran on the `ParentSection`. Applying **rule 1**, the `normalize()` functions of the `ParentSection`'s childs are executed first. The order of these functions is established by **rule 2** with the `normalizer_level` atrribute, i.e., all the `Section2` (note that `sub_section_2` is a list of sections) `normalize()` functions are ran first, then `Section1.normalize()`. Then, the order of execution will be:
+
+1. `Section2.normalize()`
+2. `Section1.normalize()`
+3. `ParentSection.normalize()`
+
+In case we do not assign a value to `Section1.normalizer_level` and `Section2.normalizer_level`, all `Section1.normalize()` will run first and then `Section2.normalize()` due to the order of `SubSection` attributes in `ParentSection`. Thus the order will be in this case:
+
+1. `Section1.normalize()`
+2. `Section2.normalize()`
+3. `ParentSection.normalize()`
+
+By checking on the `normalize()` functions and **rule 3**, we can establish whether `ArchiveSection.normalize()` will be ran or not. In `Section1.normalize()`, it will not, while in the other sections, `Section2` and `ParentSection`, it will.
 
 
 ### Avoiding double execution of public functions
