@@ -67,7 +67,7 @@ class ElectronicBandGap(PhysicalProperty):
 
     value = Quantity(
         type=np.float64,
-        unit='joule',  # ! this units need to be fixed when we have dynamical units
+        unit='joule',
         description="""
         The value of the electronic band gap. This value has to be positive, otherwise it will
         prop an error and be set to None by the `normalize()` function.
@@ -81,9 +81,9 @@ class ElectronicBandGap(PhysicalProperty):
         self.name = self.m_def.name
         self.rank = []  # ? Is this here or in the attrs instantiation better?
 
-    def check_negative_values(self, logger: BoundLogger) -> pint.Quantity:
+    def check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
-        Checks if the electronic band gaps is negative and sets them to 0 if they are.
+        Checks if the electronic band gaps is negative and sets them to None if they are.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -96,10 +96,11 @@ class ElectronicBandGap(PhysicalProperty):
 
         # Set the value to 0 when it is negative
         if (value < 0).any():
-            logger.warning(
-                'The electronic band gap cannot be defined negative. We set them up to 0.'
-            )
-        value[value < 0] = 0
+            logger.warning('The electronic band gap cannot be defined negative.')
+            # return None
+            # value[value < 0] = None
+            # return value * self.value.u
+            return None
 
         if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
             value = value[0]
