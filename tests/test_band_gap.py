@@ -67,11 +67,11 @@ class TestElectronicBandGap:
         else:
             electronic_band_gap = ElectronicBandGap()
         electronic_band_gap.value = value * ureg.joule
-        value = electronic_band_gap.check_negative_values(logger)
-        if value is not None:
-            assert np.isclose(value.magnitude, result)
+        checked_value = electronic_band_gap.check_negative_values(logger)
+        if checked_value is not None:
+            assert np.isclose(checked_value.magnitude, result)
         else:
-            assert value == result
+            assert checked_value == result
 
     @pytest.mark.parametrize(
         'momentum_transfer, type, result',

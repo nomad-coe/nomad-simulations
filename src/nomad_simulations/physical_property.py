@@ -218,6 +218,10 @@ class PhysicalProperty(ArchiveSection):
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`
         if name == 'value':
+            if val is None:
+                raise ValueError(
+                    f'The value of the physical property {self.name} is None. Please provide a finite valid value.'
+                )
             _new_value = self._new_value
             # non-scalar or scalar `val`
             try:

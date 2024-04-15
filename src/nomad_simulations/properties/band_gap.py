@@ -95,10 +95,7 @@ class ElectronicBandGap(PhysicalProperty):
 
         # Set the value to 0 when it is negative
         if (value < 0).any():
-            logger.warning('The electronic band gap cannot be defined negative.')
-            # return None
-            # value[value < 0] = None
-            # return value * self.value.u
+            logger.error('The electronic band gap cannot be defined negative.')
             return None
 
         if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
@@ -138,11 +135,11 @@ class ElectronicBandGap(PhysicalProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Checks if the `value` is negative and sets it to 0 if it is.
+        # Checks if the `value` is negative and sets it to None if it is.
+        self.value = self.check_negative_values(logger)
         if self.value is None:
             logger.error('The `value` of the electronic band gap is not stored.')
             return
-        self.value = self.check_negative_values(logger)
 
         # Resolve the `type` of the electronic band gap from `momentum_transfer`, ONLY for scalar `value`
         if isinstance(self.value.magnitude, np.ndarray):
