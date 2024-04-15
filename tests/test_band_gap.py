@@ -18,7 +18,7 @@
 
 import pytest
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from . import logger
 
@@ -50,18 +50,28 @@ class TestElectronicBandGap:
         [
             (0.0, 0.0),
             (1.0, 1.0),
-            (-1.0, 0.0),
+            (-1.0, None),
+            ([1.0, 2.0, -1.0], None),
         ],
     )
-    def test_check_negative_values(self, value: float, result: float):
+    def test_check_negative_values(
+        self, value: Union[List[float], float], result: float
+    ):
         """
         Test the `check_negative_values` method.
         """
-        electronic_band_gap = ElectronicBandGap(variables=[])
+        if isinstance(value, list):
+            electronic_band_gap = ElectronicBandGap(
+                variables=[Temperature(grid_points=[1, 2, 3] * ureg.kelvin)]
+            )
+        else:
+            electronic_band_gap = ElectronicBandGap()
         electronic_band_gap.value = value * ureg.joule
-        assert np.isclose(
-            electronic_band_gap.check_negative_values(logger).magnitude, result
-        )
+        value = electronic_band_gap.check_negative_values(logger)
+        if value is not None:
+            assert np.isclose(value.magnitude, result)
+        else:
+            assert value == result
 
     @pytest.mark.parametrize(
         'momentum_transfer, type, result',
@@ -107,9 +117,9 @@ class TestElectronicBandGap:
             variables=[Temperature(grid_points=[0, 10, 20, 30] * ureg.kelvin)],
             type='direct',
         )
-        t_dependent_band_gap.value = [1.0, -2.0, 3.0, 4.0] * ureg.joule
+        t_dependent_band_gap.value = [1.0, 2.0, 3.0, 4.0] * ureg.joule
         t_dependent_band_gap.normalize(None, logger)
         assert t_dependent_band_gap.type == 'direct'
         assert (
-            np.isclose(t_dependent_band_gap.value.magnitude, [1.0, 0.0, 3.0, 4.0])
+            np.isclose(t_dependent_band_gap.value.magnitude, [1.0, 2.0, 3.0, 4.0])
         ).all()
