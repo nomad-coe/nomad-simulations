@@ -140,7 +140,6 @@ class TestPhysicalProperty:
             == f'The value of the physical property {physical_property.name} is None. Please provide a finite valid value.'
         )
 
-
     def test_is_derived(self):
         """
         Test the `normalize` and `_is_derived` methods.
