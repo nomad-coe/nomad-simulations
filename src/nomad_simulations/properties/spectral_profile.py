@@ -55,7 +55,9 @@ class SpectralProfile(PhysicalProperty):
     #     """,
     # )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.rank = []  # ? Is this here or in the attrs instantiation better?
 
@@ -138,7 +140,9 @@ class ElectronicDensityOfStates(SpectralProfile):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
@@ -152,7 +156,7 @@ class ElectronicDensityOfStates(SpectralProfile):
         fermi_level = self.fermi_level
         # if fermi_level is None:
         #     fermi_level = resolve_output_value(self, FermiLevel)
-        # return fermi_level
+        return fermi_level
 
     def check_spin_polarized(self) -> bool:
         """
@@ -224,7 +228,9 @@ class XASSpectra(SpectralProfile):
         repeats=False,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name

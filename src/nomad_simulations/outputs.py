@@ -69,11 +69,11 @@ class Outputs(ArchiveSection):
     # List of properties
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
-
     fermi_level = SubSection(sub_section=FermiLevel.m_def, repeats=True)
 
     chemical_potential = SubSection(sub_section=ChemicalPotential.m_def, repeats=True)
+
+    electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 
     electronic_dos = SubSection(
         sub_section=ElectronicDensityOfStates.m_def, repeats=True
