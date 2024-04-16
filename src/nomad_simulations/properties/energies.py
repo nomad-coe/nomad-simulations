@@ -34,13 +34,13 @@ class FermiLevel(PhysicalProperty):
         type=np.float64,
         unit='joule',
         description="""
-        Value of the Fermi level.
+        The value of the Fermi level.
         """,
     )
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
-        self.rank = []  # ? Is this here or in the attrs instantiation better?
+        self.rank = []
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -57,13 +57,13 @@ class ChemicalPotential(PhysicalProperty):
         type=np.float64,
         unit='joule',
         description="""
-        Value of the chemical potential.
+        The value of the chemical potential.
         """,
     )
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
-        self.rank = []  # ? Is this here or in the attrs instantiation better?
+        self.rank = []
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
