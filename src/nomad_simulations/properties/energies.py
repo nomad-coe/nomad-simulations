@@ -43,6 +43,7 @@ class FermiLevel(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.rank = []
+        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -68,6 +69,7 @@ class ChemicalPotential(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.rank = []
+        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
