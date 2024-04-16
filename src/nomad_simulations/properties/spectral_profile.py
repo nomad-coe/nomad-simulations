@@ -187,8 +187,12 @@ class ElectronicDensityOfStates(SpectralProfile):
             (bool): True if the simulation is spin-polarized, False otherwise.
         """
         # TODO use this in `ElectronicBandGap` too
+        outputs = self.m_parent
+        if outputs is None:
+            logger.warning('Could not resolve the parent `Outputs`.')
+            return False
         model_method = get_sibling_section(
-            section=self, sibling_section_name='model_method', logger=logger
+            section=outputs, sibling_section_name='model_method', logger=logger
         )
         return (
             True
@@ -411,6 +415,8 @@ class ElectronicDensityOfStates(SpectralProfile):
             else:
                 band_gap.value = homo - lumo
         return band_gap
+
+    # TODO add extraction from `projected_dos`
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)

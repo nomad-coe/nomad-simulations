@@ -28,7 +28,7 @@ from nomad_simulations.properties import (
     ElectronicDensityOfStates,
     XASSpectra,
 )
-from nomad_simulations.variables import Temperature
+from nomad_simulations.variables import Temperature, Energy2 as Energy
 
 
 class TestSpectralProfile:
@@ -36,8 +36,17 @@ class TestSpectralProfile:
     Test the `SpectralProfile` class defined in `properties/spectral_profile.py`.
     """
 
-    def test_negative_value(self):
-        spectral_profile = SpectralProfile()
+    def test_is_valid_spectral_profile(self):
+        """
+        Test the `is_valid_spectral_profile` method.
+        """
+        spectral_profile = SpectralProfile(
+            variables=[Energy(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.joule)]
+        )
+        spectral_profile.value = [1.5, 1.2, 0, 0, 0, 0.8, 1.3]
+        assert spectral_profile.is_valid_spectral_profile()
+        spectral_profile.value = [3, 2, 0, 0, 0, -4, 1]
+        assert not spectral_profile.is_valid_spectral_profile()
         # default value inherited in other SpectralProfile classes
         assert spectral_profile.rank == []
 
@@ -52,13 +61,28 @@ class TestElectronicDensityOfStates:
         """
         Test the default quantities assigned when creating an instance of the `ElectronicDensityOfStates` class.
         """
-        electronic_band_gap = ElectronicDensityOfStates()
+        electronic_dos = ElectronicDensityOfStates()
         assert (
-            electronic_band_gap.iri
+            electronic_dos.iri
             == 'http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates'
         )
-        assert electronic_band_gap.name == 'ElectronicDensityOfStates'
-        assert electronic_band_gap.rank == []
+        assert electronic_dos.name == 'ElectronicDensityOfStates'
+        assert electronic_dos.rank == []
+
+    def test_check_energy_variables(self):
+        """
+        Test the `_check_energy_variables` method.
+        """
+        electronic_dos = ElectronicDensityOfStates()
+        electronic_dos.variables = [
+            Temperature(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.kelvin)
+        ]
+        assert electronic_dos._check_energy_variables(logger) is None
+        electronic_dos.variables.append(
+            Energy(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.joule)
+        )
+        energies = electronic_dos._check_energy_variables(logger)
+        assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
 
 
 class TestXASSpectra:
@@ -71,7 +95,7 @@ class TestXASSpectra:
         """
         Test the default quantities assigned when creating an instance of the `XASSpectra` class.
         """
-        electronic_band_gap = XASSpectra()
-        assert electronic_band_gap.iri is None  # Add iri when available
-        assert electronic_band_gap.name == 'XASSpectra'
-        assert electronic_band_gap.rank == []
+        xas_spectra = XASSpectra()
+        assert xas_spectra.iri is None  # Add iri when available
+        assert xas_spectra.name == 'XASSpectra'
+        assert xas_spectra.rank == []
