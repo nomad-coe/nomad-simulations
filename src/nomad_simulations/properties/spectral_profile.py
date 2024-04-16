@@ -34,7 +34,7 @@ from nomad.metainfo import (
 
 from ..utils import get_sibling_section
 from ..physical_property import PhysicalProperty
-from ..variables import Energy
+from ..variables import Energy2 as Energy
 from .band_gap import ElectronicBandGap
 
 
