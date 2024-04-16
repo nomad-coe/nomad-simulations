@@ -218,6 +218,7 @@ class PhysicalProperty(ArchiveSection):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
+        self.variables = []  # set default to empty list
         if self.iri is None:
             logger.warning(
                 'The used property is not defined in the FAIRmat taxonomy (https://fairmat-nfdi.github.io/fairmat-taxonomy/). You can contribute there if you want to extend the list of available materials properties.'
