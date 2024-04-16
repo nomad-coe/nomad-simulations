@@ -22,15 +22,7 @@ from typing import Optional
 import pint
 
 from nomad import config
-from nomad.units import ureg
-from nomad.metainfo import (
-    Quantity,
-    SubSection,
-    MEnum,
-    Section,
-    Context,
-    JSON,
-)
+from nomad.metainfo import Quantity, SubSection, Section, Context
 
 from ..utils import get_sibling_section
 from ..physical_property import PhysicalProperty
@@ -481,5 +473,42 @@ class XASSpectra(SpectralProfile):
         # Set the name of the section
         self.name = self.m_def.name
 
+    def generate_from_contributions(self, logger: BoundLogger) -> None:
+        """
+        Generate the `value` of the XAS spectra by concatenating the XANES and EXAFS contributions. It also concatenates
+        the `Energy` grid points of the XANES and EXAFS parts.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+        """
+        if self.xanes_spectra is not None or self.exafs_spectra is not None:
+            # Concatenate XANE and EXAFS `Energy` grid points
+            for var in self.xanes_spectra.variables:
+                if isinstance(var, Energy):
+                    xanes_energies = var.grid_points
+                    break
+            for var in self.exafs_spectra.variables:
+                if isinstance(var, Energy):
+                    exafs_energies = var.grid_points
+                    break
+            self.variables = [
+                Energy(grid_points=np.concatenate([xanes_energies, exafs_energies]))
+            ]
+            # Concatenate XANES and EXAFS `value` if they have the same shape
+            try:
+                self.value = np.concatenate(
+                    [self.xanes_spectra.value, self.exafs_spectra.value]
+                )
+            except ValueError:
+                logger.error(
+                    'The XANES and EXAFS `value` have different shapes. Could not concatenate the values.'
+                )
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        if self.value is None:
+            logger.info(
+                'The `XASSpectra.value` is not stored. We will attempt to obtain it by combining the XANES and EXAFS parts if these are present.'
+            )
+            self.generate_from_contributions(logger)
