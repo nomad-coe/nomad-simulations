@@ -82,7 +82,7 @@ class SpectralProfile(PhysicalProperty):
 
 class ElectronicDensityOfStates(SpectralProfile):
     """
-    Electronic Density of States (DOS).
+    Number of electronic states accessible for the charges per energy and per volume.
     """
 
     iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates'

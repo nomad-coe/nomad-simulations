@@ -28,11 +28,11 @@ class FermiLevel(PhysicalProperty):
     Energy required to add or extract a charge from a material at zero temperature. It can be also defined as the chemical potential at zero temperature.
     """
 
-    iri = 'https://fairmat-nfdi.github.io/fairmat-taxonomy/FermiLevel'
+    iri = 'http://fairmat-nfdi.eu/taxonomy/FermiLevel'
 
     value = Quantity(
         type=np.float64,
-        unit='joule',  # ! this units need to be fixed when we have dynamical units
+        unit='joule',
         description="""
         Value of the Fermi level.
         """,
@@ -51,11 +51,11 @@ class ChemicalPotential(PhysicalProperty):
     Free energy cost of adding or extracting a particle from a thermodynamic system.
     """
 
-    iri = 'https://fairmat-nfdi.github.io/fairmat-taxonomy/ChemicalPotential'
+    iri = 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
 
     value = Quantity(
         type=np.float64,
-        unit='joule',  # ! this units need to be fixed when we have dynamical units
+        unit='joule',
         description="""
         Value of the chemical potential.
         """,
