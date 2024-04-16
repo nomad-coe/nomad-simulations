@@ -351,6 +351,51 @@ class ElectronicDensityOfStates(SpectralProfile):
             energies_origin = fermi_level
         return energies_origin
 
+    def resolve_normalization_factor(self, logger: BoundLogger) -> Optional[float]:
+        """
+        Resolve the `normalization_factor` for the electronic DOS to get a cell-independent intensive DOS.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[float]): The normalization factor.
+        """
+        # Get the `ModelSystem` as referenced in the `Outputs.model_system_ref`
+        model_system = get_sibling_section(
+            section=self, sibling_section_name='model_system_ref', logger=logger
+        )
+        if model_system is None:
+            logger.warning(
+                'Could not resolve the referenced `ModelSystem` in the `Outputs`.'
+            )
+            return None
+
+        # Get the originally parsed `AtomicCell`, which is the first element stored in `ModelSystem.cell` of name `'AtomicCell'`
+        atomic_cell = None
+        for cell in model_system.cell:
+            if cell.name == 'AtomicCell':  # we get the originally parsed `AtomicCell`
+                atomic_cell = cell
+                break
+        if atomic_cell is None:
+            logger.warning(
+                'Could not resolve the `AtomicCell` from the referenced `ModelSystem`.'
+            )
+            return None
+
+        # Get the `atoms_state` and their `atomic_number` from the `AtomicCell`
+        if not len(atomic_cell.atoms_state):
+            logger.warning('Could not resolve the `atoms_state` from the `AtomicCell`.')
+            return None
+        atomic_numbers = [atom.atomic_number for atom in atomic_cell.atoms_state]
+
+        # Return `normalization_factor` depending if the calculation is spin polarized or not
+        if self._check_spin_polarized(logger):
+            normalization_factor = 1 / (2 * sum(atomic_numbers))
+        else:
+            normalization_factor = 1 / sum(atomic_numbers)
+        return normalization_factor
+
     def extract_band_gap(self) -> Optional[ElectronicBandGap]:
         """
         Extract the electronic band gap from the `highest_occupied_energy` and `lowest_occupied_energy` stored
@@ -396,6 +441,10 @@ class ElectronicDensityOfStates(SpectralProfile):
         )
         if self.energies_origin is None:
             logger.info('Could not resolve the `energies_origin` for the DOS')
+
+        # Resolve `normalization_factor`
+        if self.normalization_factor is None:
+            self.normalization_factor = self.resolve_normalization_factor(logger)
 
         # `ElectronicBandGap` extraction
         band_gap = self.extract_band_gap()
