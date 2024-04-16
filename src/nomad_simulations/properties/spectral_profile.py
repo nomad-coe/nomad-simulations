@@ -137,12 +137,13 @@ class ElectronicDensityOfStates(SpectralProfile):
         """,
     )
 
-    value_integrated = Quantity(
-        type=np.float64,
-        description="""
-        The cumulative intensities integrated from from the lowest (most negative) energy to the `fermi_level`.
-        """,
-    )
+    # ? Do we want to store the integrated value here os as part of an nomad-analysis tool?
+    # value_integrated = Quantity(
+    #     type=np.float64,
+    #     description="""
+    #     The cumulative intensities integrated from from the lowest (most negative) energy to the `fermi_level`.
+    #     """,
+    # )
 
     projected_dos = SubSection(
         sub_section=SpectralProfile.m_def,
