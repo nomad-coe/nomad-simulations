@@ -212,7 +212,9 @@ class PhysicalProperty(ArchiveSection):
                     description=quant.description,
                 )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
 
     def __setattr__(self, name: str, val: Any) -> None:
@@ -223,6 +225,11 @@ class PhysicalProperty(ArchiveSection):
                     f'The value of the physical property {self.name} is None. Please provide a finite valid value.'
                 )
             _new_value = self._new_value
+
+            # patch for when `val` does not have units and it is passed as a list (instead of np.array)
+            if isinstance(val, list):
+                val = np.array(val)
+
             # non-scalar or scalar `val`
             try:
                 value_shape = list(val.shape)
@@ -235,7 +242,10 @@ class PhysicalProperty(ArchiveSection):
                     f'extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
                 )
             _new_value.shape = self.full_shape
-            _new_value = val.magnitude * val.u
+            if hasattr(val, 'magnitude'):
+                _new_value = val.magnitude * val.u
+            else:
+                _new_value = val
             return super().__setattr__(name, _new_value)
         return super().__setattr__(name, val)
 

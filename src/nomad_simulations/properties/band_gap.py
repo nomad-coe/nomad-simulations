@@ -75,10 +75,12 @@ class ElectronicBandGap(PhysicalProperty):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
-        self.rank = []  # ? Is this here or in the attrs instantiation better?
+        self.rank = []
 
     def check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
@@ -149,7 +151,7 @@ class ElectronicBandGap(PhysicalProperty):
         # Resolve the `type` of the electronic band gap from `momentum_transfer`, ONLY for scalar `value`
         if isinstance(self.value.magnitude, np.ndarray):
             logger.info(
-                'Currently we do not support `type` which describe arrays of `value`.'
+                'We do not support `type` which describe individual elements in an array `value`.'
             )
         else:
             self.type = self.resolve_type(logger)

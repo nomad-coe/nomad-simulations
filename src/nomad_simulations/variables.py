@@ -101,7 +101,9 @@ class Temperature(Variables):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
@@ -109,7 +111,8 @@ class Temperature(Variables):
         super().normalize(archive, logger)
 
 
-class Energy(Variables):
+# ! This needs to be fixed as it gives errors when running normalizers with conflicting names (ask Area D)
+class Energy2(Variables):
     """ """
 
     grid_points = Quantity(
@@ -121,7 +124,9 @@ class Energy(Variables):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
