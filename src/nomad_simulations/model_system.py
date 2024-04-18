@@ -17,8 +17,11 @@
 #
 
 import re
+import ase.geometry
 import numpy as np
 import ase
+from ase import neighborlist as ase_nl
+from ase.geometry import analysis as ase_as
 from typing import Tuple, Optional
 from structlog.stdlib import BoundLogger
 
@@ -49,7 +52,7 @@ from .utils import get_sibling_section, is_not_representative
 class GeometricSpace(Entity):
     """
     A base section used to define geometrical spaces and their entities.
-    """
+    """  # TODO: allow input in of the lattice vectors directly
 
     length_vector_a = Quantity(
         type=np.float64,
@@ -218,7 +221,7 @@ class Cell(GeometricSpace):
         type=MEnum('original', 'primitive', 'conventional'),
         description="""
         Representation type of the cell structure. It might be:
-            - 'original' as in origanally parsed,
+            - 'original' as in originally parsed,
             - 'primitive' as the primitive unit cell,
             - 'conventional' as the conventional cell used for referencing.
         """,
@@ -317,6 +320,47 @@ class AtomicCell(Cell):
         """,
     )
 
+    @property
+    def elements(self):
+        """
+        Returns a list of the unique elements in the `AtomicCell` based on the `atoms_state`.
+        """
+        return list(
+            set([atom_state.chemical_symbol for atom_state in self.atoms_state])
+        )
+
+    @property
+    def element_pairs(self):
+        """
+        Returns a list of the unique element pairs in the `AtomicCell` based on the `atoms_state`.
+        """
+        return list(
+            set(
+                [
+                    (a.chemical_symbol, b.chemical_symbol)
+                    for a in self.atoms_state
+                    for b in self.atoms_state
+                ]
+            )
+        )
+
+    def get_element_combos(
+        self, n_elements: int
+    ) -> list[tuple[str]]:  # ! add logger and check for negative n
+        """
+        Returns all unique n-pair combinations of elements.
+        """
+
+        def recursion(depth: int, combos: list[list[str]]):
+            if depth < 1:
+                return combos
+            return recursion(
+                depth - 1,
+                list(set((*combo, elem) for combo in combos for elem in self.elements)),
+            )
+
+        return recursion(n_elements - 1, self.elements)
+
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
@@ -364,6 +408,44 @@ class AtomicCell(Cell):
             logger.info('Could not find `AtomicCell.lattice_vectors`.')
 
         return ase_atoms
+
+    def setup_ase_analyze(
+        self,
+        ase_atoms: ase.Atoms,
+        neighbor_list: Optional[ase_nl.NeighborList] = None,
+        scale_cutoff: float = 3.0,
+    ) -> None:
+        """
+        Analyzes the `AtomicCell` section using ASE Atoms object.
+        Return a bonds and angles list.
+
+        Args:
+            ase_atoms (ase.Atoms): The ASE Atoms object to analyze.
+            logger (BoundLogger): The logger to log messages.
+        """
+
+        if neighbor_list is None:
+            neighbor_list = ase_nl.NeighborList(
+                ase_nl.natural_cutoffs(ase_atoms, mult=scale_cutoff),
+                self_interaction=False,
+            )
+            neighbor_list.update(ase_atoms)  # ? should the update always be triggered?
+        self._ase_analysis = ase_as.Analysis(ase_atoms, nl=neighbor_list)
+
+    def get_bonds(
+        self,
+    ) -> list[tuple[int, int]]:  # ! write this out to a separate subsection
+        """
+        Returns a list of tuples with the indices of the atoms that are bonded in the `AtomicCell`.
+        """
+        bond_lengths: list[list[float]] = []
+        for bonds in self.get_element_combos(2):
+            bond_lengths.extend(
+                self._ase_analysis.get_values(
+                    self._ase_analysis.get_bonds(*bonds, unique=True)
+                )
+            )
+        return bond_lengths
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
