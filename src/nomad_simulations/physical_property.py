@@ -205,18 +205,23 @@ class PhysicalProperty(ArchiveSection):
         Returns:
             (Quantity): The new `Quantity` object for setting the `value` quantity.
         """
-        for quant in self.m_def.quantities:
-            if quant.name == 'value':
-                return Quantity(
-                    type=quant.type,
-                    unit=quant.unit,  # ? this can be moved to __setattr__
-                    description=quant.description,
-                )
+        value_quantity = self.m_def.all_quantities.get('value')
+        if value_quantity is None:
+            return None
+        return Quantity(
+            type=value_quantity.type,
+            unit=value_quantity.unit,  # ? this can be moved to __setattr__
+            description=value_quantity.description,
+        )
 
     def __init__(
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
+        if self.iri is None:
+            logger.warning(
+                'The used property is not defined in the FAIRmat taxonomy (https://fairmat-nfdi.github.io/fairmat-taxonomy/). You can contribute there if you want to extend the list of available materials properties.'
+            )
 
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`
