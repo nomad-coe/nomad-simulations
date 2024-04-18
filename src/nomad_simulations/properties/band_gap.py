@@ -142,6 +142,7 @@ class ElectronicBandGap(PhysicalProperty):
         # Checks if the `value` is negative and sets it to None if it is.
         self.value = self.check_negative_values(logger)
         if self.value is None:
+            # ? What about deleting the class if `value` is None?
             logger.error('The `value` of the electronic band gap is not stored.')
             return
 
