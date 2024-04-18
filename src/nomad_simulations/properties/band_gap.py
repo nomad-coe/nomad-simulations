@@ -81,62 +81,6 @@ class ElectronicBandGap(PhysicalProperty):
         self.name = self.m_def.name
         self.rank = []
 
-    def check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
-        """
-        Checks if the electronic band gaps is negative and sets them to None if they are.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-        """
-        value = self.value.magnitude
-        if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
-            value = np.array(
-                [value]
-            )  # ! check this when talking with Lauri and Theodore
-
-        # Set the value to 0 when it is negative
-        if (value < 0).any():
-            logger.error('The electronic band gap cannot be defined negative.')
-            return None
-
-        if not isinstance(self.value.magnitude, np.ndarray):  # for scalars
-            value = value[0]
-        return value * self.value.u
-
-    def resolve_type(self, logger: BoundLogger) -> Optional[str]:
-        """
-        Resolves the `type` of the electronic band gap based on the stored `momentum_transfer` values.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[str]): The resolved `type` of the electronic band gap.
-        """
-        mtr = self.momentum_transfer if self.momentum_transfer is not None else []
-
-        # Check if the `momentum_transfer` is [], and return the type and a warning in the log for `indirect` band gaps
-        if len(mtr) == 0:
-            if self.type == 'indirect':
-                logger.warning(
-                    'The `momentum_transfer` is not stored for an `indirect` band gap.'
-                )
-            return self.type
-
-        # Check if the `momentum_transfer` has at least two elements, and return None if it does not
-        if len(mtr) == 1:
-            logger.warning(
-                'The `momentum_transfer` should have at least two elements so that the difference can be calculated and the type of electronic band gap can be resolved.'
-            )
-            return None
-
-        # Resolve `type` from the difference between the initial and final momentum transfer
-        momentum_difference = np.diff(mtr, axis=0)
-        if (np.isclose(momentum_difference, np.zeros(3))).all():
-            return 'direct'
-        else:
-            return 'indirect'
-
     def _check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
         Checks if the electronic band gaps is negative and sets them to None if they are.
