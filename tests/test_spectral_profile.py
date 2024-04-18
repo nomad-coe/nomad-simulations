@@ -23,10 +23,12 @@ from typing import Optional, List, Union
 from . import logger
 
 from nomad.units import ureg
+from nomad_simulations.outputs import Outputs
 from nomad_simulations.properties import (
     SpectralProfile,
     ElectronicDensityOfStates,
     XASSpectra,
+    FermiLevel,
 )
 from nomad_simulations.variables import Temperature, Energy2 as Energy
 
@@ -83,6 +85,41 @@ class TestElectronicDensityOfStates:
         )
         energies = electronic_dos._check_energy_variables(logger)
         assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
+
+    @pytest.mark.parametrize(
+        'fermi_level, sibling_section_value, result',
+        [
+            (None, None, None),
+            (None, 0.5, 0.5),
+            (0.5, None, 0.5),
+            (0.5, 1.0, 0.5),
+        ],
+    )
+    def test_resolve_fermi_level(
+        self,
+        fermi_level: Optional[float],
+        sibling_section_value: Optional[float],
+        result: Optional[float],
+    ):
+        """
+        Test the `_resolve_fermi_level` method.
+        """
+        outputs = Outputs()
+        sec_fermi_level = FermiLevel(variables=[])
+        if sibling_section_value is not None:
+            sec_fermi_level.value = sibling_section_value * ureg.joule
+        outputs.fermi_level.append(sec_fermi_level)
+        electronic_dos = ElectronicDensityOfStates(
+            variables=[Energy(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.joule)]
+        )
+        electronic_dos.value = np.array([1.5, 1.2, 0, 0, 0, 0.8, 1.3]) * ureg('1/joule')
+        if fermi_level is not None:
+            electronic_dos.fermi_level = fermi_level * ureg.joule
+        outputs.electronic_dos.append(electronic_dos)
+        resolved_fermi_level = electronic_dos.resolve_fermi_level(logger)
+        if resolved_fermi_level is not None:
+            resolved_fermi_level = resolved_fermi_level.magnitude
+        assert resolved_fermi_level == result
 
 
 class TestXASSpectra:

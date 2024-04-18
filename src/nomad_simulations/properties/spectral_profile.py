@@ -78,7 +78,30 @@ class SpectralProfile(PhysicalProperty):
             return
 
 
-class ElectronicDensityOfStates(SpectralProfile):
+class DOSProfile(SpectralProfile):
+    """
+    A base section used to define the `value` of the `ElectronicDensityOfState` property. This is useful when containing
+    contributions for `projected_dos` with the correct unit.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        unit='1/joule',
+        description="""
+        The value of the electronic DOS.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class ElectronicDensityOfStates(DOSProfile):
     """
     Number of electronic states accessible for the charges per energy and per volume.
     """
@@ -121,14 +144,6 @@ class ElectronicDensityOfStates(SpectralProfile):
         """,
     )
 
-    value = Quantity(
-        type=np.float64,
-        unit='1/joule',
-        description="""
-        The value of the electronic DOS.
-        """,
-    )
-
     # ? Do we want to store the integrated value here os as part of an nomad-analysis tool?
     # value_integrated = Quantity(
     #     type=np.float64,
@@ -138,16 +153,17 @@ class ElectronicDensityOfStates(SpectralProfile):
     # )
 
     projected_dos = SubSection(
-        sub_section=SpectralProfile.m_def,
+        sub_section=DOSProfile.m_def,
         repeats=True,
         description="""
-        Projected DOS. It can be species- (same elements in the unit cell), atom- (different elements in the unit cell),
-        or orbital-projected. These can be calculated in a cascade as:
-            - If the total DOS is not present, we can sum all species-projected DOS to obtain it.
-            - If the species-projected DOS is not present, we can sum all atom-projected DOS to obtain it.
+        Projected DOS. It can be atom- (different elements in the unit cell) or orbital-projected. These can be calculated in a cascade as:
+            - If the total DOS is not present, we can sum all atom-projected DOS to obtain it.
             - If the atom-projected DOS is not present, we can sum all orbital-projected DOS to obtain it.
-        The `name` of the projected DOS is set to the species, atom, or orbital name from the corresponding `atoms_state_ref`
-        or `orbitals_state_ref`.
+
+        In `projected_dos`, `name` and `entity_ref` must be set in order to normalization to work:
+            - The `entity_ref` is the `OrbitalsState` or `AtomsState` sections.
+            - The `name` of the projected DOS should be `'atom X'` or `'orbital X'`, with 'X' being the chemical symbol or the orbital label.
+            These can be extracted from `entity_ref`.
         """,
     )
 
@@ -176,30 +192,6 @@ class ElectronicDensityOfStates(SpectralProfile):
         )
         return None
 
-    def _check_spin_polarized(self, logger: BoundLogger) -> bool:
-        """
-        Check if the simulation `is_spin_polarized`.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (bool): True if the simulation is spin-polarized, False otherwise.
-        """
-        # TODO use this in `ElectronicBandGap` too
-        outputs = self.m_parent
-        if outputs is None:
-            logger.warning('Could not resolve the parent `Outputs`.')
-            return False
-        model_method = get_sibling_section(
-            section=outputs, sibling_section_name='model_method', logger=logger
-        )
-        return (
-            True
-            if model_method is not None and model_method.is_spin_polarized
-            else False
-        )
-
     def resolve_fermi_level(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
         Resolve the Fermi level from a sibling `FermiLevel` section, if present.
@@ -210,8 +202,8 @@ class ElectronicDensityOfStates(SpectralProfile):
         Returns:
             (Optional[pint.Quantity]): The resolved Fermi level.
         """
-        fermi_level_value = None
-        if self.fermi_level is None:
+        fermi_level_value = self.fermi_level
+        if fermi_level_value is None:
             fermi_level = get_sibling_section(
                 section=self, sibling_section_name='fermi_level', logger=logger
             )  # we consider `index_sibling` to be 0
@@ -417,6 +409,49 @@ class ElectronicDensityOfStates(SpectralProfile):
         return band_gap
 
     # TODO add extraction from `projected_dos`
+    def extract_dos_from_projected(
+        self, logger: BoundLogger
+    ) -> Optional[pint.Quantity]:
+        if self.projected_dos is None or len(self.projected_dos) == 0:
+            return None
+
+        # We distinguish between orbital and atom `projected_dos`
+        orbital_projected = []
+        atom_projected = []
+        for dos in self.projected_dos:
+            # Initial check for `name` and `entity_ref`
+            if dos.name is None or dos.entity_ref:
+                logger.warning(
+                    '`name` or `entity_ref` are not set for `projected_dos` and they are required for normalization to work.'
+                )
+                return None
+
+            # ! name of projected DOS must be `'orbital X'`, with 'X' being the orbital label (combining the corresponding quantum numbers)
+            if 'orbital' in dos.name:
+                orbital_projected.append(dos)
+            # ! name of projected DOS must be `'atom X'`, with 'X' being the chemical symbol
+            elif 'atom' in dos.name:
+                atom_projected.append(dos)
+
+        # Extract `atom_projected` from `orbital_projected` by summing up the `orbital_projected` contributions for each atom
+        if len(atom_projected) == 0:
+            atom_data = []
+            for orb_pdos in orbital_projected:
+                # `entity_ref` is the `OrbitalsState` section, whose parent is `AtomsState`
+                atom_state = orb_pdos.entity_ref.m_parent
+                atom_data.append((atom_state, orb_pdos.value))
+            for ref, data in atom_data:
+                atom_dos = SpectralProfile(
+                    name=f'atom {ref.chemical_symbol}', entity_ref=ref
+                )
+                atom_dos.value = np.sum(data, axis=0)
+                atom_projected.append(atom_dos)
+
+        # Extract `value` from `atom_projected` by summing up the `atom_projected` contributions
+        value = self.value
+        if value is None:
+            value = np.sum([dos.value for dos in atom_projected], axis=0)
+        return value
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -425,12 +460,6 @@ class ElectronicDensityOfStates(SpectralProfile):
         energies = self._check_energy_variables(logger)
         if energies is None:
             return
-
-        # Check if `is_spin_polarized` but `spin_channel` is not set
-        if self._check_spin_polarized(logger) and self.spin_channel is None:
-            logger.warning(
-                'Spin-polarized calculation detected but the `spin_channel` is not set.'
-            )
 
         # Resolve `fermi_level` from a sibling section with respect to `ElectronicDensityOfStates`
         self.fermi_level = self.resolve_fermi_level(logger)
@@ -449,6 +478,10 @@ class ElectronicDensityOfStates(SpectralProfile):
         band_gap = self.extract_band_gap()
         if band_gap is not None:
             self.m_parent.electronic_band_gap.append(band_gap)
+
+        # Total `value` extraction from `projected_dos`:
+        if self.value is None:
+            self.value = self.extract_dos_from_projected(logger)
 
 
 class XASSpectra(SpectralProfile):
