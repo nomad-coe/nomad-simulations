@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import numpy as np
 from typing import Any, Optional
 
 from nomad import utils
