@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import numpy as np
 from typing import Any, Optional
 
 from nomad import utils
@@ -28,6 +29,7 @@ from nomad.metainfo import (
     Section,
     Context,
     MEnum,
+    URL,
 )
 from nomad.metainfo.metainfo import DirectQuantity, Dimension, _placeholder_quantity
 from nomad.datamodel.metainfo.basesections import Entity
@@ -53,6 +55,14 @@ class PhysicalProperty(ArchiveSection):
         type=str,
         description="""
         Name of the physical property. Example: `'ElectronicBandGap'`.
+        """,
+    )
+
+    iri = Quantity(
+        type=URL,
+        description="""
+        Internationalized Resource Identifier (IRI) of the physical property defined in the FAIRmat
+        taxonomy, https://fairmat-nfdi.github.io/fairmat-taxonomy/.
         """,
     )
 
@@ -185,24 +195,42 @@ class PhysicalProperty(ArchiveSection):
         """
         return self.variables_shape + self.rank
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
+    @property
+    def _new_value(self) -> Quantity:
+        """
+        Initialize a new `Quantity` object for the `value` quantity with the correct `shape` extracted from
+        the `full_shape` attribute. This copies the main attributes from `value` (`type`, `description`, `unit`).
+        It is used in the `__setattr__` method.
 
-        # initialize a `_new_value` quantity copying the main attrs from the `_value` quantity (`type`, `unit`,
-        # `description`); this will then be used to setattr the `value` quantity to the `_new_value` one with the
-        # correct `shape=_full_shape`
+        Returns:
+            (Quantity): The new `Quantity` object for setting the `value` quantity.
+        """
         for quant in self.m_def.quantities:
             if quant.name == 'value':
-                self._new_value = Quantity(
+                return Quantity(
                     type=quant.type,
                     unit=quant.unit,  # ? this can be moved to __setattr__
                     description=quant.description,
                 )
-                break
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
 
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`
         if name == 'value':
+            if val is None:
+                raise ValueError(
+                    f'The value of the physical property {self.name} is None. Please provide a finite valid value.'
+                )
+            _new_value = self._new_value
+
+            # patch for when `val` does not have units and it is passed as a list (instead of np.array)
+            if isinstance(val, list):
+                val = np.array(val)
+
             # non-scalar or scalar `val`
             try:
                 value_shape = list(val.shape)
@@ -214,9 +242,12 @@ class PhysicalProperty(ArchiveSection):
                     f'The shape of the stored `value` {value_shape} does not match the full shape {self.full_shape} '
                     f'extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
                 )
-            self._new_value.shape = self.full_shape
-            self._new_value = val.magnitude * val.u
-            return super().__setattr__(name, self._new_value)
+            _new_value.shape = self.full_shape
+            if hasattr(val, 'magnitude'):
+                _new_value = val.magnitude * val.u
+            else:
+                _new_value = val
+            return super().__setattr__(name, _new_value)
         return super().__setattr__(name, val)
 
     def _is_derived(self) -> bool:

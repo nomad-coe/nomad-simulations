@@ -124,6 +124,22 @@ class TestPhysicalProperty:
             == f'The shape of the stored `value` {wrong_shape} does not match the full shape {physical_property.full_shape} extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
         )
 
+    def test_setattr_none(self):
+        """
+        Test the `__setattr__` method when setting the `value` to `None`.
+        """
+        physical_property = PhysicalProperty(
+            source='simulation',
+            rank=[],
+            variables=[],
+        )
+        with pytest.raises(ValueError) as exc_info:
+            physical_property.value = None
+        assert (
+            str(exc_info.value)
+            == f'The value of the physical property {physical_property.name} is None. Please provide a finite valid value.'
+        )
+
     def test_is_derived(self):
         """
         Test the `normalize` and `_is_derived` methods.

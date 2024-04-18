@@ -21,8 +21,9 @@ import pytest
 
 from nomad.units import ureg
 
-from nomad_simulations.outputs import ElectronicBandGap, Outputs, SCFOutputs
+from nomad_simulations.outputs import Outputs, SCFOutputs
 from nomad_simulations.numerical_settings import SelfConsistency
+from nomad_simulations.properties import ElectronicBandGap
 
 if os.getenv('_PYTEST_RAISE', '0') != '0':
 
