@@ -28,10 +28,6 @@ from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
 from .properties import (
     ElectronicBandGap,
-    FermiLevel,
-    ChemicalPotential,
-    ElectronicDensityOfStates,
-    XASSpectra,
 )
 
 
@@ -69,17 +65,7 @@ class Outputs(ArchiveSection):
     # List of properties
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    fermi_level = SubSection(sub_section=FermiLevel.m_def, repeats=True)
-
-    chemical_potential = SubSection(sub_section=ChemicalPotential.m_def, repeats=True)
-
     electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
-
-    electronic_dos = SubSection(
-        sub_section=ElectronicDensityOfStates.m_def, repeats=True
-    )
-
-    xas_spectra = SubSection(sub_section=XASSpectra.m_def, repeats=True)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
