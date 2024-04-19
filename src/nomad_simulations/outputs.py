@@ -26,7 +26,9 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
-from .properties import ElectronicBandGap
+from .properties import (
+    ElectronicBandGap,
+)
 
 
 class Outputs(ArchiveSection):
@@ -62,7 +64,11 @@ class Outputs(ArchiveSection):
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # List of properties
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
     electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
     def extract_spin_polarized_property(self, property_name: str) -> list:
         """
@@ -84,8 +90,26 @@ class Outputs(ArchiveSection):
             spin_polarized_properties.append(prop)
         return spin_polarized_properties
 
+    def set_model_system_ref(self) -> Optional[ModelSystem]:
+        """
+        Set the reference to the last ModelSystem if this is not set in the output. This is only
+        valid if there is only one ModelSystem in the parent section.
+
+        Returns:
+            (Optional[ModelSystem]): The reference to the last ModelSystem.
+        """
+        if self.m_parent is not None:
+            model_systems = self.m_parent.model_system
+            if model_systems is not None and len(model_systems) == 1:
+                return model_systems[-1]
+        return None
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Set ref to the last ModelSystem if this is not set in the output
+        if self.model_system_ref is None:
+            self.model_system_ref = self.set_model_system_ref()
 
 
 class SCFOutputs(Outputs):

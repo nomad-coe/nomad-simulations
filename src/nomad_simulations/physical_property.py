@@ -171,7 +171,7 @@ class PhysicalProperty(ArchiveSection):
             (list): The shape of the variables over which the physical property varies.
         """
         if self.variables is not None:
-            return [v.get_n_grid_points(v.grid_points, logger) for v in self.variables]
+            return [v.get_n_grid_points(logger) for v in self.variables]
         return []
 
     @property
