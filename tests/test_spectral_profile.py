@@ -258,3 +258,30 @@ class TestXASSpectra:
         assert xas_spectra.iri is None  # Add iri when available
         assert xas_spectra.name == 'XASSpectra'
         assert xas_spectra.rank == []
+
+    def test_generate_from_contributions(self):
+        """
+        Test the `generate_from_contributions` method.
+        """
+        xas_spectra = XASSpectra()
+        xanes_spectra = SpectralProfile(
+            variables=[Energy(grid_points=[0, 1, 2] * ureg.joule)]
+        )
+        xanes_spectra.value = [0.5, 0.1, 0.3]
+        xas_spectra.xanes_spectra = xanes_spectra
+        exafs_spectra = SpectralProfile(
+            variables=[Energy(grid_points=[3, 4, 5] * ureg.joule)]
+        )
+        exafs_spectra.value = [0.2, 0.4, 0.6]
+        xas_spectra.exafs_spectra = exafs_spectra
+        xas_spectra.generate_from_contributions(logger)
+        assert len(xas_spectra.variables) == 1
+        assert len(xas_spectra.variables[0].grid_points) == 6
+        assert len(xas_spectra.variables[0].grid_points) == (
+            len(xanes_spectra.variables[0].grid_points)
+            + len(exafs_spectra.variables[0].grid_points)
+        )
+        assert (
+            xas_spectra.variables[0].grid_points.magnitude == [0, 1, 2, 3, 4, 5]
+        ).all()
+        assert (xas_spectra.value == [0.5, 0.1, 0.3, 0.2, 0.4, 0.6]).all()
