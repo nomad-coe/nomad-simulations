@@ -58,7 +58,7 @@ class TestElectronicBandGap:
         self, value: Union[List[float], float], result: float
     ):
         """
-        Test the `check_negative_values` method.
+        Test the `_check_negative_values` method.
         """
         if isinstance(value, list):
             electronic_band_gap = ElectronicBandGap(
@@ -67,7 +67,7 @@ class TestElectronicBandGap:
         else:
             electronic_band_gap = ElectronicBandGap()
         electronic_band_gap.value = value * ureg.joule
-        checked_value = electronic_band_gap.check_negative_values(logger)
+        checked_value = electronic_band_gap._check_negative_values(logger)
         if checked_value is not None:
             assert np.isclose(checked_value.magnitude, result)
         else:

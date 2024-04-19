@@ -33,7 +33,6 @@ class ElectronicBandGap(PhysicalProperty):
 
     iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicBandGap'
 
-    # ? can `type` change character depending on the `variables`?
     type = Quantity(
         type=MEnum('direct', 'indirect'),
         description="""
@@ -82,7 +81,7 @@ class ElectronicBandGap(PhysicalProperty):
         self.name = self.m_def.name
         self.rank = []
 
-    def check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+    def _check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
         Checks if the electronic band gaps is negative and sets them to None if they are.
 
@@ -142,7 +141,7 @@ class ElectronicBandGap(PhysicalProperty):
         super().normalize(archive, logger)
 
         # Checks if the `value` is negative and sets it to None if it is.
-        self.value = self.check_negative_values(logger)
+        self.value = self._check_negative_values(logger)
         if self.value is None:
             # ? What about deleting the class if `value` is None?
             logger.error('The `value` of the electronic band gap is not stored.')

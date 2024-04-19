@@ -47,6 +47,6 @@ class TestVariables:
             n_grid_points=n_grid_points,
             grid_points=grid_points,
         )
-        assert variable.get_n_grid_points(grid_points, logger) == result
+        assert variable.get_n_grid_points(logger) == result
         variable.normalize(None, logger)
         assert variable.n_grid_points == result
