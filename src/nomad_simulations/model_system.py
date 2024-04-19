@@ -614,7 +614,7 @@ class Symmetry(ArchiveSection):
         """
         Resolves the symmetry of the material being simulated using MatID and the
         originally parsed data under original_atomic_cell. It generates two other
-        `AtomicCell` sections (the primitive and standarized cells), as well as populating
+        `AtomicCell` sections (the primitive and standardized cells), as well as populating
         the `Symmetry` section.
 
         Args:
@@ -623,7 +623,7 @@ class Symmetry(ArchiveSection):
             logger (BoundLogger): The logger to log messages.
         Returns:
             primitive_atomic_cell (Optional[AtomicCell]): The primitive `AtomicCell` section.
-            conventional_atomic_cell (Optional[AtomicCell]): The standarized `AtomicCell` section.
+            conventional_atomic_cell (Optional[AtomicCell]): The standardized `AtomicCell` section.
         """
         symmetry = {}
         try:
@@ -669,8 +669,8 @@ class Symmetry(ArchiveSection):
             symmetry_analyzer, 'conventional', logger
         )
 
-        # Getting prototype_formula, prototype_aflow_id, and strukturbericht designation from
-        # standarized Wyckoff numbers and the space group number
+        # Getting `prototype_formula`, `prototype_aflow_id`, and strukturbericht designation from
+        # standardized Wyckoff numbers and the space group number
         if (
             symmetry.get('space_group_number')
             and conventional_atomic_cell.atoms_state is not None
@@ -719,7 +719,7 @@ class Symmetry(ArchiveSection):
             ) = self.resolve_bulk_symmetry(atomic_cell, logger)
             self.m_parent.m_add_sub_section(ModelSystem.cell, primitive_atomic_cell)
             self.m_parent.m_add_sub_section(ModelSystem.cell, conventional_atomic_cell)
-            # Reference to the standarized cell, and if not, fallback to the originally parsed one
+            # Reference to the standardized cell, and if not, fallback to the originally parsed one
             self.atomic_cell_ref = self.m_parent.cell[-1]
 
 
