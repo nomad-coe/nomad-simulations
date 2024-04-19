@@ -441,7 +441,7 @@ class ElectronicDensityOfStates(DOSProfile):
                 extracted_pdos.append(pdos)
         return extracted_pdos
 
-    def extract_dos_from_projected(
+    def generate_from_projected_dos(
         self, logger: BoundLogger
     ) -> Optional[pint.Quantity]:
         if self.projected_dos is None or len(self.projected_dos) == 0:
@@ -505,8 +505,7 @@ class ElectronicDensityOfStates(DOSProfile):
             self.m_parent.electronic_band_gap.append(band_gap)
 
         # Total `value` extraction from `projected_dos`:
-        if self.value is None:
-            self.value = self.extract_dos_from_projected(logger)
+        self.value = self.generate_from_projected_dos(logger)
 
 
 class XASSpectra(SpectralProfile):

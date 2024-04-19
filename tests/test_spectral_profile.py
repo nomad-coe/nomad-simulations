@@ -181,11 +181,11 @@ class TestElectronicDensityOfStates:
         # ! add test when `ElectronicEigenvalues` is implemented
         assert True
 
-    def test_extract_dos_from_projected(
+    def test_generate_from_projected_dos(
         self, model_system: ModelSystem, electronic_dos: ElectronicDensityOfStates
     ):
         """
-        Test the `extract_dos_from_projected` and `extract_projected_dos` methods.
+        Test the `generate_from_projected_dos` and `extract_projected_dos` methods.
         """
         simulation = Simulation()
         simulation.model_system.append(model_system)
@@ -218,7 +218,7 @@ class TestElectronicDensityOfStates:
         # )  # orbital `py` in `As` atom
 
         # Note: `val` is reported from `self.value`, not from the extraction
-        val = electronic_dos.extract_dos_from_projected(logger)
+        val = electronic_dos.generate_from_projected_dos(logger)
         assert (val == electronic_dos.value).all()
         assert len(electronic_dos.projected_dos) == 5  # including atom projected DOS
         orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
