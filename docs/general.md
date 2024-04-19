@@ -1,9 +1,11 @@
 # `Simulation` base class
 
-We defined a base class named `Simulation`. You can find its Python schema definition in [src/nomad_simulations/general.py](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/blob/develop/src/nomad_simulations/general.py). In NOMAD, this section will
-appear under the `data` section for the _archive_ metadata structure of each _entry_.
+<!--
+Improve these paragraphs once `Program` and `BaseSimulation` are integrated in `basesections.py`
+--->
+In NOMAD, all the simulation metadata is defined in the `Simulation` section. You can find its Python schema definition in [src/nomad_simulations/general.py](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/blob/develop/src/nomad_simulations/general.py). This section will appear under the `data` section for the _archive_ metadata structure of each _entry_.
 
-In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/base_sections.html) derived from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/) are defined. We used them to define `Simulation` as an [`Activity`](http://purl.obolibrary.org/obo/BFO_0000015). The UML diagram is:
+The `Simulation` section is derived from a _base section_ `BaseSimulation`. In NOMAD, set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/base_sections.html) derived from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/) are defined. We used them to define `BaseSimulation` as an [`Activity`](http://purl.obolibrary.org/obo/BFO_0000015). The UML diagram is:
 
 <div class="click-zoom">
     <label>
@@ -12,7 +14,7 @@ In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/how
     </label>
 </div>
 
-In fact, `Simulation` inherits from a further abstract concept, `BaseSimulation`. This class contains the general information about the `Program` used, as well as general times of the simulation, e.g., the datetime at which it started (`datetime`) and ended (`datetime_end`). The detailed UML diagram of quantities and functions defined for `Simulation` is thus:
+`BaseSimulation` contains the general information about the `Program` used, as well as general times of the simulation, e.g., the datetime at which it started (`datetime`) and ended (`datetime_end`). `Simulation` contains further information about the specific input and output sections ([see below](#sub-sections-in-simulation)) The detailed UML diagram of quantities and functions defined for `Simulation` is thus:
 
 <div class="click-zoom">
     <label>
@@ -35,7 +37,7 @@ In fact, `Simulation` inherits from a further abstract concept, `BaseSimulation`
 
 We use double inheritance from `EntryData` in order to populate the `data` section in the NOMAD archive. All of the base classes discussed here are subject to the [public normalize function](normalize.md) in NOMAD. The private function `set_system_branch_depth()` is related with the [ModelSystem base class](model_system/model_system.md).
 
-## Main sub-sections in `Simulation`
+## Main sub-sections in `Simulation` {#sub-sections-in-simulation}
 
 The `Simulation` base class is composed of 4 main sub-sections:
 
