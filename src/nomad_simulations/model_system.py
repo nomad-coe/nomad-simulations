@@ -775,7 +775,7 @@ class ChemicalFormula(ArchiveSection):
 
         Examples: H2O becomes A2B and H2O2 becomes AB. The letters are drawn from the English
         alphabet that may be extended by increasing the number of letters: A, B, ..., Z, Aa, Ab
-        and so on. This definition is in line with the similarly named OPTIMADE definition.
+        and so on. This definition is in line with the similarly named `OPTIMADE` definition.
         """,
     )
 
@@ -784,7 +784,7 @@ class ChemicalFormula(ArchiveSection):
         Resolves the chemical formulas of the `ModelSystem` in different formats.
 
         Args:
-            formula (Formula): The Formula object from NOMAD atomutils containing the chemical formulas.
+            formula (Formula): The Formula object from NOMAD `atomutils` containing the chemical formulas.
         """
         self.descriptive = formula.format('descriptive')
         self.reduced = formula.format('reduced')
@@ -836,7 +836,7 @@ class ModelSystem(System):
     parent-child system trees. The quantities `branch_label`, `branch_depth`, `atom_indices`,
     and `bond_list` are used to define the parent-child tree.
 
-    The normalization is ran in the following order:
+    The normalization is run in the following order:
         1. `OrbitalsState.normalize()` in atoms_state.py under `AtomsState`
         2. `CoreHoleState.normalize()` in atoms_state.py under `AtomsState`
         3. `HubbardInteractions.normalize()` in atoms_state.py under `AtomsState`
@@ -867,7 +867,7 @@ class ModelSystem(System):
 
         - Example 5, a passivated heterostructure Si/(GaAs-CO2) has: 1 parent ModelSystem
         section (for Si/(GaAs-CO2)), 2 child ModelSystem sections (for Si and GaAs-CO2),
-        and 2 additional children sections in one of the childs (for GaAs and CO2). The number
+        and 2 additional children sections in one of the children (for GaAs and CO2). The number
         of AtomicCell and Symmetry sections can be inferred using a combination of example
         2 and 3.
     """
@@ -877,7 +877,7 @@ class ModelSystem(System):
     name = Quantity(
         type=str,
         description="""
-        Any verbose naming refering to the ModelSystem. Can be left empty if it is a simple
+        Any verbose naming referring to the ModelSystem. Can be left empty if it is a simple
         crystal or it can be filled up. For example, an heterostructure of graphene (G) sandwiched
         in between hexagonal boron nitrides (hBN) slabs could be named 'hBN/G/hBN'.
         """,
@@ -950,7 +950,7 @@ class ModelSystem(System):
     branch_depth = Quantity(
         type=np.int32,
         description="""
-        Index refering to the depth of a branch in the hierarchical `ModelSystem` tree.
+        Index referring to the depth of a branch in the hierarchical `ModelSystem` tree.
         """,
     )
 
