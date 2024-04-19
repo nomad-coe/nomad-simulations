@@ -219,7 +219,7 @@ class TestElectronicDensityOfStates:
 
         # Note: `val` is reported from `self.value`, not from the extraction
         val = electronic_dos.generate_from_projected_dos(logger)
-        assert (val == electronic_dos.value).all()
+        assert (val.magnitude == electronic_dos.value.magnitude).all()
         assert len(electronic_dos.projected_dos) == 5  # including atom projected DOS
         orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
         atom_projected = electronic_dos.extract_projected_dos('atom', logger)

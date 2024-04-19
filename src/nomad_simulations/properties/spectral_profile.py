@@ -416,7 +416,7 @@ class ElectronicDensityOfStates(DOSProfile):
         self, type: str, logger: BoundLogger
     ) -> List[Optional[DOSProfile]]:
         """
-        Extract the projected DOS from the `projected_dos` section.
+        Extract the projected DOS from the `projected_dos` section and the specified `type`.
 
         Args:
             type (str): The type of the projected DOS to extract. It can be `'atom'` or `'orbital'`.
@@ -441,9 +441,20 @@ class ElectronicDensityOfStates(DOSProfile):
                 extracted_pdos.append(pdos)
         return extracted_pdos
 
+    # ? Maybe this method (and the one for XASSpectra.generate_from_contributions) should be moved to `PhysicalProperty`?
     def generate_from_projected_dos(
         self, logger: BoundLogger
     ) -> Optional[pint.Quantity]:
+        """
+        Generate the total `value` of the electronic DOS from the `projected_dos` contributions. If the `projected_dos`
+        is not present, it returns `None`.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[pint.Quantity]): The total `value` of the electronic DOS.
+        """
         if self.projected_dos is None or len(self.projected_dos) == 0:
             return None
 
@@ -467,7 +478,11 @@ class ElectronicDensityOfStates(DOSProfile):
                     entity_ref=ref,
                     variables=data[0].variables,
                 )
-                atom_dos.value = np.sum([dos.value for dos in data], axis=0)
+                orbital_values = [
+                    dos.value.magnitude for dos in data
+                ]  # to avoid warnings from pint
+                orbital_unit = data[0].value.u
+                atom_dos.value = np.sum(orbital_values, axis=0) * orbital_unit
                 atom_projected.append(atom_dos)
             # We concatenate the `atom_projected` to the `projected_dos`
             self.projected_dos = orbital_projected + atom_projected
@@ -475,7 +490,11 @@ class ElectronicDensityOfStates(DOSProfile):
         # Extract `value` from `atom_projected` by summing up the `atom_projected` contributions
         value = self.value
         if value is None:
-            value = np.sum([dos.value for dos in atom_projected], axis=0)
+            atom_values = [
+                dos.value.magnitude for dos in atom_projected
+            ]  # to avoid warnings from pint
+            atom_unit = atom_projected[0].value.u
+            value = np.sum(atom_values, axis=0) * atom_unit
         return value
 
     def normalize(self, archive, logger) -> None:
@@ -504,7 +523,11 @@ class ElectronicDensityOfStates(DOSProfile):
         if band_gap is not None:
             self.m_parent.electronic_band_gap.append(band_gap)
 
-        # Total `value` extraction from `projected_dos`:
+        # Total `value` extraction from `projected_dos`
+        if self.value is None:
+            logger.info(
+                'The `ElectronicDensityOfStates.value` is not stored. We will attempt to obtain it by summing up projected DOS contributions, if these are present.'
+            )
         self.value = self.generate_from_projected_dos(logger)
 
 
@@ -536,6 +559,7 @@ class XASSpectra(SpectralProfile):
         # Set the name of the section
         self.name = self.m_def.name
 
+    # ? Maybe this method (and the one for ElectronicDensityOfStates.generate_from_projected_dos) should be moved to `PhysicalProperty`?
     def generate_from_contributions(self, logger: BoundLogger) -> None:
         """
         Generate the `value` of the XAS spectra by concatenating the XANES and EXAFS contributions. It also concatenates
