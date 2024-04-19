@@ -18,7 +18,7 @@
 
 import numpy as np
 from structlog.stdlib import BoundLogger
-from typing import Optional
+from typing import Optional, List, Dict
 import pint
 
 from nomad import config
@@ -27,6 +27,7 @@ from nomad.metainfo import Quantity, SubSection, Section, Context
 from ..utils import get_sibling_section
 from ..physical_property import PhysicalProperty
 from ..variables import Energy2 as Energy
+from ..atoms_state import AtomsState
 from .band_gap import ElectronicBandGap
 
 
@@ -100,6 +101,9 @@ class DOSProfile(SpectralProfile):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+        # TODO add normalization for `projected_dos` to extract `name` (if `m_parent` is `ElectronicDOS`
+        # TODO (cont'd) and `entity_ref` is set)
+
 
 class ElectronicDensityOfStates(DOSProfile):
     """
@@ -162,7 +166,7 @@ class ElectronicDensityOfStates(DOSProfile):
 
         In `projected_dos`, `name` and `entity_ref` must be set in order to normalization to work:
             - The `entity_ref` is the `OrbitalsState` or `AtomsState` sections.
-            - The `name` of the projected DOS should be `'atom X'` or `'orbital X'`, with 'X' being the chemical symbol or the orbital label.
+            - The `name` of the projected DOS should be `'atom X'` or `'orbital Y X'`, with 'X' being the chemical symbol and 'Y' the orbital label.
             These can be extracted from `entity_ref`.
         """,
     )
@@ -373,13 +377,13 @@ class ElectronicDensityOfStates(DOSProfile):
             return None
 
         # Get the `atoms_state` and their `atomic_number` from the `AtomicCell`
-        if not len(atomic_cell.atoms_state):
+        if atomic_cell.atoms_state is None or len(atomic_cell.atoms_state) == 0:
             logger.warning('Could not resolve the `atoms_state` from the `AtomicCell`.')
             return None
         atomic_numbers = [atom.atomic_number for atom in atomic_cell.atoms_state]
 
         # Return `normalization_factor` depending if the calculation is spin polarized or not
-        if self._check_spin_polarized(logger):
+        if self.spin_channel is not None:
             normalization_factor = 1 / (2 * sum(atomic_numbers))
         else:
             normalization_factor = 1 / sum(atomic_numbers)
@@ -408,7 +412,35 @@ class ElectronicDensityOfStates(DOSProfile):
                 band_gap.value = homo - lumo
         return band_gap
 
-    # TODO add extraction from `projected_dos`
+    def extract_projected_dos(
+        self, type: str, logger: BoundLogger
+    ) -> List[Optional[DOSProfile]]:
+        """
+        Extract the projected DOS from the `projected_dos` section.
+
+        Args:
+            type (str): The type of the projected DOS to extract. It can be `'atom'` or `'orbital'`.
+
+        Returns:
+            (DOSProfile): The extracted projected DOS.
+        """
+        extracted_pdos = []
+        for pdos in self.projected_dos:
+            # Initial check for `name` and `entity_ref`
+            if (
+                pdos.name is None
+                or pdos.entity_ref is None
+                or len(pdos.entity_ref) == 0
+            ):
+                logger.warning(
+                    '`name` or `entity_ref` are not set for `projected_dos` and they are required for normalization to work.'
+                )
+                return None
+
+            if type in pdos.name:
+                extracted_pdos.append(pdos)
+        return extracted_pdos
+
     def extract_dos_from_projected(
         self, logger: BoundLogger
     ) -> Optional[pint.Quantity]:
@@ -416,36 +448,29 @@ class ElectronicDensityOfStates(DOSProfile):
             return None
 
         # We distinguish between orbital and atom `projected_dos`
-        orbital_projected = []
-        atom_projected = []
-        for dos in self.projected_dos:
-            # Initial check for `name` and `entity_ref`
-            if dos.name is None or dos.entity_ref:
-                logger.warning(
-                    '`name` or `entity_ref` are not set for `projected_dos` and they are required for normalization to work.'
-                )
-                return None
-
-            # ! name of projected DOS must be `'orbital X'`, with 'X' being the orbital label (combining the corresponding quantum numbers)
-            if 'orbital' in dos.name:
-                orbital_projected.append(dos)
-            # ! name of projected DOS must be `'atom X'`, with 'X' being the chemical symbol
-            elif 'atom' in dos.name:
-                atom_projected.append(dos)
+        orbital_projected = self.extract_projected_dos('orbital', logger)
+        atom_projected = self.extract_projected_dos('atom', logger)
 
         # Extract `atom_projected` from `orbital_projected` by summing up the `orbital_projected` contributions for each atom
         if len(atom_projected) == 0:
-            atom_data = []
+            atom_data: Dict[AtomsState, List[DOSProfile]] = {}
             for orb_pdos in orbital_projected:
                 # `entity_ref` is the `OrbitalsState` section, whose parent is `AtomsState`
-                atom_state = orb_pdos.entity_ref.m_parent
-                atom_data.append((atom_state, orb_pdos.value))
-            for ref, data in atom_data:
-                atom_dos = SpectralProfile(
-                    name=f'atom {ref.chemical_symbol}', entity_ref=ref
+                entity_ref = orb_pdos.entity_ref.m_parent
+                if entity_ref in atom_data:
+                    atom_data[entity_ref].append(orb_pdos)
+                else:
+                    atom_data[entity_ref] = [orb_pdos]
+            for ref, data in atom_data.items():
+                atom_dos = DOSProfile(
+                    name=f'atom {ref.chemical_symbol}',
+                    entity_ref=ref,
+                    variables=data[0].variables,
                 )
-                atom_dos.value = np.sum(data, axis=0)
+                atom_dos.value = np.sum([dos.value for dos in data], axis=0)
                 atom_projected.append(atom_dos)
+            # We concatenate the `atom_projected` to the `projected_dos`
+            self.projected_dos = orbital_projected + atom_projected
 
         # Extract `value` from `atom_projected` by summing up the `atom_projected` contributions
         value = self.value

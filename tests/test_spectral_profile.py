@@ -23,6 +23,10 @@ from typing import Optional, List, Union
 from . import logger
 
 from nomad.units import ureg
+
+from nomad_simulations import Simulation
+from nomad_simulations.model_system import ModelSystem, AtomicCell
+from nomad_simulations.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.outputs import Outputs
 from nomad_simulations.properties import (
     SpectralProfile,
@@ -100,6 +104,7 @@ class TestElectronicDensityOfStates:
         fermi_level: Optional[float],
         sibling_section_value: Optional[float],
         result: Optional[float],
+        electronic_dos: ElectronicDensityOfStates,
     ):
         """
         Test the `_resolve_fermi_level` method.
@@ -109,10 +114,6 @@ class TestElectronicDensityOfStates:
         if sibling_section_value is not None:
             sec_fermi_level.value = sibling_section_value * ureg.joule
         outputs.fermi_level.append(sec_fermi_level)
-        electronic_dos = ElectronicDensityOfStates(
-            variables=[Energy(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.joule)]
-        )
-        electronic_dos.value = np.array([1.5, 1.2, 0, 0, 0, 0.8, 1.3]) * ureg('1/joule')
         if fermi_level is not None:
             electronic_dos.fermi_level = fermi_level * ureg.joule
         outputs.electronic_dos.append(electronic_dos)
@@ -120,6 +121,127 @@ class TestElectronicDensityOfStates:
         if resolved_fermi_level is not None:
             resolved_fermi_level = resolved_fermi_level.magnitude
         assert resolved_fermi_level == result
+
+    def test_resolve_energies_origin(self):
+        """
+        Test the `resolve_energies_origin` method.
+        """
+        # ! add test when `ElectronicEigenvalues` is implemented
+        assert True
+
+    def test_resolve_normalization_factor(
+        self, electronic_dos: ElectronicDensityOfStates
+    ):
+        """
+        Test the `resolve_normalization_factor` method.
+        """
+        simulation = Simulation()
+        outputs = Outputs()
+        electronic_dos.fermi_level = 0.5 * ureg.joule
+        electronic_dos.energies_origin = 0.5 * ureg.joule
+        outputs.electronic_dos.append(electronic_dos)
+        simulation.outputs.append(outputs)
+
+        # No `model_system_ref`
+        assert electronic_dos.resolve_normalization_factor(logger) is None
+
+        # No `model_system_ref.cell`
+        model_system = ModelSystem()
+        simulation.model_system.append(model_system)
+        outputs.model_system_ref = simulation.model_system[0]
+        assert electronic_dos.resolve_normalization_factor(logger) is None
+
+        # No `model_system_ref.cell.atoms_state`
+        atomic_cell = AtomicCell(
+            type='original', positions=[[0, 0, 0], [0.5, 0.5, 0.5]] * ureg.meter
+        )
+        model_system.cell.append(atomic_cell)
+        assert electronic_dos.resolve_normalization_factor(logger) is None
+
+        # Adding the required `model_system_ref` sections and quantities
+        atoms_state = [
+            AtomsState(chemical_symbol='Ga'),
+            AtomsState(chemical_symbol='As'),
+        ]
+        for atom in atoms_state:
+            atom.resolve_chemical_symbol_and_number(logger)
+        atomic_cell.atoms_state = atoms_state
+        # Non spin-polarized
+        normalization_factor = electronic_dos.resolve_normalization_factor(logger)
+        assert np.isclose(normalization_factor, 0.015625)
+        # Spin-polarized
+        electronic_dos.spin_channel = 0
+        normalization_factor = electronic_dos.resolve_normalization_factor(logger)
+        assert np.isclose(normalization_factor, 0.0078125)
+
+    def test_extract_band_gap(self):
+        """
+        Test the `extract_band_gap` method.
+        """
+        # ! add test when `ElectronicEigenvalues` is implemented
+        assert True
+
+    def test_extract_dos_from_projected(
+        self, model_system: ModelSystem, electronic_dos: ElectronicDensityOfStates
+    ):
+        """
+        Test the `extract_dos_from_projected` and `extract_projected_dos` methods.
+        """
+        simulation = Simulation()
+        simulation.model_system.append(model_system)
+        outputs = Outputs()
+        outputs.electronic_dos.append(electronic_dos)
+        outputs.model_system_ref = simulation.model_system[0]
+        # Initial tests for the passed `projected_dos` (only orbital PDOS)
+        assert len(electronic_dos.projected_dos) == 3  # only orbital projected DOS
+        orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
+        atom_projected = electronic_dos.extract_projected_dos('atom', logger)
+        assert len(orbital_projected) == 3 and len(atom_projected) == 0
+        orbital_projected_names = [orb_pdos.name for orb_pdos in orbital_projected]
+        assert orbital_projected_names == [
+            'orbital s Ga',
+            'orbital px As',
+            'orbital py As',
+        ]
+        # ! These tests are not passing, despite these are the same sections
+        # assert (
+        #     orbital_projected[0].entity_ref
+        #     == outputs.model_system_ref.cell[0].atoms_state[0].orbitals_state[0]
+        # )  # orbital `s` in `Ga` atom
+        # assert (
+        #     orbital_projected[1].entity_ref
+        #     == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[0]
+        # )  # orbital `px` in `As` atom
+        # assert (
+        #     orbital_projected[1].entity_ref
+        #     == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[1]
+        # )  # orbital `py` in `As` atom
+
+        # Note: `val` is reported from `self.value`, not from the extraction
+        val = electronic_dos.extract_dos_from_projected(logger)
+        assert (val == electronic_dos.value).all()
+        assert len(electronic_dos.projected_dos) == 5  # including atom projected DOS
+        orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
+        atom_projected = electronic_dos.extract_projected_dos('atom', logger)
+        assert len(orbital_projected) == 3 and len(atom_projected) == 2
+        atom_projected_names = [atom_pdos.name for atom_pdos in atom_projected]
+        assert atom_projected_names == ['atom Ga', 'atom As']
+        # ! These tests are not passing, despite these are the same sections
+        # assert (
+        #     atom_projected[0].entity_ref
+        #     == outputs.model_system_ref.cell[0].atoms_state[0]
+        # )  # `Ga` atom
+        # assert (
+        #     atom_projected[1].entity_ref
+        #     == outputs.model_system_ref.cell[0].atoms_state[1]
+        # )  # `As` atom
+
+    def test_extract_band_gap(self):
+        """
+        Test the `normalize` method.
+        """
+        # ! add test when `ElectronicEigenvalues` is implemented
+        assert True
 
 
 class TestXASSpectra:

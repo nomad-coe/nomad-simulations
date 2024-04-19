@@ -16,14 +16,25 @@
 # limitations under the License.
 #
 
+import numpy as np
 import os
 import pytest
+from typing import List
 
 from nomad.units import ureg
 
+from . import logger
+
+from nomad_simulations.model_system import ModelSystem, AtomicCell
+from nomad_simulations.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.outputs import Outputs, SCFOutputs
 from nomad_simulations.numerical_settings import SelfConsistency
-from nomad_simulations.properties import ElectronicBandGap
+from nomad_simulations.variables import Energy2 as Energy
+from nomad_simulations.properties import (
+    ElectronicBandGap,
+    DOSProfile,
+    ElectronicDensityOfStates,
+)
 
 if os.getenv('_PYTEST_RAISE', '0') != '0':
 
@@ -36,7 +47,42 @@ if os.getenv('_PYTEST_RAISE', '0') != '0':
         raise excinfo.value
 
 
+def get_model_system(
+    type: str = 'original',
+    positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
+    chemical_symbols: List[str] = ['Ga', 'As'],
+    orbital_symbols: List[List[str]] = [['s'], ['px', 'py']],
+) -> ModelSystem:
+    """
+    Create a `ModelSystem` object with the given parameters.
+    """
+    model_system = ModelSystem()
+    atomic_cell = AtomicCell(type=type, positions=positions * ureg.meter)
+    model_system.cell.append(atomic_cell)
+
+    # Add atoms_state to the model_system
+    atoms_state = []
+    for index, atom in enumerate(chemical_symbols):
+        orbitals = orbital_symbols[index]
+        orbitals_state = []
+        for orbital in orbitals:
+            orbitals_state.append(
+                OrbitalsState(
+                    l_quantum_symbol=orbital[0], ml_quantum_symbol=orbital[1:]
+                )
+            )
+        atom_state = AtomsState(chemical_symbol=atom, orbitals_state=orbitals_state)
+        # and obtain the atomic number for each AtomsState
+        atom_state.resolve_chemical_symbol_and_number(logger)
+        atoms_state.append(atom_state)
+    atomic_cell.atoms_state = atoms_state
+    return model_system
+
+
 def get_scf_electronic_band_gap_template(threshold_change: float = 1e-3) -> SCFOutputs:
+    """
+    Create a `SCFOutputs` object with a template for the electronic_band_gap property.
+    """
     scf_outputs = SCFOutputs()
     # Define a list of scf_steps with values of the total energy like [1, 1.1, 1.11, 1.111, etc],
     # such that the difference between one step and the next one decreases a factor of 10.
@@ -57,6 +103,54 @@ def get_scf_electronic_band_gap_template(threshold_change: float = 1e-3) -> SCFO
     return scf_outputs
 
 
+def get_electronic_dos(
+    energy_points: List[int] = [-3, -2, -1, 0, 1, 2, 3],
+    total_dos: List[float] = [1.5, 1.2, 0, 0, 0, 0.8, 1.3],
+) -> ElectronicDensityOfStates:
+    """
+    Create an `ElectronicDensityOfStates` object with a template for the electronic_dos property. It uses
+    the template of the model_system created with the `get_model_system` function.
+    """
+    model_system = get_model_system()
+    variables_energy = [Energy(grid_points=energy_points * ureg.joule)]
+    electronic_dos = ElectronicDensityOfStates(variables=variables_energy)
+    electronic_dos.value = total_dos * ureg('1/joule')
+    orbital_s_Ga_pdos = DOSProfile(
+        name='orbital s Ga',
+        variables=variables_energy,
+        entity_ref=model_system.cell[0].atoms_state[0].orbitals_state[0],
+    )
+    orbital_px_As_pdos = DOSProfile(
+        name='orbital px As',
+        variables=variables_energy,
+        entity_ref=model_system.cell[0].atoms_state[1].orbitals_state[0],
+    )
+    orbital_py_As_pdos = DOSProfile(
+        name='orbital py As',
+        variables=variables_energy,
+        entity_ref=model_system.cell[0].atoms_state[1].orbitals_state[1],
+    )
+    orbital_s_Ga_pdos.value = [0.2, 0.5, 0, 0, 0, 0.0, 0.0] * ureg('1/joule')
+    orbital_px_As_pdos.value = [1.0, 0.2, 0, 0, 0, 0.3, 0.0] * ureg('1/joule')
+    orbital_py_As_pdos.value = [0.3, 0.5, 0, 0, 0, 0.5, 1.3] * ureg('1/joule')
+    electronic_dos.projected_dos = [
+        orbital_s_Ga_pdos,
+        orbital_px_As_pdos,
+        orbital_py_As_pdos,
+    ]
+    return electronic_dos
+
+
+@pytest.fixture(scope='session')
+def model_system() -> ModelSystem:
+    return get_model_system()
+
+
 @pytest.fixture(scope='session')
 def scf_electronic_band_gap() -> SCFOutputs:
     return get_scf_electronic_band_gap_template()
+
+
+@pytest.fixture(scope='session')
+def electronic_dos() -> ElectronicDensityOfStates:
+    return get_electronic_dos()

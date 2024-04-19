@@ -18,4 +18,9 @@
 
 from .energies import FermiLevel, ChemicalPotential
 from .band_gap import ElectronicBandGap
-from .spectral_profile import SpectralProfile, ElectronicDensityOfStates, XASSpectra
+from .spectral_profile import (
+    SpectralProfile,
+    DOSProfile,
+    ElectronicDensityOfStates,
+    XASSpectra,
+)
