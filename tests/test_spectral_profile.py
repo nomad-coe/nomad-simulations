@@ -236,7 +236,7 @@ class TestElectronicDensityOfStates:
         #     == outputs.model_system_ref.cell[0].atoms_state[1]
         # )  # `As` atom
 
-    def test_extract_band_gap(self):
+    def test_normalize(self):
         """
         Test the `normalize` method.
         """
