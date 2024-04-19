@@ -266,6 +266,7 @@ class Cell(GeometricSpace):
     periodic_boundary_conditions = Quantity(
         type=bool,
         shape=[3],
+        default=[False, False, False],
         description="""
         If periodic boundary conditions are applied to each direction of the crystal axes.
         """,
@@ -382,11 +383,6 @@ class AtomicCell(Cell):
         ase_atoms = ase.Atoms(symbols=atoms_labels)
 
         # PBC
-        if self.periodic_boundary_conditions is None:
-            logger.info(
-                'Could not find `AtomicCell.periodic_boundary_conditions`. They will be set to [False, False, False].'
-            )
-            self.periodic_boundary_conditions = [False, False, False]
         ase_atoms.set_pbc(self.periodic_boundary_conditions)
 
         # Positions (ensure they are parsed)
