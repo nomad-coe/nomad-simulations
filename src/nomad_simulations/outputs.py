@@ -57,14 +57,6 @@ class Outputs(ArchiveSection):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    custom_physical_property = SubSection(
-        sub_section=PhysicalProperty.m_def,
-        repeats=True,
-        description="""
-        A custom physical property used to store properties not yet covered by the NOMAD schema.
-        """,
-    )
-
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # List of properties
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
