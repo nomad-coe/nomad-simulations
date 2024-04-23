@@ -340,13 +340,39 @@ class AtomicCell(Cell):
         """,
     )
 
+    elemental_pairs = Quantity(
+        type=str,
+        shape=['*', 2],
+        description="""
+        Alphabetically sorted pairs of elements in the atomic cell.
+        """,
+    )  # ? also store indices of the atoms?
+
     interatomic_distances = Quantity(
         type=np.float64,
-        shape=['*', '*'],
+        shape=['*'],
         unit='meter',
         description="""
-        Interatomic distances between atoms pairs within in `geometry_analysis_cutoffs`.
-        Periodic boundary conditions are taken into account.
+        Interatomic distances between pairs of (different) atoms within in `geometry_analysis_cutoffs`.
+        Periodic boundary conditions are taken into account. Follows the order of `element_pairs`.
+        """,
+    )
+
+    elemental_triples = Quantity(
+        type=str,
+        shape=['*', 3],
+        description="""
+        Alphabetically sorted triplets of elements in the atomic cell.
+        """,
+    )  # ? also store indices of the atoms?
+
+    interatomic_angles = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='radian',
+        description="""
+        Interatomic angles between triplets within of (different) atoms in `geometry_analysis_cutoffs`.
+        Periodic boundary conditions are taken into account. Follows the order of `elemental_triples`.
         """,
     )
 
@@ -357,21 +383,6 @@ class AtomicCell(Cell):
         """
         return list(
             set([atom_state.chemical_symbol for atom_state in self.atoms_state])
-        )
-
-    @property
-    def element_pairs(self):
-        """
-        Returns a list of the unique element pairs in the `AtomicCell` based on the `atoms_state`.
-        """
-        return list(
-            set(
-                [
-                    (a.chemical_symbol, b.chemical_symbol)
-                    for a in self.atoms_state
-                    for b in self.atoms_state
-                ]
-            )
         )
 
     def get_element_combos(
@@ -386,7 +397,15 @@ class AtomicCell(Cell):
                 return combos
             return recursion(
                 depth - 1,
-                list(set((*combo, elem) for combo in combos for elem in self.elements)),
+                list(
+                    set(
+                        tuple(
+                            sorted([*combo, elem])
+                        )  # sort to avoid duplicates  # ! sort by atomic number
+                        for combo in combos
+                        for elem in self.elements
+                    )
+                ),
             )
 
         return recursion(n_elements - 1, self.elements)
@@ -453,9 +472,9 @@ class AtomicCell(Cell):
 
     def get_distances(
         self, logger: BoundLogger
-    ) -> list[tuple[int, int]]:  # ! write this out to a separate subsection
+    ) -> tuple[list[tuple[str, str]], list[float]]:
         """
-        Returns a list of tuples with the indices of the atoms that are bonded in the `AtomicCell`.
+        Compute the interatomic distances between all pairs of atoms within `geometry_analysis_cutoffs`.
         """
         if not hasattr(self, '_ase_analysis'):  # ! make this more elegant
             logger.error(
@@ -464,13 +483,39 @@ class AtomicCell(Cell):
             return None
 
         distances: list[list[float]] = []
-        for pair in self.get_element_combos(2):
+        pairs = self.get_element_combos(2)
+        for pair in pairs:
+            connections = self._ase_analysis.get_bonds(*pair, unique=True)
+            if len(connections[0]) == 0:
+                logger.info(
+                    f'Could not find the pair {pair} in the `AtomicCell` section.'
+                )
+                continue
             distances.extend(
+                self._ase_analysis.get_values(connections)
+            )  # ! disable uniquness when applying histograms
+        return pairs, distances * ureg.angstrom
+
+    def get_angles(
+        self, logger: BoundLogger
+    ) -> tuple[list[tuple[str, str, str]], list[float]]:
+        if not hasattr(self, '_ase_analysis'):
+            logger.error(
+                'ASE analysis not set up. Run `setup_ase_analysis` before calling this method.'
+            )
+            return None
+
+        angles: list[list[float]] = []
+        triplets = self.get_element_combos(3)
+        for triplet in triplets:
+            angles.extend(
                 self._ase_analysis.get_values(
-                    self._ase_analysis.get_bonds(*pair, unique=True)
+                    self._ase_analysis.get_angles(
+                        *triplet, unique=True
+                    )  # ! disable uniqueness when applying histograms
                 )
             )
-        return distances * ureg.angstrom
+        return triplets, angles * ureg.radian
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -486,7 +531,8 @@ class AtomicCell(Cell):
                 self._ase_atoms, mult=3.0
             )
         self.setup_ase_analysis()
-        self.interatomic_distances = self.get_distances(logger)
+        self.elemental_pairs, self.interatomic_distances = self.get_distances(logger)
+        self.elemental_triples, self.interatomic_angles = self.get_angles(logger)
 
 
 class Symmetry(ArchiveSection):

@@ -32,8 +32,12 @@ def test_geometry_analysis():
         length_vector_c=1.0,
         name='H2',
         type='original',
-        positions=np.array([[0, 0.2, 0], [0, 0, 0.1]]) * ureg('angstrom'),
-        atoms_state=[AtomsState(chemical_symbol='H')] * 2,
+        positions=np.array([[0, 0.2, 0], [0, 0, 0.1], [0.2, 0, 0]]) * ureg('angstrom'),
+        atoms_state=[
+            AtomsState(chemical_symbol='H'),
+            AtomsState(chemical_symbol='O'),
+            AtomsState(chemical_symbol='H'),
+        ],
     )
     atomic_cell.normalize(None, logger)
 
