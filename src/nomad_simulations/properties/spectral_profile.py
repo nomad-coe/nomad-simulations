@@ -135,7 +135,7 @@ class ElectronicDensityOfStates(DOSProfile):
         unit='joule',
         description="""
         Energy level denoting the origin along the energy axis, used for comparison and visualization. It is
-        defined as the `ElectronicEigenvalues.highest_occupied` and does not necessarily coincide with `fermi_level`.
+        defined as the `ElectronicEigenvalues.highest_occupied_energy` and does not necessarily coincide with `fermi_level`.
         """,
     )
 
@@ -164,7 +164,7 @@ class ElectronicDensityOfStates(DOSProfile):
             - If the total DOS is not present, we can sum all atom-projected DOS to obtain it.
             - If the atom-projected DOS is not present, we can sum all orbital-projected DOS to obtain it.
 
-        In `projected_dos`, `name` and `entity_ref` must be set in order to normalization to work:
+        In `projected_dos`, `name` and `entity_ref` must be set in order for normalization to work:
             - The `entity_ref` is the `OrbitalsState` or `AtomsState` sections.
             - The `name` of the projected DOS should be `'atom X'` or `'orbital Y X'`, with 'X' being the chemical symbol and 'Y' the orbital label.
             These can be extracted from `entity_ref`.
