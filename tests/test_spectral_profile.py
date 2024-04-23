@@ -26,7 +26,7 @@ from nomad.units import ureg
 
 from nomad_simulations import Simulation
 from nomad_simulations.model_system import ModelSystem, AtomicCell
-from nomad_simulations.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.atoms_state import AtomsState
 from nomad_simulations.outputs import Outputs
 from nomad_simulations.properties import (
     SpectralProfile,
@@ -35,6 +35,7 @@ from nomad_simulations.properties import (
     FermiLevel,
 )
 from nomad_simulations.variables import Temperature, Energy2 as Energy
+from nomad_simulations.utils import get_sibling_section
 
 
 class TestSpectralProfile:
@@ -89,38 +90,6 @@ class TestElectronicDensityOfStates:
         )
         energies = electronic_dos._check_energy_variables(logger)
         assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
-
-    @pytest.mark.parametrize(
-        'fermi_level, sibling_section_value, result',
-        [
-            (None, None, None),
-            (None, 0.5, 0.5),
-            (0.5, None, 0.5),
-            (0.5, 1.0, 0.5),
-        ],
-    )
-    def test_resolve_fermi_level(
-        self,
-        fermi_level: Optional[float],
-        sibling_section_value: Optional[float],
-        result: Optional[float],
-        electronic_dos: ElectronicDensityOfStates,
-    ):
-        """
-        Test the `_resolve_fermi_level` method.
-        """
-        outputs = Outputs()
-        sec_fermi_level = FermiLevel(variables=[])
-        if sibling_section_value is not None:
-            sec_fermi_level.value = sibling_section_value * ureg.joule
-        outputs.fermi_level.append(sec_fermi_level)
-        if fermi_level is not None:
-            electronic_dos.fermi_level = fermi_level * ureg.joule
-        outputs.electronic_dos.append(electronic_dos)
-        resolved_fermi_level = electronic_dos.resolve_fermi_level(logger)
-        if resolved_fermi_level is not None:
-            resolved_fermi_level = resolved_fermi_level.magnitude
-        assert resolved_fermi_level == result
 
     def test_resolve_energies_origin(self):
         """

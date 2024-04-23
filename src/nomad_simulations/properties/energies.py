@@ -28,6 +28,8 @@ class FermiLevel(PhysicalProperty):
     Energy required to add or extract a charge from a material at zero temperature. It can be also defined as the chemical potential at zero temperature.
     """
 
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
+
     iri = 'http://fairmat-nfdi.eu/taxonomy/FermiLevel'
 
     value = Quantity(
@@ -53,6 +55,8 @@ class ChemicalPotential(PhysicalProperty):
     """
     Free energy cost of adding or extracting a particle from a thermodynamic system.
     """
+
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
 
     iri = 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
 
