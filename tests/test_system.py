@@ -20,7 +20,6 @@ import pytest
 import numpy as np
 
 from . import logger
-from .conftest import get_scf_electronic_band_gap_template
 
 from nomad.units import ureg
 from nomad_simulations.model_system import AtomicCell, AtomsState
@@ -37,6 +36,7 @@ def test_geometry_analysis():
         atoms_state=[AtomsState(chemical_symbol='H')] * 2,
     )
     atomic_cell.normalize(None, logger)
-    atomic_cell.setup_ase_analyze(atomic_cell.to_ase_atoms(logger))
 
-    assert atomic_cell.get_bonds() == [[0.223606797749979]]  #! add approx function
+    assert atomic_cell.interatomic_distances.to('angstrom').magnitude == [
+        [0.223606797749979]
+    ]  #! add approx function

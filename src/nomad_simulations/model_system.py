@@ -234,25 +234,35 @@ class Cell(GeometricSpace):
         """,
     )
 
+    # topology
+    bond_list = Quantity(
+        type=np.int32,
+        description="""
+        List of index pairs corresponding to (covalent) bonds, e.g., as defined by a force field.
+        """,
+    )
+
+    # geometry and analysis
     positions = Quantity(
         type=np.float64,
         shape=['n_cell_points', 3],
         unit='meter',
         description="""
-        Positions of all the atoms in Cartesian coordinates.
+        Positions of all the atoms in absolute, Cartesian coordinates.
         """,
-    )
+    )  # ? @JosePizarro: This is already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
 
     velocities = Quantity(
         type=np.float64,
         shape=['n_cell_points', 3],
         unit='meter / second',
         description="""
-        Velocities of the atoms. It is the change in cartesian coordinates of the atom position
-        with time.
+        Velocities of the atoms defined with respect to absolute, Cartesian coordinate frame
+        centered at the respective atom position.
         """,
-    )
+    )  # ? @JosePizarro: This is already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
 
+    # box
     lattice_vectors = Quantity(
         type=np.float64,
         shape=[3, 3],
@@ -318,6 +328,25 @@ class AtomicCell(Cell):
         shape=['n_atoms'],
         description="""
         Wyckoff letters associated with each atom.
+        """,
+    )
+
+    geometry_analysis_cutoffs = Quantity(
+        type=np.float64,
+        shape=['*'],
+        description="""
+        Cutoff radius within which atomic geometries are analyzed.
+        Defaults to 3x the covalent radius denoted by the [`ase` package](https://wiki.fysik.dtu.dk/ase/ase/neighborlist.html).
+        """,
+    )
+
+    interatomic_distances = Quantity(
+        type=np.float64,
+        shape=['*', '*'],
+        unit='meter',
+        description="""
+        Interatomic distances between atoms pairs within in `geometry_analysis_cutoffs`.
+        Periodic boundary conditions are taken into account.
         """,
     )
 
@@ -405,12 +434,7 @@ class AtomicCell(Cell):
 
         return ase_atoms
 
-    def setup_ase_analyze(
-        self,
-        ase_atoms: ase.Atoms,
-        neighbor_list: Optional[ase_nl.NeighborList] = None,
-        scale_cutoff: float = 3.0,
-    ) -> None:
+    def setup_ase_analysis(self) -> None:
         """
         Analyzes the `AtomicCell` section using ASE Atoms object.
         Return a bonds and angles list.
@@ -420,34 +444,49 @@ class AtomicCell(Cell):
             logger (BoundLogger): The logger to log messages.
         """
 
-        if neighbor_list is None:
-            neighbor_list = ase_nl.NeighborList(
-                ase_nl.natural_cutoffs(ase_atoms, mult=scale_cutoff),
-                self_interaction=False,
-            )
-            neighbor_list.update(ase_atoms)  # ? should the update always be triggered?
-        self._ase_analysis = ase_as.Analysis(ase_atoms, nl=neighbor_list)
+        neighbor_list = ase_nl.NeighborList(
+            self.geometry_analysis_cutoffs,
+            self_interaction=False,
+        )
+        neighbor_list.update(self._ase_atoms)
+        self._ase_analysis = ase_as.Analysis(self._ase_atoms, nl=neighbor_list)
 
-    def get_bonds(
-        self,
+    def get_distances(
+        self, logger: BoundLogger
     ) -> list[tuple[int, int]]:  # ! write this out to a separate subsection
         """
         Returns a list of tuples with the indices of the atoms that are bonded in the `AtomicCell`.
         """
-        bond_lengths: list[list[float]] = []
-        for bonds in self.get_element_combos(2):
-            bond_lengths.extend(
+        if not hasattr(self, '_ase_analysis'):  # ! make this more elegant
+            logger.error(
+                'ASE analysis not set up. Run `setup_ase_analysis` before calling this method.'
+            )
+            return None
+
+        distances: list[list[float]] = []
+        for pair in self.get_element_combos(2):
+            distances.extend(
                 self._ase_analysis.get_values(
-                    self._ase_analysis.get_bonds(*bonds, unique=True)
+                    self._ase_analysis.get_bonds(*pair, unique=True)
                 )
             )
-        return bond_lengths
+        return distances * ureg.angstrom
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Set the name of the section
         self.name = self.m_def.name if self.name is None else self.name
+
+        self._ase_atoms = self.to_ase_atoms(logger)
+        if (
+            self.geometry_analysis_cutoffs is None
+            or len(self.geometry_analysis_cutoffs) > 0
+        ):  # ! double-check
+            self.geometry_analysis_cutoffs = ase_nl.natural_cutoffs(
+                self._ase_atoms, mult=3.0
+            )
+        self.setup_ase_analysis()
+        self.interatomic_distances = self.get_distances(logger)
 
 
 class Symmetry(ArchiveSection):
@@ -561,7 +600,7 @@ class Symmetry(ArchiveSection):
 
     def resolve_analyzed_atomic_cell(
         self, symmetry_analyzer: SymmetryAnalyzer, cell_type: str, logger: BoundLogger
-    ) -> Optional[AtomicCell]:
+    ) -> Optional[AtomicCell]:  # ! consider using an index list and a filter function
         """
         Resolves the `AtomicCell` section from the `SymmetryAnalyzer` object and the cell_type
         (primitive or conventional).
@@ -610,7 +649,7 @@ class Symmetry(ArchiveSection):
         """
         Resolves the symmetry of the material being simulated using MatID and the
         originally parsed data under original_atomic_cell. It generates two other
-        `AtomicCell` sections (the primitive and standardized cells), as well as populating
+        `AtomicCell` sections (the primitive and standardized cells) and populates
         the `Symmetry` section.
 
         Args:
@@ -950,24 +989,18 @@ class ModelSystem(System):
         """,
     )
 
+    # ? Move to `AtomicCell`?
     atom_indices = Quantity(
         type=np.int32,
         shape=['*'],
         description="""
         Indices of the atoms in the child with respect to its parent. Example:
-            - We have SrTiO3, where `AtomicCell.labels = ['Sr', 'Ti', 'O', 'O', 'O']`. If
-            we create a `model_system` child for the `'Ti'` atom only, then in that child
-            `ModelSystem.model_system.atom_indices = [1]`. If now we want to refer both to
-            the `'Ti'` and the last `'O'` atoms, `ModelSystem.model_system.atom_indices = [1, 4]`.
-        """,
-    )
 
-    # TODO improve description and add an example using the case in atom_indices
-    bond_list = Quantity(
-        type=np.int32,
-        description="""
-        List of pairs of atom indices corresponding to bonds (e.g., as defined by a force field)
-        within this atoms_group.
+        We have SrTiO3, where `AtomicCell.labels = ['Sr', 'Ti', 'O', 'O', 'O']`.
+        - If we create a `model_system` child for the `'Ti'` atom only, then in that child
+            `ModelSystem.model_system.atom_indices = [1]`.
+        - If now we want to refer both to the `'Ti'` and the last `'O'` atoms,
+            `ModelSystem.model_system.atom_indices = [1, 4]`.
         """,
     )
 
