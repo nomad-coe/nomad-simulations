@@ -9,13 +9,3 @@ This project contains all the information about the main base sections and their
 NOMAD is a free open-source data management platform for Materials Science which follows the F.A.I.R. (Findable, Accessible, Interoperable, and Reusable) principles. This documentation page is a part of the more [general NOMAD documentation](https://nomad-lab.eu/prod/v1/staging/docs/), as well as on the usage of [NOMAD base sections](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/base_sections.html).
 
 When designing the sections, we follow [SOLID principles](https://www.geeksforgeeks.org/solid-principle-in-programming-understand-with-real-life-examples/) for object-oriented programming. And throughout this documentation, we will use [UML diagrams](https://en.wikipedia.org/wiki/Class_diagram), both in a simplified and in a detailed manner, to draw the schemas relationships.
-
-
-!!! info "Main contributors"
-    Dr. José M. Pizarro, [jose.pizarro@physik.hu-berlin](mailto:jose.pizarro@physik.hu-berlin.de)
-
-    Dr. Nathan Daelman, [ndaelman@physik.hu-berlin.de](mailto:ndaelman@physik.hu-berlin.de)
-
-    Dr. Bernadette Mohr, [mohrbern@physik.hu-berlin.de](mailto:mohrbern@physik.hu-berlin.de)
-
-    Dr. Joseph F. Rudzinski, [joseph.rudzinski@physik.hu-berlin.de](mailto:joseph.rudzinski@physik.hu-berlin.de)
