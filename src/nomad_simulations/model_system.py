@@ -342,7 +342,7 @@ class AtomicCell(Cell):
 
     elemental_pairs = Quantity(
         type=str,
-        shape=['*', 2],
+        shape=['*'],  # ! once the updated `Quantity` is updated, change to ['*', 2]
         description="""
         Alphabetically sorted pairs of elements in the atomic cell.
         """,
@@ -360,7 +360,7 @@ class AtomicCell(Cell):
 
     elemental_triples = Quantity(
         type=str,
-        shape=['*', 3],
+        shape=['*'],  # ! once the updated `Quantity` is updated, change to ['*', 3]
         description="""
         Alphabetically sorted triplets of elements in the atomic cell.
         """,
@@ -371,7 +371,7 @@ class AtomicCell(Cell):
         shape=['*'],
         unit='radian',
         description="""
-        Interatomic angles between triplets within of (different) atoms in `geometry_analysis_cutoffs`.
+        Interatomic angles between triplets of (different) atoms in `geometry_analysis_cutoffs`.
         Periodic boundary conditions are taken into account. Follows the order of `elemental_triples`.
         """,
     )
@@ -384,6 +384,23 @@ class AtomicCell(Cell):
         return list(
             set([atom_state.chemical_symbol for atom_state in self.atoms_state])
         )
+
+    # ! polish and test
+    def check_attributes(self, attributes: list[str]) -> callable:
+        """
+        Check if the specified attributes are not None.
+        """
+
+        def decorator(func: callable) -> callable:
+            def wrapper(self, *args, **kwargs) -> Optional[callable]:
+                for attr in attributes:
+                    if getattr(self, attr) is None:
+                        return None
+                return func(self, *args, **kwargs)
+
+            return wrapper
+
+        return decorator
 
     def get_element_combos(
         self, n_elements: int
@@ -410,6 +427,12 @@ class AtomicCell(Cell):
 
         return recursion(n_elements - 1, self.elements)
 
+    def convert_element_combos(self, n_elements: int) -> list[str]:
+        """
+        Converts the element combinations into a list of hyphen-separated strings.
+        """
+        return ['-'.join(elem) for elem in self.get_element_combos(n_elements)]
+
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
@@ -425,7 +448,7 @@ class AtomicCell(Cell):
 
         Returns:
             (Optional[ase.Atoms]): The ASE Atoms object with the basic information from the `AtomicCell`.
-        """
+        """  # ! split into smaller functions
         # Initialize ase.Atoms object with labels
         atoms_labels = [atom_state.chemical_symbol for atom_state in self.atoms_state]
         ase_atoms = ase.Atoms(symbols=atoms_labels)
@@ -483,7 +506,7 @@ class AtomicCell(Cell):
             return None
 
         distances: list[list[float]] = []
-        pairs = self.get_element_combos(2)
+        pairs = self.convert_element_combos(2)
         for pair in pairs:
             connections = self._ase_analysis.get_bonds(*pair, unique=True)
             if len(connections[0]) == 0:
@@ -493,7 +516,7 @@ class AtomicCell(Cell):
                 continue
             distances.extend(
                 self._ase_analysis.get_values(connections)
-            )  # ! disable uniquness when applying histograms
+            )  # ! disable uniqueness when applying histograms
         return pairs, distances * ureg.angstrom
 
     def get_angles(
@@ -506,7 +529,7 @@ class AtomicCell(Cell):
             return None
 
         angles: list[list[float]] = []
-        triplets = self.get_element_combos(3)
+        triplets = self.convert_element_combos(3)
         for triplet in triplets:
             angles.extend(
                 self._ase_analysis.get_values(

@@ -32,7 +32,7 @@ def test_geometry_analysis():
         length_vector_c=1.0,
         name='H2',
         type='original',
-        positions=np.array([[0, 0.2, 0], [0, 0, 0.1], [0.2, 0, 0]]) * ureg('angstrom'),
+        positions=np.array([[0, 0.2, 0], [0, 0, 0.1], [0.2, 0, 0]]),
         atoms_state=[
             AtomsState(chemical_symbol='H'),
             AtomsState(chemical_symbol='O'),
@@ -41,6 +41,7 @@ def test_geometry_analysis():
     )
     atomic_cell.normalize(None, logger)
 
-    assert atomic_cell.interatomic_distances.to('angstrom').magnitude == [
-        [0.223606797749979]
-    ]  #! add approx function
+    assert np.isclose(
+        atomic_cell.interatomic_distances.magnitude, [[0.223606797749979]]
+    ).all()
+    assert np.isclose(atomic_cell.angles.magnitude, [[90.0]]).all()
