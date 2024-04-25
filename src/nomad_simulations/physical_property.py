@@ -51,6 +51,9 @@ class PhysicalProperty(ArchiveSection):
     string identifiers and quantities for referencing and establishing the character of a physical property.
     """
 
+    # TODO add `errors`
+    # TODO add `smearing`
+
     name = Quantity(
         type=str,
         description="""

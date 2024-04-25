@@ -18,7 +18,7 @@
 
 import pytest
 import numpy as np
-from typing import Optional, List, Union
+from typing import List, Optional
 
 from . import logger
 
@@ -26,13 +26,12 @@ from nomad.units import ureg
 
 from nomad_simulations import Simulation
 from nomad_simulations.model_system import ModelSystem, AtomicCell
-from nomad_simulations.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.atoms_state import AtomsState
 from nomad_simulations.outputs import Outputs
 from nomad_simulations.properties import (
     SpectralProfile,
     ElectronicDensityOfStates,
     XASSpectra,
-    FermiLevel,
 )
 from nomad_simulations.variables import Temperature, Energy2 as Energy
 
@@ -88,41 +87,6 @@ class TestElectronicDensityOfStates:
         energies = electronic_dos._get_energy_points(logger)
         assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
 
-    @pytest.mark.parametrize(
-        'fermi_level, sibling_section_value, result',
-        [
-            (None, None, None),
-            (None, 0.5, 0.5),
-            (0.5, None, 0.5),
-            (0.5, 1.0, 0.5),
-        ],
-    )
-    def test_resolve_fermi_level(
-        self,
-        fermi_level: Optional[float],
-        sibling_section_value: Optional[float],
-        result: Optional[float],
-        simulation_electronic_dos: Simulation,
-    ):
-        """
-        Test the `_resolve_fermi_level` method.
-        """
-        # Get sections from fixture
-        outputs = simulation_electronic_dos.outputs[0]
-        electronic_dos = outputs.electronic_dos[0]
-
-        # Add FermiLevel output
-        sec_fermi_level = FermiLevel(variables=[])
-        if sibling_section_value is not None:
-            sec_fermi_level.value = sibling_section_value * ureg.joule
-        outputs.fermi_level.append(sec_fermi_level)
-
-        # Test the method
-        resolved_fermi_level = electronic_dos.resolve_fermi_level(logger)
-        if resolved_fermi_level is not None:
-            resolved_fermi_level = resolved_fermi_level.magnitude
-        assert resolved_fermi_level == result
-
     def test_resolve_energies_origin(self):
         """
         Test the `resolve_energies_origin` method.
@@ -130,15 +94,14 @@ class TestElectronicDensityOfStates:
         # ! add test when `ElectronicEigenvalues` is implemented
         pass
 
-    def test_resolve_normalization_factor(
-        self, electronic_dos: ElectronicDensityOfStates
-    ):
+    def test_resolve_normalization_factor(self, simulation_electronic_dos: Simulation):
         """
         Test the `resolve_normalization_factor` method.
         """
         simulation = Simulation()
         outputs = Outputs()
-        electronic_dos.fermi_level = 0.5 * ureg.joule
+        # We only used the `simulation_electronic_dos` fixture to get the `ElectronicDensityOfStates` to test missing refs
+        electronic_dos = simulation_electronic_dos.outputs[0].electronic_dos[0]
         electronic_dos.energies_origin = 0.5 * ureg.joule
         outputs.electronic_dos.append(electronic_dos)
         simulation.outputs.append(outputs)
@@ -186,10 +149,11 @@ class TestElectronicDensityOfStates:
         # ! add test when `ElectronicEigenvalues` is implemented
         pass
 
-    def test_generate_from_projected_dos(self, simulation_electronic_dos: Simulation):
+    def test_extract_projected_dos(self, simulation_electronic_dos: Simulation):
         """
-        Test the `generate_from_projected_dos` and `extract_projected_dos` methods.
+        Test the `extract_projected_dos` method.
         """
+        # Get Outputs and ElectronicDensityOfStates from the simulation fixture
         outputs = simulation_electronic_dos.outputs[0]
         electronic_dos = outputs.electronic_dos[0]
 
@@ -217,10 +181,40 @@ class TestElectronicDensityOfStates:
             == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[1]
         )  # orbital `py` in `As` atom
 
-        # Note: `val` is reported from `self.value`, not from the extraction
+        orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
+        atom_projected = electronic_dos.extract_projected_dos('atom', logger)
+        assert len(orbital_projected) == 3 and len(atom_projected) == 0
+
+    @pytest.mark.parametrize(
+        'value, result',
+        [
+            (None, [1.5, 1.2, 0, 0, 0, 0.8, 1.3]),
+            ([1.5, 1.2, 0, 0, 0, 0.8, 1.3], [1.5, 1.2, 0, 0, 0, 0.8, 1.3]),
+            ([30.5, 1.2, 0, 0, 0, 0.8, 1.3], [30.5, 1.2, 0, 0, 0, 0.8, 1.3]),
+        ],
+    )
+    def test_generate_from_pdos(
+        self,
+        simulation_electronic_dos: Simulation,
+        value: Optional[List[float]],
+        result: List[float],
+    ):
+        """
+        Test the `generate_from_projected_dos` method.
+        """
+        # Get Outputs and ElectronicDensityOfStates from the simulation fixture
+        outputs = simulation_electronic_dos.outputs[0]
+        electronic_dos = outputs.electronic_dos[0]
+
+        # Add `value`
+        if value is not None:
+            electronic_dos.value = value * ureg('1/joule')
+
         val = electronic_dos.generate_from_projected_dos(logger)
-        assert (val.magnitude == electronic_dos.value.magnitude).all()
-        assert len(electronic_dos.projected_dos) == 5  # including atom projected DOS
+        assert (val.magnitude == result).all()
+
+        # Testing orbital + atom projected DOS (3 orbitals + 2 atoms PDOS)
+        assert len(electronic_dos.projected_dos) == 5
         orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
         atom_projected = electronic_dos.extract_projected_dos('atom', logger)
         assert len(orbital_projected) == 3 and len(atom_projected) == 2

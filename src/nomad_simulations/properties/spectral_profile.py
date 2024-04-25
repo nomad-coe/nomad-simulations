@@ -110,6 +110,7 @@ class ElectronicDensityOfStates(DOSProfile):
     Number of electronic states accessible for the charges per energy and per volume.
     """
 
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
     iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates'
 
     spin_channel = Quantity(
@@ -119,23 +120,13 @@ class ElectronicDensityOfStates(DOSProfile):
         """,
     )
 
-    fermi_level = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The Fermi level is the highest occupied energy level at zero temperature. For insulators and semiconductors,
-        some codes have some difficulty in determining the Fermi level, and it is often set to the middle of the band gap,
-        at the top of the valence band, or even in the bottom of the conduction band. This quantity is extracted
-        from `FermiLevel.value` property.
-        """,
-    )
-
+    # TODO clarify the role of `energies_origin` once `ElectronicEigenvalues` is implemented
     energies_origin = Quantity(
         type=np.float64,
         unit='joule',
         description="""
         Energy level denoting the origin along the energy axis, used for comparison and visualization. It is
-        defined as the `ElectronicEigenvalues.highest_occupied_energy` and does not necessarily coincide with `fermi_level`.
+        defined as the `ElectronicEigenvalues.highest_occupied_energy`.
         """,
     )
 
@@ -143,7 +134,7 @@ class ElectronicDensityOfStates(DOSProfile):
         type=np.float64,
         description="""
         Normalization factor for electronic DOS to get a cell-independent intensive DOS. The cell-independent
-        intensive DOS is as the integral from the lowest (most negative) energy to the `fermi_level` for a neutrally
+        intensive DOS is as the integral from the lowest (most negative) energy to the Fermi level for a neutrally
         charged system (i.e., the sum of `AtomsState.charge` is zero).
         """,
     )
@@ -152,7 +143,7 @@ class ElectronicDensityOfStates(DOSProfile):
     # value_integrated = Quantity(
     #     type=np.float64,
     #     description="""
-    #     The cumulative intensities integrated from from the lowest (most negative) energy to the `fermi_level`.
+    #     The cumulative intensities integrated from from the lowest (most negative) energy to the Fermi level.
     #     """,
     # )
 
@@ -161,8 +152,9 @@ class ElectronicDensityOfStates(DOSProfile):
         repeats=True,
         description="""
         Projected DOS. It can be atom- (different elements in the unit cell) or orbital-projected. These can be calculated in a cascade as:
-            - If the total DOS is not present, we can sum all atom-projected DOS to obtain it.
-            - If the atom-projected DOS is not present, we can sum all orbital-projected DOS to obtain it.
+            - If the total DOS is not present, we sum all atom-projected DOS to obtain it.
+            - If the atom-projected DOS is not present, we sum all orbital-projected DOS to obtain it.
+        Note: the cover given by summing up contributions is not perfect, and will depend on the projection functions used.
 
         In `projected_dos`, `name` and `entity_ref` must be set in order for normalization to work:
             - The `entity_ref` is the `OrbitalsState` or `AtomsState` sections.
@@ -195,25 +187,6 @@ class ElectronicDensityOfStates(DOSProfile):
         )
         return None
 
-    def resolve_fermi_level(self, logger: BoundLogger) -> Optional[pint.Quantity]:
-        """
-        Resolve the Fermi level from a sibling `FermiLevel` section, if present.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[pint.Quantity]): The resolved Fermi level.
-        """
-        fermi_level_value = self.fermi_level
-        if fermi_level_value is None:
-            fermi_level = get_sibling_section(
-                section=self, sibling_section_name='fermi_level', logger=logger
-            )  # we consider `index_sibling` to be 0
-            if fermi_level is not None:
-                fermi_level_value = fermi_level.value
-        return fermi_level_value
-
     def resolve_energies_origin(
         self,
         energies: pint.Quantity,
@@ -222,7 +195,7 @@ class ElectronicDensityOfStates(DOSProfile):
     ) -> Optional[pint.Quantity]:
         """
         Resolve the origin of reference for the energies from the sibling `ElectronicEigenvalues` section and its
-        `highest_occupied` level, or if this does not exist, from the `fermi_level` value as extracted from `resolve_fermi_level()`.
+        `highest_occupied` level, or if this does not exist, from the `fermi_level` value as extracted from the sibling property, `FermiLevel`.
 
         Args:
             fermi_level (Optional[pint.Quantity]): The resolved Fermi level.
@@ -233,6 +206,7 @@ class ElectronicDensityOfStates(DOSProfile):
             (Optional[pint.Quantity]): The resolved origin of reference for the energies.
         """
         # ! We need schema for `ElectronicEigenvalues` to store `highest_occupied` and `lowest_occupied`
+        # TODO improve and check this normalization after implementing `ElectronicEigenvalues`
 
         # Check if the variables contain more than one variable (different than Energy)
         # ? Is this correct or should be use the index of energies to extract the proper shape element in `self.value` being used for `dos_values`?
@@ -440,7 +414,6 @@ class ElectronicDensityOfStates(DOSProfile):
                 extracted_pdos.append(pdos)
         return extracted_pdos
 
-    # ? Maybe this method (and the one for XASSpectra.generate_from_contributions) should be moved to `PhysicalProperty`?
     def generate_from_projected_dos(
         self, logger: BoundLogger
     ) -> Optional[pint.Quantity]:
@@ -505,10 +478,14 @@ class ElectronicDensityOfStates(DOSProfile):
             return
 
         # Resolve `fermi_level` from a sibling section with respect to `ElectronicDensityOfStates`
-        self.fermi_level = self.resolve_fermi_level(logger)
+        fermi_level = get_sibling_section(
+            section=self, sibling_section_name='fermi_level', logger=logger
+        )  # * we consider `index_sibling` to be 0
+        if fermi_level is not None:
+            fermi_level = fermi_level.value
         # and the `energies_origin` from the sibling `ElectronicEigenvalues` section
         self.energies_origin = self.resolve_energies_origin(
-            energies, self.fermi_level, logger
+            energies, fermi_level, logger
         )
         if self.energies_origin is None:
             logger.info('Could not resolve the `energies_origin` for the DOS')
@@ -523,17 +500,20 @@ class ElectronicDensityOfStates(DOSProfile):
             self.m_parent.electronic_band_gap.append(band_gap)
 
         # Total `value` extraction from `projected_dos`
-        if self.value is None:
+        value_from_pdos = self.generate_from_projected_dos(logger)
+        if self.value is None and value_from_pdos is not None:
             logger.info(
                 'The `ElectronicDensityOfStates.value` is not stored. We will attempt to obtain it by summing up projected DOS contributions, if these are present.'
             )
-        self.value = self.generate_from_projected_dos(logger)
+            self.value = value_from_pdos
 
 
 class XASSpectra(SpectralProfile):
     """
     X-ray Absorption Spectra (XAS).
     """
+
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
 
     xanes_spectra = SubSection(
         sub_section=SpectralProfile.m_def,
