@@ -177,16 +177,15 @@ class ElectronicDensityOfStates(DOSProfile):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def _check_energy_variables(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+    def _get_energy_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
-        Check if the required `Energy` variable is present in the `variables`. If so, it returns
-        the grid points of the `Energy` variable.
+        Gets the `grid_points` of the `Energy` variable if the required `Energy` variable is present in the `variables`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[pint.Quantity]): The grid points of the `Energy` variable.
+            (Optional[pint.Quantity]): The `grid_points` of the `Energy` variable.
         """
         for var in self.variables:
             if isinstance(var, Energy):
@@ -501,7 +500,7 @@ class ElectronicDensityOfStates(DOSProfile):
         super().normalize(archive, logger)
 
         # Initial check to see if `variables` contains the required `Energy` variable
-        energies = self._check_energy_variables(logger)
+        energies = self._get_energy_points(logger)
         if energies is None:
             return
 
@@ -559,7 +558,6 @@ class XASSpectra(SpectralProfile):
         # Set the name of the section
         self.name = self.m_def.name
 
-    # ? Maybe this method (and the one for ElectronicDensityOfStates.generate_from_projected_dos) should be moved to `PhysicalProperty`?
     def generate_from_contributions(self, logger: BoundLogger) -> None:
         """
         Generate the `value` of the XAS spectra by concatenating the XANES and EXAFS contributions. It also concatenates
@@ -568,6 +566,7 @@ class XASSpectra(SpectralProfile):
         Args:
             logger (BoundLogger): The logger to log messages.
         """
+        # TODO check if this method is general enough
         if self.xanes_spectra is not None or self.exafs_spectra is not None:
             # Concatenate XANE and EXAFS `Energy` grid points
             for var in self.xanes_spectra.variables:

@@ -47,11 +47,11 @@ if os.getenv('_PYTEST_RAISE', '0') != '0':
         raise excinfo.value
 
 
-def get_model_system(
+def generate_model_system(
     type: str = 'original',
     positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
     chemical_symbols: List[str] = ['Ga', 'As'],
-    orbital_symbols: List[List[str]] = [['s'], ['px', 'py']],
+    orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
 ) -> ModelSystem:
     """
     Create a `ModelSystem` object with the given parameters.
@@ -62,16 +62,16 @@ def get_model_system(
 
     # Add atoms_state to the model_system
     atoms_state = []
-    for index, atom in enumerate(chemical_symbols):
-        orbitals = orbital_symbols[index]
+    for index, element in enumerate(chemical_symbols):
+        orbitals = orbitals_symbols[index]
         orbitals_state = []
         for orbital in orbitals:
             orbitals_state.append(
                 OrbitalsState(
                     l_quantum_symbol=orbital[0], ml_quantum_symbol=orbital[1:]
                 )
-            )
-        atom_state = AtomsState(chemical_symbol=atom, orbitals_state=orbitals_state)
+            )  # TODO add this split setter as part of the `OrbitalsState` methods
+        atom_state = AtomsState(chemical_symbol=element, orbitals_state=orbitals_state)
         # and obtain the atomic number for each AtomsState
         atom_state.resolve_chemical_symbol_and_number(logger)
         atoms_state.append(atom_state)
@@ -79,7 +79,9 @@ def get_model_system(
     return model_system
 
 
-def get_scf_electronic_band_gap_template(threshold_change: float = 1e-3) -> SCFOutputs:
+def generate_scf_electronic_band_gap_template(
+    threshold_change: float = 1e-3,
+) -> SCFOutputs:
     """
     Create a `SCFOutputs` object with a template for the electronic_band_gap property.
     """
@@ -103,15 +105,15 @@ def get_scf_electronic_band_gap_template(threshold_change: float = 1e-3) -> SCFO
     return scf_outputs
 
 
-def get_electronic_dos(
+def generate_electronic_dos(
     energy_points: List[int] = [-3, -2, -1, 0, 1, 2, 3],
     total_dos: List[float] = [1.5, 1.2, 0, 0, 0, 0.8, 1.3],
 ) -> ElectronicDensityOfStates:
     """
     Create an `ElectronicDensityOfStates` object with a template for the electronic_dos property. It uses
-    the template of the model_system created with the `get_model_system` function.
+    the template of the model_system created with the `generate_model_system` function.
     """
-    model_system = get_model_system()
+    model_system = generate_model_system()
     variables_energy = [Energy(grid_points=energy_points * ureg.joule)]
     electronic_dos = ElectronicDensityOfStates(variables=variables_energy)
     electronic_dos.value = total_dos * ureg('1/joule')
@@ -143,14 +145,14 @@ def get_electronic_dos(
 
 @pytest.fixture(scope='session')
 def model_system() -> ModelSystem:
-    return get_model_system()
+    return generate_model_system()
 
 
 @pytest.fixture(scope='session')
 def scf_electronic_band_gap() -> SCFOutputs:
-    return get_scf_electronic_band_gap_template()
+    return generate_scf_electronic_band_gap_template()
 
 
 @pytest.fixture(scope='session')
 def electronic_dos() -> ElectronicDensityOfStates:
-    return get_electronic_dos()
+    return generate_electronic_dos()

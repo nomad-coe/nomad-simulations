@@ -47,14 +47,12 @@ class TestSpectralProfile:
         Test the `is_valid_spectral_profile` method.
         """
         spectral_profile = SpectralProfile(
-            variables=[Energy(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.joule)]
+            variables=[Energy(grid_points=[-1, 0, 1] * ureg.joule)]
         )
-        spectral_profile.value = [1.5, 1.2, 0, 0, 0, 0.8, 1.3]
+        spectral_profile.value = [1.5, 0, 0.8]
         assert spectral_profile.is_valid_spectral_profile()
-        spectral_profile.value = [3, 2, 0, 0, 0, -4, 1]
+        spectral_profile.value = [2, 0, -4]
         assert not spectral_profile.is_valid_spectral_profile()
-        # default value inherited in other SpectralProfile classes
-        assert spectral_profile.rank == []
 
 
 class TestElectronicDensityOfStates:
@@ -75,19 +73,19 @@ class TestElectronicDensityOfStates:
         assert electronic_dos.name == 'ElectronicDensityOfStates'
         assert electronic_dos.rank == []
 
-    def test_check_energy_variables(self):
+    def test_get_energy_points(self):
         """
-        Test the `_check_energy_variables` method.
+        Test the `_get_energy_points` method.
         """
         electronic_dos = ElectronicDensityOfStates()
         electronic_dos.variables = [
-            Temperature(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.kelvin)
+            Temperature(grid_points=list(range(-3, 4)) * ureg.kelvin)
         ]
-        assert electronic_dos._check_energy_variables(logger) is None
+        assert electronic_dos._get_energy_points(logger) is None
         electronic_dos.variables.append(
-            Energy(grid_points=[-3, -2, -1, 0, 1, 2, 3] * ureg.joule)
+            Energy(grid_points=list(range(-3, 4)) * ureg.joule)
         )
-        energies = electronic_dos._check_energy_variables(logger)
+        energies = electronic_dos._get_energy_points(logger)
         assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
 
     @pytest.mark.parametrize(
@@ -127,7 +125,7 @@ class TestElectronicDensityOfStates:
         Test the `resolve_energies_origin` method.
         """
         # ! add test when `ElectronicEigenvalues` is implemented
-        assert True
+        pass
 
     def test_resolve_normalization_factor(
         self, electronic_dos: ElectronicDensityOfStates
@@ -171,15 +169,19 @@ class TestElectronicDensityOfStates:
         assert np.isclose(normalization_factor, 0.015625)
         # Spin-polarized
         electronic_dos.spin_channel = 0
-        normalization_factor = electronic_dos.resolve_normalization_factor(logger)
-        assert np.isclose(normalization_factor, 0.0078125)
+        normalization_factor_spin_polarized = (
+            electronic_dos.resolve_normalization_factor(logger)
+        )
+        assert np.isclose(
+            normalization_factor_spin_polarized, 0.5 * normalization_factor
+        )
 
     def test_extract_band_gap(self):
         """
         Test the `extract_band_gap` method.
         """
         # ! add test when `ElectronicEigenvalues` is implemented
-        assert True
+        pass
 
     def test_generate_from_projected_dos(
         self, model_system: ModelSystem, electronic_dos: ElectronicDensityOfStates
@@ -241,7 +243,7 @@ class TestElectronicDensityOfStates:
         Test the `normalize` method.
         """
         # ! add test when `ElectronicEigenvalues` is implemented
-        assert True
+        pass
 
 
 class TestXASSpectra:
