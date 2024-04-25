@@ -102,19 +102,22 @@ class TestElectronicDensityOfStates:
         fermi_level: Optional[float],
         sibling_section_value: Optional[float],
         result: Optional[float],
-        electronic_dos: ElectronicDensityOfStates,
+        simulation_electronic_dos: Simulation,
     ):
         """
         Test the `_resolve_fermi_level` method.
         """
-        outputs = Outputs()
+        # Get sections from fixture
+        outputs = simulation_electronic_dos.outputs[0]
+        electronic_dos = outputs.electronic_dos[0]
+
+        # Add FermiLevel output
         sec_fermi_level = FermiLevel(variables=[])
         if sibling_section_value is not None:
             sec_fermi_level.value = sibling_section_value * ureg.joule
         outputs.fermi_level.append(sec_fermi_level)
-        if fermi_level is not None:
-            electronic_dos.fermi_level = fermi_level * ureg.joule
-        outputs.electronic_dos.append(electronic_dos)
+
+        # Test the method
         resolved_fermi_level = electronic_dos.resolve_fermi_level(logger)
         if resolved_fermi_level is not None:
             resolved_fermi_level = resolved_fermi_level.magnitude
@@ -183,17 +186,13 @@ class TestElectronicDensityOfStates:
         # ! add test when `ElectronicEigenvalues` is implemented
         pass
 
-    def test_generate_from_projected_dos(
-        self, model_system: ModelSystem, electronic_dos: ElectronicDensityOfStates
-    ):
+    def test_generate_from_projected_dos(self, simulation_electronic_dos: Simulation):
         """
         Test the `generate_from_projected_dos` and `extract_projected_dos` methods.
         """
-        simulation = Simulation()
-        simulation.model_system.append(model_system)
-        outputs = Outputs()
-        outputs.electronic_dos.append(electronic_dos)
-        outputs.model_system_ref = simulation.model_system[0]
+        outputs = simulation_electronic_dos.outputs[0]
+        electronic_dos = outputs.electronic_dos[0]
+
         # Initial tests for the passed `projected_dos` (only orbital PDOS)
         assert len(electronic_dos.projected_dos) == 3  # only orbital projected DOS
         orbital_projected = electronic_dos.extract_projected_dos('orbital', logger)
@@ -205,19 +204,18 @@ class TestElectronicDensityOfStates:
             'orbital px As',
             'orbital py As',
         ]
-        # ! These tests are not passing, despite these are the same sections
-        # assert (
-        #     orbital_projected[0].entity_ref
-        #     == outputs.model_system_ref.cell[0].atoms_state[0].orbitals_state[0]
-        # )  # orbital `s` in `Ga` atom
-        # assert (
-        #     orbital_projected[1].entity_ref
-        #     == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[0]
-        # )  # orbital `px` in `As` atom
-        # assert (
-        #     orbital_projected[1].entity_ref
-        #     == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[1]
-        # )  # orbital `py` in `As` atom
+        assert (
+            orbital_projected[0].entity_ref
+            == outputs.model_system_ref.cell[0].atoms_state[0].orbitals_state[0]
+        )  # orbital `s` in `Ga` atom
+        assert (
+            orbital_projected[1].entity_ref
+            == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[0]
+        )  # orbital `px` in `As` atom
+        assert (
+            orbital_projected[2].entity_ref
+            == outputs.model_system_ref.cell[0].atoms_state[1].orbitals_state[1]
+        )  # orbital `py` in `As` atom
 
         # Note: `val` is reported from `self.value`, not from the extraction
         val = electronic_dos.generate_from_projected_dos(logger)
@@ -228,15 +226,14 @@ class TestElectronicDensityOfStates:
         assert len(orbital_projected) == 3 and len(atom_projected) == 2
         atom_projected_names = [atom_pdos.name for atom_pdos in atom_projected]
         assert atom_projected_names == ['atom Ga', 'atom As']
-        # ! These tests are not passing, despite these are the same sections
-        # assert (
-        #     atom_projected[0].entity_ref
-        #     == outputs.model_system_ref.cell[0].atoms_state[0]
-        # )  # `Ga` atom
-        # assert (
-        #     atom_projected[1].entity_ref
-        #     == outputs.model_system_ref.cell[0].atoms_state[1]
-        # )  # `As` atom
+        assert (
+            atom_projected[0].entity_ref
+            == outputs.model_system_ref.cell[0].atoms_state[0]
+        )  # `Ga` atom
+        assert (
+            atom_projected[1].entity_ref
+            == outputs.model_system_ref.cell[0].atoms_state[1]
+        )  # `As` atom
 
     def test_normalize(self):
         """

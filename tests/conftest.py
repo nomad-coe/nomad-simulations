@@ -16,19 +16,20 @@
 # limitations under the License.
 #
 
-import numpy as np
 import os
 import pytest
-from typing import List
+from typing import List, Optional
 
 from nomad.units import ureg
 
 from . import logger
 
+from nomad_simulations import Simulation
 from nomad_simulations.model_system import ModelSystem, AtomicCell
 from nomad_simulations.atoms_state import AtomsState, OrbitalsState
-from nomad_simulations.outputs import Outputs, SCFOutputs
+from nomad_simulations.model_method import ModelMethod
 from nomad_simulations.numerical_settings import SelfConsistency
+from nomad_simulations.outputs import Outputs, SCFOutputs
 from nomad_simulations.variables import Energy2 as Energy
 from nomad_simulations.properties import (
     ElectronicBandGap,
@@ -47,6 +48,27 @@ if os.getenv('_PYTEST_RAISE', '0') != '0':
         raise excinfo.value
 
 
+def generate_simulation(
+    model_system: Optional[ModelSystem] = None,
+    model_method: Optional[ModelMethod] = None,
+    outputs: Optional[Outputs] = None,
+) -> Simulation:
+    """
+    Generate a `Simulation` section with the main sub-sections, `ModelSystem`, `ModelMethod`, and `Outputs`. If `ModelSystem`
+    and `Outputs` is not None, then it adds `ModelSystem` as a reference in `Outputs`.
+    """
+    simulation = Simulation()
+    if model_method is not None:
+        simulation.model_method.append(model_method)
+    if model_system is not None:
+        simulation.model_system.append(model_system)
+    if outputs is not None:
+        simulation.outputs.append(outputs)
+        if model_system is not None:
+            outputs.model_system_ref = model_system
+    return simulation
+
+
 def generate_model_system(
     type: str = 'original',
     positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
@@ -54,7 +76,7 @@ def generate_model_system(
     orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
 ) -> ModelSystem:
     """
-    Create a `ModelSystem` object with the given parameters.
+    Generate a `ModelSystem` section with the given parameters.
     """
     model_system = ModelSystem()
     atomic_cell = AtomicCell(type=type, positions=positions * ureg.meter)
@@ -83,7 +105,7 @@ def generate_scf_electronic_band_gap_template(
     threshold_change: float = 1e-3,
 ) -> SCFOutputs:
     """
-    Create a `SCFOutputs` object with a template for the electronic_band_gap property.
+    Generate a `SCFOutputs` section with a template for the electronic_band_gap property.
     """
     scf_outputs = SCFOutputs()
     # Define a list of scf_steps with values of the total energy like [1, 1.1, 1.11, 1.111, etc],
@@ -105,18 +127,23 @@ def generate_scf_electronic_band_gap_template(
     return scf_outputs
 
 
-def generate_electronic_dos(
+def generate_simulation_electronic_dos(
     energy_points: List[int] = [-3, -2, -1, 0, 1, 2, 3],
-    total_dos: List[float] = [1.5, 1.2, 0, 0, 0, 0.8, 1.3],
-) -> ElectronicDensityOfStates:
+) -> Simulation:
     """
-    Create an `ElectronicDensityOfStates` object with a template for the electronic_dos property. It uses
+    Generate a `Simulation` section with an `ElectronicDensityOfStates` section under `Outputs`. It uses
     the template of the model_system created with the `generate_model_system` function.
     """
+    # Create the `Simulation` section to make refs work
     model_system = generate_model_system()
+    outputs = Outputs()
+    simulation = generate_simulation(model_system=model_system, outputs=outputs)
+
+    # Populating the `ElectronicDensityOfStates` section
     variables_energy = [Energy(grid_points=energy_points * ureg.joule)]
     electronic_dos = ElectronicDensityOfStates(variables=variables_energy)
-    electronic_dos.value = total_dos * ureg('1/joule')
+    outputs.electronic_dos.append(electronic_dos)
+    # electronic_dos.value = total_dos * ureg('1/joule')
     orbital_s_Ga_pdos = DOSProfile(
         name='orbital s Ga',
         variables=variables_energy,
@@ -140,7 +167,7 @@ def generate_electronic_dos(
         orbital_px_As_pdos,
         orbital_py_As_pdos,
     ]
-    return electronic_dos
+    return simulation
 
 
 @pytest.fixture(scope='session')
@@ -154,5 +181,5 @@ def scf_electronic_band_gap() -> SCFOutputs:
 
 
 @pytest.fixture(scope='session')
-def electronic_dos() -> ElectronicDensityOfStates:
-    return generate_electronic_dos()
+def simulation_electronic_dos() -> Simulation:
+    return generate_simulation_electronic_dos()
