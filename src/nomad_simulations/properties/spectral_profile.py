@@ -47,7 +47,25 @@ class SpectralProfile(PhysicalProperty):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
-        self.rank = []  # ? Is this here or in the attrs instantiation better?
+        self.rank = []
+
+    def _get_energy_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+        """
+        Gets the `grid_points` of the `Energy` variable if the required `Energy` variable is present in the `variables`.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[pint.Quantity]): The `grid_points` of the `Energy` variable.
+        """
+        for var in self.variables:
+            if isinstance(var, Energy):
+                return var.grid_points
+        logger.error(
+            'The required `Energy` variable is not present in the `variables`.'
+        )
+        return None
 
     def is_valid_spectral_profile(self) -> bool:
         """
@@ -185,24 +203,6 @@ class ElectronicDensityOfStates(DOSProfile):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
-
-    def _get_energy_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
-        """
-        Gets the `grid_points` of the `Energy` variable if the required `Energy` variable is present in the `variables`.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[pint.Quantity]): The `grid_points` of the `Energy` variable.
-        """
-        for var in self.variables:
-            if isinstance(var, Energy):
-                return var.grid_points
-        logger.error(
-            'The required `Energy` variable is not present in the `variables`.'
-        )
-        return None
 
     def resolve_energies_origin(
         self,
@@ -567,26 +567,30 @@ class XASSpectra(SpectralProfile):
             logger (BoundLogger): The logger to log messages.
         """
         # TODO check if this method is general enough
-        if self.xanes_spectra is not None or self.exafs_spectra is not None:
+        if self.xanes_spectra is not None and self.exafs_spectra is not None:
             # Concatenate XANE and EXAFS `Energy` grid points
-            for var in self.xanes_spectra.variables:
-                if isinstance(var, Energy):
-                    xanes_energies = var.grid_points
-                    break
-            for var in self.exafs_spectra.variables:
-                if isinstance(var, Energy):
-                    exafs_energies = var.grid_points
-                    break
+            xanes_energies = self.xanes_spectra._get_energy_points(logger)
+            exafs_energies = self.exafs_spectra._get_energy_points(logger)
+            if xanes_energies is None or exafs_energies is None:
+                logger.warning(
+                    'Could not extract the `Energy` grid points from XANES or EXAFS.'
+                )
+                return
+            if xanes_energies.max() > exafs_energies.min():
+                logger.warning(
+                    'The XANES `Energy` grid points are not below the EXAFS `Energy` grid points.'
+                )
+                return
             self.variables = [
                 Energy(grid_points=np.concatenate([xanes_energies, exafs_energies]))
             ]
-            # Concatenate XANES and EXAFS `value` if they have the same shape
+            # Concatenate XANES and EXAFS `value` if they have the same shape ['n_energies']
             try:
                 self.value = np.concatenate(
                     [self.xanes_spectra.value, self.exafs_spectra.value]
                 )
             except ValueError:
-                logger.error(
+                logger.warning(
                     'The XANES and EXAFS `value` have different shapes. Could not concatenate the values.'
                 )
 

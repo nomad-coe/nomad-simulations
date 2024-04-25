@@ -266,29 +266,38 @@ class TestXASSpectra:
         assert xas_spectra.name == 'XASSpectra'
         assert xas_spectra.rank == []
 
-    def test_generate_from_contributions(self):
+    @pytest.mark.parametrize(
+        'xanes_energies, exafs_energies, xas_values',
+        [
+            (None, None, None),
+            ([0, 1, 2], None, None),
+            (None, [3, 4, 5], None),
+            ([0, 1, 2], [3, 4, 5], [0.5, 0.1, 0.3, 0.2, 0.4, 0.6]),
+        ],
+    )
+    def test_generate_from_contributions(
+        self,
+        xanes_energies: Optional[List[float]],
+        exafs_energies: Optional[List[float]],
+        xas_values: Optional[List[float]],
+    ):
         """
         Test the `generate_from_contributions` method.
         """
+        # ! extend this test
         xas_spectra = XASSpectra()
-        xanes_spectra = SpectralProfile(
-            variables=[Energy(grid_points=[0, 1, 2] * ureg.joule)]
-        )
-        xanes_spectra.value = [0.5, 0.1, 0.3]
-        xas_spectra.xanes_spectra = xanes_spectra
-        exafs_spectra = SpectralProfile(
-            variables=[Energy(grid_points=[3, 4, 5] * ureg.joule)]
-        )
-        exafs_spectra.value = [0.2, 0.4, 0.6]
-        xas_spectra.exafs_spectra = exafs_spectra
+        if xanes_energies is not None:
+            xanes_spectra = SpectralProfile()
+            xanes_spectra.variables = [Energy(grid_points=xanes_energies * ureg.joule)]
+            xanes_spectra.value = [0.5, 0.1, 0.3]
+            xas_spectra.xanes_spectra = xanes_spectra
+        if exafs_energies is not None:
+            exafs_spectra = SpectralProfile()
+            exafs_spectra.variables = [Energy(grid_points=exafs_energies * ureg.joule)]
+            exafs_spectra.value = [0.2, 0.4, 0.6]
+            xas_spectra.exafs_spectra = exafs_spectra
         xas_spectra.generate_from_contributions(logger)
-        assert len(xas_spectra.variables) == 1
-        assert len(xas_spectra.variables[0].grid_points) == 6
-        assert len(xas_spectra.variables[0].grid_points) == (
-            len(xanes_spectra.variables[0].grid_points)
-            + len(exafs_spectra.variables[0].grid_points)
-        )
-        assert (
-            xas_spectra.variables[0].grid_points.magnitude == [0, 1, 2, 3, 4, 5]
-        ).all()
-        assert (xas_spectra.value == [0.5, 0.1, 0.3, 0.2, 0.4, 0.6]).all()
+        if xas_spectra.value is not None:
+            assert (xas_spectra.value == xas_values).all()
+        else:
+            assert xas_spectra.value == xas_values

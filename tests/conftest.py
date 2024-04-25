@@ -74,18 +74,20 @@ def generate_model_system(
     positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
     chemical_symbols: List[str] = ['Ga', 'As'],
     orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
-) -> ModelSystem:
+) -> Optional[ModelSystem]:
     """
     Generate a `ModelSystem` section with the given parameters.
     """
+    if len(chemical_symbols) != len(orbitals_symbols):
+        return None
+
     model_system = ModelSystem()
     atomic_cell = AtomicCell(type=type, positions=positions * ureg.meter)
     model_system.cell.append(atomic_cell)
 
     # Add atoms_state to the model_system
     atoms_state = []
-    for index, element in enumerate(chemical_symbols):
-        orbitals = orbitals_symbols[index]
+    for element, orbitals in zip(chemical_symbols, orbitals_symbols):
         orbitals_state = []
         for orbital in orbitals:
             orbitals_state.append(
