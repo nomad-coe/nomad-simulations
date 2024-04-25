@@ -149,6 +149,20 @@ class TestElectronicDensityOfStates:
         # ! add test when `ElectronicEigenvalues` is implemented
         pass
 
+    def test_resolve_pdos_name(self, simulation_electronic_dos: Simulation):
+        """
+        Test the `resolve_pdos_name` method.
+        """
+        # Get projected DOSProfile from the simulation fixture
+        projected_dos = (
+            simulation_electronic_dos.outputs[0].electronic_dos[0].projected_dos
+        )
+        assert len(projected_dos) == 3
+        pdos_names = ['orbital s Ga', 'orbital px As', 'orbital py As']
+        for i, pdos in enumerate(projected_dos):
+            name = pdos.resolve_pdos_name(logger)
+            assert name == pdos_names[i]
+
     def test_extract_projected_dos(self, simulation_electronic_dos: Simulation):
         """
         Test the `extract_projected_dos` method.

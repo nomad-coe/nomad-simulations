@@ -17,14 +17,11 @@
 #
 
 import pytest
-import numpy as np
 
 from . import logger
-from .conftest import get_scf_electronic_band_gap_template
+from .conftest import generate_scf_electronic_band_gap_template
 
 from nomad.units import ureg
-from nomad.metainfo import Quantity
-from nomad_simulations.physical_property import PhysicalProperty
 from nomad_simulations.outputs import Outputs, ElectronicBandGap
 
 
@@ -41,7 +38,7 @@ class TestOutputs:
         """
         Test the  `resolve_is_scf_converged` method.
         """
-        scf_outputs = get_scf_electronic_band_gap_template(
+        scf_outputs = generate_scf_electronic_band_gap_template(
             threshold_change=threshold_change
         )
         is_scf_converged = scf_outputs.resolve_is_scf_converged(
@@ -85,7 +82,7 @@ class TestOutputs:
         """
         Test the `normalize` method.
         """
-        scf_outputs = get_scf_electronic_band_gap_template(
+        scf_outputs = generate_scf_electronic_band_gap_template(
             threshold_change=threshold_change
         )
 
