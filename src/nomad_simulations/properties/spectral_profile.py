@@ -27,7 +27,7 @@ from nomad.metainfo import Quantity, SubSection, Section, Context
 from ..utils import get_sibling_section
 from ..physical_property import PhysicalProperty
 from ..variables import Energy2 as Energy
-from ..atoms_state import AtomsState
+from ..atoms_state import AtomsState, OrbitalsState
 from .band_gap import ElectronicBandGap
 
 
@@ -42,15 +42,6 @@ class SpectralProfile(PhysicalProperty):
         The value of the intensities of a spectral profile in arbitrary units.
         """,
     )
-
-    # TODO implement this in PhysicalProperty (similar to `value.shape`)
-    # value_units = Quantity(
-    #     type=str,
-    #     description="""
-    #     Unit using the pint UnitRegistry() notation for the `value`. Example, if the spectra `is_derived`
-    #     from the imaginary part of the dielectric function, `value` are `'F/m'`.
-    #     """,
-    # )
 
     def __init__(
         self, m_def: Section = None, m_context: Context = None, **kwargs
@@ -98,11 +89,37 @@ class DOSProfile(SpectralProfile):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
 
+    def resolve_pdos_name(self, logger: BoundLogger) -> Optional[str]:
+        """
+        Resolve the `name` of the projected `DOSProfile` from the `entity_ref` section. This is resolved as:
+            - `'atom X'` with 'X' being the chemical symbol for `AtomsState` references.
+            -  `'orbital Y X'` with 'X' being the chemical symbol and 'Y' the orbital label for `OrbitalsState` references.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[str]): The resolved `name` of the projected DOS profile.
+        """
+        if self.entity_ref is None:
+            logger.warning(
+                'The `entity_ref` is not set for the DOS profile. Could not resolve the `name`.'
+            )
+            return None
+
+        # Resolve the `name` from the `entity_ref`
+        name = None
+        if isinstance(self.entity_ref, AtomsState):
+            name = f'atom {self.entity_ref.chemical_symbol}'
+        elif isinstance(self.entity_ref, OrbitalsState):
+            name = f'orbital {self.entity_ref.l_quantum_symbol}{self.entity_ref.ml_quantum_symbol} {self.entity_ref.m_parent.chemical_symbol}'
+        return name
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # TODO add normalization for `projected_dos` to extract `name` (if `m_parent` is `ElectronicDOS`
-        # TODO (cont'd) and `entity_ref` is set)
+        # We resolve
+        self.name = self.resolve_pdos_name(logger)
 
 
 class ElectronicDensityOfStates(DOSProfile):
@@ -399,6 +416,9 @@ class ElectronicDensityOfStates(DOSProfile):
         """
         extracted_pdos = []
         for pdos in self.projected_dos:
+            # We make sure each PDOS is normalized
+            pdos.normalize(None, logger)
+
             # Initial check for `name` and `entity_ref`
             if (
                 pdos.name is None
