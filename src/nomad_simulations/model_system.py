@@ -444,19 +444,20 @@ class Distribution:
             ase_atoms, neighbor_list
         )  # slightly less optimal
         if self.type == 'distances':
-            self.values = (
-                geom_analysis.get_values(geom_analysis.get_bonds(*combo, unique=True))
-                * ureg.angstrom
-            )
+            if len((matches := geom_analysis.get_bonds(*combo, unique=True))[0]):
+                self.values = geom_analysis.get_values(matches)
+            else:
+                self.values = np.array([])
+            self.values *= ureg.angstrom
         elif self.type == 'angles':
-            self.values = (
-                np.abs(
-                    geom_analysis.get_values(
-                        geom_analysis.get_angles(*combo, unique=True)
-                    )
-                )
-                * ureg.radian
-            )
+            if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]):
+                self.values = np.array(geom_analysis.get_values(matches))
+                self.values = np.abs(
+                    np.where(self.values > 180, 360 - self.values, self.values)
+                )  # restrict to [0, 180]
+            else:
+                self.values = np.array([])
+            self.values *= ureg.degree
         else:
             raise ValueError('Type not recognized.')
 
@@ -609,6 +610,7 @@ class AtomicCell(Cell):
                     self.ase_atoms, mult=3.0
                 )
             self.neighbor_list = ase_nl.build_neighbor_list(
+                self.ase_atoms,
                 self.geometry_analysis_cutoffs,
                 self_interaction=False,
             )
@@ -626,7 +628,7 @@ class AtomicCell(Cell):
                         np.arange(0, max(self.geometry_analysis_cutoffs), 0.001)
                     )
                 elif distribution.type == 'angles':
-                    bins = np.arange(0, np.pi, 0.01)
+                    bins = np.arange(0, 180, 0.01)
                 self.histogram_distributions.append(
                     distribution.produce_histogram(bins)
                 )

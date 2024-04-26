@@ -16,32 +16,83 @@
 # limitations under the License.
 #
 
+import ase
+from ase import neighborlist as ase_nl
 import pytest
 import numpy as np
 
 from . import logger
 
 from nomad.units import ureg
-from nomad_simulations.model_system import AtomicCell, AtomsState
+from nomad_simulations.model_system import (
+    AtomicCell,
+    AtomsState,
+    Distribution,
+    DistributionHistogram,
+    DistributionFactory,
+)
 
 
-def test_geometry_analysis():
-    atomic_cell = AtomicCell(
-        length_vector_a=1.0,
-        length_vector_b=1.0,
-        length_vector_c=1.0,
-        name='H2',
-        type='original',
-        positions=np.array([[0, 0.2, 0], [0, 0, 0.1], [0.2, 0, 0]]),
-        atoms_state=[
-            AtomsState(chemical_symbol='H'),
-            AtomsState(chemical_symbol='O'),
-            AtomsState(chemical_symbol='H'),
-        ],
+def setup_geometry_analysis():  # ? move to conftest.py
+    """Produce a highly symmetric ethane molecule in the staggered conformation."""
+    return ase.Atoms(
+        symbols=(['C'] * 2 + ['H'] * 6),
+        positions=[
+            [0, 0, 0.765],
+            [0, 0, -0.765],
+            [0, 1.01692, 1.1574],
+            [-0.88068, -0.050846, 1.1574],
+            [0.88068, -0.050846, 1.1574],
+            [0, -1.01692, -1.1574],
+            [-0.88068, 0.050846, -1.1574],
+            [0.88068, 0.050846, -1.1574],
+        ],  # in angstrom
+        cell=[
+            [3, 0, 0],
+            [0, 3, 0],
+            [0, 0, 3],
+        ],  # in angstrom
     )
-    atomic_cell.normalize(None, logger)
 
-    assert np.isclose(
-        atomic_cell.interatomic_distances.magnitude, [[0.223606797749979]]
-    ).all()
-    assert np.isclose(atomic_cell.angles.magnitude, [[90.0]]).all()
+
+@pytest.mark.parametrize(
+    'atomic_cell, analysis_type, elements, references',
+    [
+        [setup_geometry_analysis(), 'distances', ['C', 'C'], [1.53]],
+        [setup_geometry_analysis(), 'distances', ['C', 'H'], [0.97] * 4 + [1.09] * 2],
+        [
+            setup_geometry_analysis(),
+            'angles',
+            ['C', 'C', 'H'],
+            [111.1] * 2 + [113.98] * 4,
+        ],
+        [setup_geometry_analysis(), 'angles', ['C', 'H', 'H'], [120]],
+    ],
+)  # references should be in ascending order
+def test_distribution(
+    atomic_cell: AtomicCell,
+    analysis_type: str,
+    elements: tuple[str],
+    references: list[float],
+):
+    """
+    Check the actual interatomic distances against the expected values.
+    """
+    neighbor_list = ase_nl.build_neighbor_list(
+        atomic_cell,
+        ase_nl.natural_cutoffs(atomic_cell, mult=1.0),  # ? test element X
+        self_interaction=False,
+    )
+    values = np.sort(
+        Distribution(
+            elements, analysis_type, atomic_cell, neighbor_list
+        ).values.magnitude
+    )
+
+    if analysis_type == 'distances':
+        # only positive reference values allowed
+        assert (0 <= values).all()  # ? should this be restricted to positive definite
+    elif analysis_type == 'angles':
+        # only angles between 0 and pi allowed
+        assert (0 <= values).all() and (values <= 180).all()
+    assert np.allclose(values, references, atol=0.01)  # check the actual values
