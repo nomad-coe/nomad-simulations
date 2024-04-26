@@ -176,6 +176,23 @@ class GeometricSpace(Entity):
         """,
     )
 
+    def check_attributes(self, attributes: list[str]) -> Optional[callable]:
+        """
+        Check if the specified attributes are not None.
+        """
+
+        def decorator(func: callable) -> callable:
+            def wrapper(self, *args, **kwargs) -> Optional[callable]:
+                for attr in attributes:
+                    if self.m_contents[attr] is None:  # ! verify
+                        self.logger.error(f'Missing attribute: {attr}.')
+                        return None
+                return func(self, *args, **kwargs)
+
+            return wrapper
+
+        return decorator
+
     def get_geometric_space_for_atomic_cell(self, logger: BoundLogger) -> None:
         """
         Get the real space parameters for the atomic cell using ASE.
@@ -193,7 +210,7 @@ class GeometricSpace(Entity):
         )
         self.volume = cell.volume * ureg.angstrom**3
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive, logger: BoundLogger) -> None:
         # Skip normalization for `Entity`
         try:
             self.get_geometric_space_for_atomic_cell(logger)
@@ -240,7 +257,7 @@ class Cell(GeometricSpace):
         description="""
         List of index pairs corresponding to (covalent) bonds, e.g., as defined by a force field.
         """,
-    )
+    )  # ? @JosephRudzinski: move position?
 
     # geometry and analysis
     positions = Quantity(
@@ -250,7 +267,8 @@ class Cell(GeometricSpace):
         description="""
         Positions of all the atoms in absolute, Cartesian coordinates.
         """,
-    )  # ? @JosePizarro: This is already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
+    )  # ? @JosePizarro: The description is already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
+    # ! @JosePizarro: the `positions` here has a different meaning than in `AtomicCell`
 
     velocities = Quantity(
         type=np.float64,
@@ -260,7 +278,7 @@ class Cell(GeometricSpace):
         Velocities of the atoms defined with respect to absolute, Cartesian coordinate frame
         centered at the respective atom position.
         """,
-    )  # ? @JosePizarro: This is already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
+    )  # ? @JosePizarro: The description already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
 
     # box
     lattice_vectors = Quantity(
@@ -297,12 +315,209 @@ class Cell(GeometricSpace):
         super().normalize(archive, logger)
 
 
+def convert_combo_to_name(combo: tuple[str]) -> str:
+    if 1 < len(combo) < 4:
+        if len(combo) == 3:
+            return '-'.join(combo[1], combo[0], combo[2])  # flip order
+    raise ValueError('Only pairs and triplets are supported.')
+
+
+class GeometryDistribution(ArchiveSection):
+    """
+    A base section used to specify the geometry distributions of the system.
+    These include frequency counts of inter-atomic distances and angles.
+    """
+
+    name = Quantity(
+        type=str,
+        description="""
+        Denotes the elements involved.
+        """,
+    )
+
+    type = Quantity(
+        type=MEnum('distances', 'angles'),
+        description="""
+        Type of the geometry distribution described.
+        """,
+    )
+
+    elements = Quantity(
+        type=str,
+        shape=['*'],
+        description="""
+        Elements involved in the geometry distribution:
+         - 2 for distance distributions.
+         - 3 for angle distributions, with the center element first.
+        """,
+    )
+
+    n_bins = Quantity(
+        type=np.int32,
+        description="""
+        Number of bins used to create the histogram.
+        """,
+    )
+
+    bins = Quantity(
+        type=np.float64,
+        shape=['n_bins'],
+        description="""
+        Binning used to create the histogram.
+        """,
+    )
+
+    frequency = Quantity(
+        type=np.float64,
+        shape=['n_bins'],
+        description="""
+        Frequency count of the histogram.
+        """,
+    )
+
+    def normalize(self, archive, logger: BoundLogger):
+        super().normalize(archive, logger)
+        self.name = convert_combo_to_name(self.combo)
+        return self
+
+
+class DistributionHistogram:
+    """
+    A conversion class to compute the histogram of a distribution.
+    It can also store the histogram in a NOMAD `GeometryDistribution` section via `produce_nomad_distribution`.
+    """
+
+    def __init__(
+        self,
+        combo: tuple[str],
+        type: str,
+        distribution_values: np.ndarray = np.array([]),
+        bins: np.ndarray = np.array([]),
+    ) -> None:
+        self.name, self.combo = combo, convert_combo_to_name(combo)
+        self.type = type
+
+        if len(bins) != len(distribution_values):
+            raise ValueError('Bins and counts must have the same length.')
+        counts, self.bins = np.histogram(distribution_values.magnitude, bins=bins)
+        self.bins *= distribution_values.u
+        self.frequency = counts / np.min(counts)  # normalize so the minimum is 1
+
+    def produce_nomad_distribution(self) -> GeometryDistribution:
+        geom_dist = GeometryDistribution(
+            combo=self.combo,
+            n_bins=len(self.bins),
+            frequency=self.frequency,
+        )
+
+        # set the bin units in `GeometryDistribution`
+        geom_dist.m_contents['bins'].unit = self.bins.to_preferred(
+            [ureg.m, ureg.radian]
+        ).units
+        geom_dist.bins = self.bins
+        return geom_dist
+
+
+class Distribution:
+    """
+    A helper class to compute the distribution of a given geometry type, i.e., distances or angles.
+    It can also generate a histogram class via `produce_histogram`.
+    """
+
+    def __init__(
+        self,
+        combo: tuple[str],
+        type: str,
+        ase_atoms: ase.Atoms,
+        neighbor_list: ase_nl.NeighborList,
+    ) -> None:
+        self.name, self.combo = combo, convert_combo_to_name(combo)
+        self.type = type
+
+        if self.type == 'distances':
+            self.values = (
+                ase_as.Analysis(ase_atoms, neighbor_list).get_values(
+                    ase_as.get_bonds(*combo, unique=True)
+                )
+                * ureg.angstrom
+            )
+        elif self.type == 'angles':
+            self.values = (
+                abs(
+                    ase_as.Analysis(ase_atoms, neighbor_list).get_values(
+                        ase_as.get_angles(*combo, unique=True)
+                    )
+                )
+                * ureg.radian
+            )
+        else:
+            raise ValueError('Type not recognized.')
+
+    def produce_histogram(self, bins: np.ndarray) -> DistributionHistogram:
+        return DistributionHistogram(self.combo, self.type, self.values.magnitude, bins)
+
+
+class DistributionFactory:
+    """
+    Factory class for exhaustively generating distributions of geometrical observables
+    for all element paris or triples. It will produce a list of `Distribution` objects via `produce_distributions`.
+    """
+
+    def __init__(
+        self, ase_atoms: ase.Atoms, neighbor_list: ase_nl.NeighborList
+    ) -> None:
+        self.ase_atoms = ase_atoms
+        self.neighbor_list = neighbor_list
+        self._elements = sorted(list(set(self.ase_atoms.get_chemical_symbols())))
+
+    @property
+    def get_elemental_pairs(self) -> list[tuple[str, str]]:
+        """Generate all possible pairs of element symbols.
+        Permutations are not considered, i.e., (B, A) is converted into (A, B)."""
+        return [
+            (atom_1, atom_2)
+            for i, atom_1 in enumerate(self.get_elements)
+            for atom_2 in self.get_elements[i:]
+        ]
+
+    @property
+    def get_elemental_triples_centered(self) -> list[tuple[str, str, str]]:
+        """Generate all possible triples of element symbols with the center element first.
+        Permutations between the outer elements are not considered, i.e., (A, C, B) is converted into (A, B, C).
+        """
+        return [
+            (atom_c, atom_1, atom_2)
+            for atom_c in self.get_elements
+            for i, atom_1 in enumerate(self.get_elements)
+            for atom_2 in self.get_elements[i:]
+        ]
+
+    def produce_distributions(self) -> list[Distribution]:
+        """Generate all possible distributions of distances and angles
+        for all element pairs and triples, respectively."""
+        return [
+            Distribution(combos, type_decl, self.ase_atoms, self.neighbor_list)
+            for type_decl, combos in zip(
+                ['distances', 'angles'],
+                [*self.get_elemental_pairs, *self.get_elemental_triples_centered],
+            )
+        ]
+
+
 class AtomicCell(Cell):
     """
     A base section used to specify the atomic cell information of a system.
     """
 
-    atoms_state = SubSection(sub_section=AtomsState.m_def, repeats=True)
+    atoms_states = SubSection(
+        sub_section=AtomsState.m_def,
+        repeats=True,
+    )
+
+    geometry_distributions = SubSection(
+        sub_section=GeometryDistribution.m_def,
+        repeats=True,
+    )
 
     n_atoms = Quantity(
         type=np.int32,
@@ -310,6 +525,12 @@ class AtomicCell(Cell):
         Number of atoms in the atomic cell.
         """,
     )
+
+    positions = Cell.positions.m_copy()
+    positions.shape = ['n_atoms', 3]  # check the appropriate shape
+
+    velocities = Cell.velocities.m_copy()
+    velocities.shape = ['n_atoms', 3]  # check the appropriate shape
 
     equivalent_atoms = Quantity(
         type=np.int32,
@@ -340,222 +561,72 @@ class AtomicCell(Cell):
         """,
     )
 
-    elemental_pairs = Quantity(
-        type=str,
-        shape=['*'],  # ! once the updated `Quantity` is updated, change to ['*', 2]
-        description="""
-        Alphabetically sorted pairs of elements in the atomic cell.
-        """,
-    )  # ? also store indices of the atoms?
-
-    interatomic_distances = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='meter',
-        description="""
-        Interatomic distances between pairs of (different) atoms within in `geometry_analysis_cutoffs`.
-        Periodic boundary conditions are taken into account. Follows the order of `element_pairs`.
-        """,
+    @check_attributes(
+        self,
+        attributes=[
+            'atoms_state',
+            'lattice_vectors',
+            'positions',
+            'periodic_boundary_conditions',
+        ],
     )
-
-    elemental_triples = Quantity(
-        type=str,
-        shape=['*'],  # ! once the updated `Quantity` is updated, change to ['*', 3]
-        description="""
-        Alphabetically sorted triplets of elements in the atomic cell.
-        """,
-    )  # ? also store indices of the atoms?
-
-    interatomic_angles = Quantity(
-        type=np.float64,
-        shape=['*'],
-        unit='radian',
-        description="""
-        Interatomic angles between triplets of (different) atoms in `geometry_analysis_cutoffs`.
-        Periodic boundary conditions are taken into account. Follows the order of `elemental_triples`.
-        """,
-    )
-
-    @property
-    def elements(self):
+    def set_ase_atoms(self):
         """
-        Returns a list of the unique elements in the `AtomicCell` based on the `atoms_state`.
+        Generate an `ase.Atoms` object from `AtomicCell`.
         """
-        return list(
-            set([atom_state.chemical_symbol for atom_state in self.atoms_state])
+        self.ase_atoms = ase.Atoms(
+            symbols=[atom_state.chemical_symbol for atom_state in self.atoms_state],
+            pbc=self.periodic_boundary_conditions,
+            positions=self.positions.to('angstrom').magnitude,
+            cell=self.lattice_vectors.to('angstrom').magnitude,
         )
-
-    # ! polish and test
-    def check_attributes(self, attributes: list[str]) -> callable:
-        """
-        Check if the specified attributes are not None.
-        """
-
-        def decorator(func: callable) -> callable:
-            def wrapper(self, *args, **kwargs) -> Optional[callable]:
-                for attr in attributes:
-                    if getattr(self, attr) is None:
-                        return None
-                return func(self, *args, **kwargs)
-
-            return wrapper
-
-        return decorator
-
-    def get_element_combos(
-        self, n_elements: int
-    ) -> list[tuple[str]]:  # ! add logger and check for negative n
-        """
-        Returns all unique n-pair combinations of elements.
-        """
-
-        def recursion(depth: int, combos: list[list[str]]):
-            if depth < 1:
-                return combos
-            return recursion(
-                depth - 1,
-                list(
-                    set(
-                        tuple(
-                            sorted([*combo, elem])
-                        )  # sort to avoid duplicates  # ! sort by atomic number
-                        for combo in combos
-                        for elem in self.elements
-                    )
-                ),
-            )
-
-        return recursion(n_elements - 1, self.elements)
-
-    def convert_element_combos(self, n_elements: int) -> list[str]:
-        """
-        Converts the element combinations into a list of hyphen-separated strings.
-        """
-        return ['-'.join(elem) for elem in self.get_element_combos(n_elements)]
+        return self
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
-        # Set the name of the section
         self.name = self.m_def.name
+        self.analyze_geometry = kwargs.get('analyze_geometry', False)
 
-    def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
-        """
-        Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
-        section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[ase.Atoms]): The ASE Atoms object with the basic information from the `AtomicCell`.
-        """  # ! split into smaller functions
-        # Initialize ase.Atoms object with labels
-        atoms_labels = [atom_state.chemical_symbol for atom_state in self.atoms_state]
-        ase_atoms = ase.Atoms(symbols=atoms_labels)
-
-        # PBC
-        ase_atoms.set_pbc(self.periodic_boundary_conditions)
-
-        # Positions (ensure they are parsed)
-        if self.positions is not None:
-            if len(self.positions) != len(self.atoms_state):
-                logger.error(
-                    'Length of `AtomicCell.positions` does not coincide with the length of the `AtomicCell.atoms_state`.'
-                )
-                return None
-            ase_atoms.set_positions(self.positions.to('angstrom').magnitude)
-        else:
-            logger.error('Could not find `AtomicCell.positions`.')
-            return None
-
-        # Lattice vectors
-        if self.lattice_vectors is not None:
-            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
-        else:
-            logger.info('Could not find `AtomicCell.lattice_vectors`.')
-
-        return ase_atoms
-
-    def setup_ase_analysis(self) -> None:
-        """
-        Analyzes the `AtomicCell` section using ASE Atoms object.
-        Return a bonds and angles list.
-
-        Args:
-            ase_atoms (ase.Atoms): The ASE Atoms object to analyze.
-            logger (BoundLogger): The logger to log messages.
-        """
-
-        neighbor_list = ase_nl.NeighborList(
-            self.geometry_analysis_cutoffs,
-            self_interaction=False,
-        )
-        neighbor_list.update(self._ase_atoms)
-        self._ase_analysis = ase_as.Analysis(self._ase_atoms, nl=neighbor_list)
-
-    def get_distances(
-        self, logger: BoundLogger
-    ) -> tuple[list[tuple[str, str]], list[float]]:
-        """
-        Compute the interatomic distances between all pairs of atoms within `geometry_analysis_cutoffs`.
-        """
-        if not hasattr(self, '_ase_analysis'):  # ! make this more elegant
-            logger.error(
-                'ASE analysis not set up. Run `setup_ase_analysis` before calling this method.'
-            )
-            return None
-
-        distances: list[list[float]] = []
-        pairs = self.convert_element_combos(2)
-        for pair in pairs:
-            connections = self._ase_analysis.get_bonds(*pair, unique=True)
-            if len(connections[0]) == 0:
-                logger.info(
-                    f'Could not find the pair {pair} in the `AtomicCell` section.'
-                )
-                continue
-            distances.extend(
-                self._ase_analysis.get_values(connections)
-            )  # ! disable uniqueness when applying histograms
-        return pairs, distances * ureg.angstrom
-
-    def get_angles(
-        self, logger: BoundLogger
-    ) -> tuple[list[tuple[str, str, str]], list[float]]:
-        if not hasattr(self, '_ase_analysis'):
-            logger.error(
-                'ASE analysis not set up. Run `setup_ase_analysis` before calling this method.'
-            )
-            return None
-
-        angles: list[list[float]] = []
-        triplets = self.convert_element_combos(3)
-        for triplet in triplets:
-            angles.extend(
-                self._ase_analysis.get_values(
-                    self._ase_analysis.get_angles(
-                        *triplet, unique=True
-                    )  # ! disable uniqueness when applying histograms
-                )
-            )
-        return triplets, angles * ureg.radian
-
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive, logger: BoundLogger):
+        """When `analyze_geometry` is `true`, perform the geometry analysis.
+        All intermediate artifacts are stored in the `AtomicCell` section.
+        Only `GeometryDistribution` sections are retained in the archive written to disk."""
         super().normalize(archive, logger)
-
-        self.name = self.m_def.name if self.name is None else self.name
-
-        self._ase_atoms = self.to_ase_atoms(logger)
-        if (
-            self.geometry_analysis_cutoffs is None
-            or len(self.geometry_analysis_cutoffs) > 0
-        ):  # ! double-check
-            self.geometry_analysis_cutoffs = ase_nl.natural_cutoffs(
-                self._ase_atoms, mult=3.0
+        if self.analyze_geometry:
+            # set up neighbor list
+            if (
+                self.geometry_analysis_cutoffs is None  # ? needed
+                or len(self.geometry_analysis_cutoffs) == 0
+            ):
+                self.geometry_analysis_cutoffs = ase_nl.natural_cutoffs(
+                    self.ase_atoms, mult=3.0
+                )
+            self.neighbor_list = ase_nl.build_neighbor_list(
+                self.geometry_analysis_cutoffs,
+                self_interaction=False,
             )
-        self.setup_ase_analysis()
-        self.elemental_pairs, self.interatomic_distances = self.get_distances(logger)
-        self.elemental_triples, self.interatomic_angles = self.get_angles(logger)
+
+            # set up distributions
+            self.simple_distributions = DistributionFactory(
+                self.ase_atoms,
+                self.neighbor_list,
+            ).produce_distributions()
+
+            self.histogram_distributions, self.distributions = [], []
+            for distribution in self.simple_distributions:
+                if distribution.type == 'distances':
+                    bins = np.arange(
+                        np.arange(0, max(self.geometry_analysis_cutoffs), 0.001)
+                    )
+                elif distribution.type == 'angles':
+                    bins = np.arange(0, np.pi, 0.01)
+                self.histogram_distributions.append(
+                    distribution.produce_histogram(bins)
+                )
+                self.distributions.append(
+                    self.histogram_distributions[-1].produce_nomad_distribution()
+                )
+        return self
 
 
 class Symmetry(ArchiveSection):
@@ -731,7 +802,7 @@ class Symmetry(ArchiveSection):
         """
         symmetry = {}
         try:
-            ase_atoms = original_atomic_cell.to_ase_atoms(logger)
+            ase_atoms = original_atomic_cell.set_ase_atoms(logger)
             symmetry_analyzer = SymmetryAnalyzer(
                 ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
             )
