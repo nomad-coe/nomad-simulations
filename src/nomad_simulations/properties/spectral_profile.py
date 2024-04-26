@@ -41,7 +41,7 @@ class SpectralProfile(PhysicalProperty):
         description="""
         The value of the intensities of a spectral profile in arbitrary units.
         """,
-    )
+    )  # TODO check units and normalization_factor of DOS and Spectras and see whether they can be merged
 
     def __init__(
         self, m_def: Section = None, m_context: Context = None, **kwargs
@@ -174,7 +174,7 @@ class ElectronicDensityOfStates(DOSProfile):
         """,
     )
 
-    # ? Do we want to store the integrated value here os as part of an nomad-analysis tool?
+    # ? Do we want to store the integrated value here os as part of an nomad-analysis tool? Check `dos_integrator.py` module in dos normalizer repository
     # value_integrated = Quantity(
     #     type=np.float64,
     #     description="""
