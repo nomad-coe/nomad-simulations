@@ -49,6 +49,26 @@ from .atoms_state import AtomsState
 from .utils import get_sibling_section, is_not_representative
 
 
+def check_attributes(attributes: list[str]) -> Optional[callable]:
+    """
+    Check if the specified attributes are not None.
+    """
+
+    def decorator(func: callable) -> callable:
+        def wrapper(self, *args, **kwargs) -> Optional[callable]:
+            for attr in attributes:
+                if attr not in self.all_quantities:  # ! verify
+                    self.logger.error(
+                        f'Missing attribute: {attr}.'
+                    )  # require the class to provide a logger
+                    return None
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 class GeometricSpace(Entity):
     """
     A base section used to define geometrical spaces and their entities.
@@ -176,23 +196,6 @@ class GeometricSpace(Entity):
         """,
     )
 
-    def check_attributes(self, attributes: list[str]) -> Optional[callable]:
-        """
-        Check if the specified attributes are not None.
-        """
-
-        def decorator(func: callable) -> callable:
-            def wrapper(self, *args, **kwargs) -> Optional[callable]:
-                for attr in attributes:
-                    if self.m_contents[attr] is None:  # ! verify
-                        self.logger.error(f'Missing attribute: {attr}.')
-                        return None
-                return func(self, *args, **kwargs)
-
-            return wrapper
-
-        return decorator
-
     def get_geometric_space_for_atomic_cell(self, logger: BoundLogger) -> None:
         """
         Get the real space parameters for the atomic cell using ASE.
@@ -316,9 +319,12 @@ class Cell(GeometricSpace):
 
 
 def convert_combo_to_name(combo: tuple[str]) -> str:
+    """Convert a combo tuple to a hypen-separated string.
+    For angles, the center element is now indeed placed at the center."""
     if 1 < len(combo) < 4:
         if len(combo) == 3:
-            return '-'.join(combo[1], combo[0], combo[2])  # flip order
+            combo = (combo[1], combo[0], combo[2])  # flip order
+        return '-'.join(combo)
     raise ValueError('Only pairs and triplets are supported.')
 
 
@@ -411,7 +417,7 @@ class DistributionHistogram:
         )
 
         # set the bin units in `GeometryDistribution`
-        geom_dist.m_contents['bins'].unit = self.bins.to_preferred(
+        geom_dist.all_quantities['bins'].unit = self.bins.to_preferred(
             [ureg.m, ureg.radian]
         ).units
         geom_dist.bins = self.bins
@@ -434,18 +440,19 @@ class Distribution:
         self.name, self.combo = combo, convert_combo_to_name(combo)
         self.type = type
 
+        geom_analysis = ase_as.Analysis(
+            ase_atoms, neighbor_list
+        )  # slightly less optimal
         if self.type == 'distances':
             self.values = (
-                ase_as.Analysis(ase_atoms, neighbor_list).get_values(
-                    ase_as.get_bonds(*combo, unique=True)
-                )
+                geom_analysis.get_values(geom_analysis.get_bonds(*combo, unique=True))
                 * ureg.angstrom
             )
         elif self.type == 'angles':
             self.values = (
-                abs(
-                    ase_as.Analysis(ase_atoms, neighbor_list).get_values(
-                        ase_as.get_angles(*combo, unique=True)
+                np.abs(
+                    geom_analysis.get_values(
+                        geom_analysis.get_angles(*combo, unique=True)
                     )
                 )
                 * ureg.radian
@@ -454,7 +461,7 @@ class Distribution:
             raise ValueError('Type not recognized.')
 
     def produce_histogram(self, bins: np.ndarray) -> DistributionHistogram:
-        return DistributionHistogram(self.combo, self.type, self.values.magnitude, bins)
+        return DistributionHistogram(self.combo, self.type, self.values, bins)
 
 
 class DistributionFactory:
@@ -476,8 +483,8 @@ class DistributionFactory:
         Permutations are not considered, i.e., (B, A) is converted into (A, B)."""
         return [
             (atom_1, atom_2)
-            for i, atom_1 in enumerate(self.get_elements)
-            for atom_2 in self.get_elements[i:]
+            for i, atom_1 in enumerate(self._elements)
+            for atom_2 in self._elements[i:]
         ]
 
     @property
@@ -487,9 +494,9 @@ class DistributionFactory:
         """
         return [
             (atom_c, atom_1, atom_2)
-            for atom_c in self.get_elements
-            for i, atom_1 in enumerate(self.get_elements)
-            for atom_2 in self.get_elements[i:]
+            for atom_c in self._elements
+            for i, atom_1 in enumerate(self._elements)
+            for atom_2 in self._elements[i:]
         ]
 
     def produce_distributions(self) -> list[Distribution]:
@@ -562,7 +569,6 @@ class AtomicCell(Cell):
     )
 
     @check_attributes(
-        self,
         attributes=[
             'atoms_state',
             'lattice_vectors',
@@ -586,6 +592,7 @@ class AtomicCell(Cell):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
         self.analyze_geometry = kwargs.get('analyze_geometry', False)
+        self.ase_atoms = None
 
     def normalize(self, archive, logger: BoundLogger):
         """When `analyze_geometry` is `true`, perform the geometry analysis.
@@ -804,7 +811,8 @@ class Symmetry(ArchiveSection):
         try:
             ase_atoms = original_atomic_cell.set_ase_atoms(logger)
             symmetry_analyzer = SymmetryAnalyzer(
-                ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
+                ase_atoms,
+                symmetry_tol=config.normalize.symmetry_tolerance,  # ! @JosePizarro: it cannot find this import
             )
         except ValueError as e:
             logger.debug(
@@ -1164,12 +1172,12 @@ class ModelSystem(System):
         system_type, dimensionality = self.type, self.dimensionality
         if (
             len(ase_atoms)
-            <= config.normalize.system_classification_with_clusters_threshold
+            <= config.normalize.system_classification_with_clusters_threshold  # ! @JosePizarro: it cannot find this import
         ):
             try:
                 classifier = Classifier(
                     radii='covalent',
-                    cluster_threshold=config.normalize.cluster_threshold,
+                    cluster_threshold=config.normalize.cluster_threshold,  # ! @JosePizarro: it cannot find this import
                 )
                 classification = classifier.classify(ase_atoms)
             except Exception as e:
