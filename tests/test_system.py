@@ -33,59 +33,99 @@ from nomad_simulations.model_system import (
 )
 
 
-def setup_geometry_analysis():  # ? move to conftest.py
-    """Produce a highly symmetric ethane molecule in the staggered conformation."""
-    return ase.Atoms(
-        symbols=(['C'] * 2 + ['H'] * 6),
-        positions=[
-            [0, 0, 0.765],
-            [0, 0, -0.765],
-            [0, 1.01692, 1.1574],
-            [-0.88068, -0.050846, 1.1574],
-            [0.88068, -0.050846, 1.1574],
-            [0, -1.01692, -1.1574],
-            [-0.88068, 0.050846, -1.1574],
-            [0.88068, 0.050846, -1.1574],
-        ],  # in angstrom
-        cell=[
-            [3, 0, 0],
-            [0, 3, 0],
-            [0, 0, 3],
-        ],  # in angstrom
+# Produce a highly symmetric ethane molecule in the staggered conformation.
+ethane = ase.Atoms(
+    symbols=(['C'] * 2 + ['H'] * 6),
+    positions=[
+        [0, 0, 0.765],
+        [0, 0, -0.765],
+        [0, 1.01692, 1.1574],
+        [-0.88068, -0.050846, 1.1574],
+        [0.88068, -0.050846, 1.1574],
+        [0, -1.01692, -1.1574],
+        [-0.88068, 0.050846, -1.1574],
+        [0.88068, 0.050846, -1.1574],
+    ],  # in angstrom
+    cell=[
+        [3, 0, 0],
+        [0, 3, 0],
+        [0, 0, 3],
+    ],  # in angstrom
+)
+
+
+def setup_neighbor_list(atomic_cell: ase.Atoms):
+    """Build a neighbor list for the ethane molecule."""
+    return ase_nl.build_neighbor_list(
+        atomic_cell,
+        ase_nl.natural_cutoffs(atomic_cell, mult=1.0),
+        self_interaction=False,
     )
+
+
+@pytest.mark.parametrize(
+    'atomic_cell, pair_references, triple_references',
+    [
+        [
+            ethane,
+            [
+                ('C', 'C'),
+                ('C', 'H'),
+                ('H', 'H'),
+            ],
+            [
+                ('C', 'C', 'C'),
+                ('C', 'C', 'H'),
+                ('C', 'H', 'H'),
+                ('H', 'C', 'C'),
+                ('H', 'C', 'H'),
+                ('H', 'H', 'H'),
+            ],
+        ]
+    ],
+)
+def test_distribution_factory(
+    atomic_cell: ase.Atoms,
+    pair_references: list[tuple[str, str]],
+    triple_references: list[tuple[str, str, str]],
+):
+    """
+    Check the correct generation of elemental paris and triples.
+    Important factors include:
+    - no duplicates: commutation laws apply, i.e. the whole pair and the last 2 elements in a triple
+    - alphabetical ordering of the elements
+    """
+    df = DistributionFactory(atomic_cell, setup_neighbor_list(atomic_cell))
+    assert df.get_elemental_pairs == pair_references
+    assert df.get_elemental_triples_centered == triple_references
 
 
 @pytest.mark.parametrize(
     'atomic_cell, analysis_type, elements, references',
     [
-        [setup_geometry_analysis(), 'distances', ['C', 'C'], [1.53]],
-        [setup_geometry_analysis(), 'distances', ['C', 'H'], [0.97] * 4 + [1.09] * 2],
+        [ethane, 'distances', ['C', 'C'], [1.53]],
+        [ethane, 'distances', ['C', 'H'], [0.97] * 4 + [1.09] * 2],
         [
-            setup_geometry_analysis(),
+            ethane,
             'angles',
             ['C', 'C', 'H'],
             [111.1] * 2 + [113.98] * 4,
         ],
-        [setup_geometry_analysis(), 'angles', ['C', 'H', 'H'], [120]],
+        [ethane, 'angles', ['C', 'H', 'H'], [120]],
     ],
 )  # references should be in ascending order
 def test_distribution(
     atomic_cell: AtomicCell,
     analysis_type: str,
-    elements: tuple[str],
+    elements: list[str],
     references: list[float],
 ):
     """
     Check the actual interatomic distances against the expected values.
     """
-    neighbor_list = ase_nl.build_neighbor_list(
-        atomic_cell,
-        ase_nl.natural_cutoffs(atomic_cell, mult=1.0),  # ? test element X
-        self_interaction=False,
-    )
     values = np.sort(
         Distribution(
-            elements, analysis_type, atomic_cell, neighbor_list
+            elements, analysis_type, atomic_cell, setup_neighbor_list(atomic_cell)
         ).values.magnitude
     )
 
