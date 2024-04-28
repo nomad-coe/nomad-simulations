@@ -91,11 +91,12 @@ def test_distribution_factory(
 ):
     """
     Check the correct generation of elemental paris and triples.
-    Important factors include:
+    Important factors (enforced by the references) include:
     - no duplicates: commutation laws apply, i.e. the whole pair and the last 2 elements in a triple
     - alphabetical ordering of the elements
     """
     df = DistributionFactory(atomic_cell, setup_neighbor_list(atomic_cell))
+
     assert df.get_elemental_pairs == pair_references
     assert df.get_elemental_triples_centered == triple_references
 
@@ -122,6 +123,9 @@ def test_distribution(
 ):
     """
     Check the actual interatomic distances against the expected values.
+    Extra checks are performed for:
+    - distances: positive values only
+    - angles: values between 0 and 180
     """
     values = np.sort(
         Distribution(
@@ -130,9 +134,47 @@ def test_distribution(
     )
 
     if analysis_type == 'distances':
-        # only positive reference values allowed
         assert (0 <= values).all()  # ? should this be restricted to positive definite
     elif analysis_type == 'angles':
-        # only angles between 0 and pi allowed
         assert (0 <= values).all() and (values <= 180).all()
     assert np.allclose(values, references, atol=0.01)  # check the actual values
+
+
+@pytest.mark.parametrize(
+    'atomic_cell, elements, bins, count_reference_map',
+    [
+        [ethane, ['C', 'C'], np.array([]), {}],  # empty bins
+        [ethane, ['C', 'C'], np.arange(0, 2, 0.01), {1.53: 1}],
+        [ethane, ['C', 'H'], np.arange(0, 2, 0.01), {0.96: 2, 1.09: 1}],
+        [ethane, ['C', 'C', 'H'], np.arange(0, 180, 1), {111: 1, 113: 2}],
+        # [ethane, ['C', 'H', 'H'], np.arange(0, 180, 1), {120: 1}],
+    ],  # note that the exact bin is hard to pin down: may deviate by 1 index
+)
+def test_distribution_histogram(
+    atomic_cell: AtomicCell,
+    elements: list[str],
+    bins: np.ndarray,
+    count_reference_map: dict[float, int],
+):
+    """
+    Check the conversion of a distribution into a histogram, such as:
+    Tests focusing on the binning include:
+    1. test empty bins generating empty histogram
+    2. test bin units
+    Lastly, the histogram frequency count is checked, with attention for:
+    3. normalization of the count, so the proper lower limit is 1
+    4. the actual count
+    """
+    to_type = 'distances' if len(elements) == 2 else 'angles'
+    dist = Distribution(
+        elements, to_type, atomic_cell, setup_neighbor_list(atomic_cell)
+    )
+    dh = DistributionHistogram(elements, to_type, dist.values, bins)
+
+    if len(bins) == 0:  # 1.
+        assert len(dh.frequency) == 0
+        return
+    assert dh.bins.u == ureg.angstrom if to_type == 'distances' else ureg.degrees  # 2.
+    assert np.min(dh.frequency[dh.frequency > 0]) == 1  # 3.
+    for bin, count in count_reference_map.items():  # 4.
+        assert dh.frequency[np.where(dh.bins.magnitude == bin)] == count

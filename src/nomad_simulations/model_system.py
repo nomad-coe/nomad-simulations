@@ -339,7 +339,7 @@ class GeometryDistribution(ArchiveSection):
         description="""
         Denotes the elements involved.
         """,
-    )
+    )  # ! add combo with a list of elements, but what about triples / quadruples centers?
 
     type = Quantity(
         type=MEnum('distances', 'angles'),
@@ -396,22 +396,24 @@ class DistributionHistogram:
     def __init__(
         self,
         combo: tuple[str],
-        type: str,
+        type: str,  # ? replace for automated check?
         distribution_values: np.ndarray = np.array([]),
         bins: np.ndarray = np.array([]),
     ) -> None:
-        self.name, self.combo = combo, convert_combo_to_name(combo)
+        self.combo = combo
         self.type = type
 
-        if len(bins) != len(distribution_values):
-            raise ValueError('Bins and counts must have the same length.')
         counts, self.bins = np.histogram(distribution_values.magnitude, bins=bins)
         self.bins *= distribution_values.u
-        self.frequency = counts / np.min(counts)  # normalize so the minimum is 1
+        # normalize so the minimum is 1
+        if len(nonzero_counts := counts[np.where(counts > 0)]):
+            self.frequency = counts / np.min(nonzero_counts)
+        else:
+            self.frequency = counts
 
     def produce_nomad_distribution(self) -> GeometryDistribution:
         geom_dist = GeometryDistribution(
-            combo=self.combo,
+            name=convert_combo_to_name(self.combo),
             n_bins=len(self.bins),
             frequency=self.frequency,
         )
