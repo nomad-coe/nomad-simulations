@@ -604,10 +604,7 @@ class AtomicCell(Cell):
         super().normalize(archive, logger)
         if self.analyze_geometry:
             # set up neighbor list
-            if (
-                self.geometry_analysis_cutoffs is None  # ? needed
-                or len(self.geometry_analysis_cutoffs) == 0
-            ):
+            if not self.geometry_analysis_cutoffs:
                 self.geometry_analysis_cutoffs = ase_nl.natural_cutoffs(
                     self.ase_atoms, mult=3.0
                 )
