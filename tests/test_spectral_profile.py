@@ -74,7 +74,7 @@ class TestElectronicDensityOfStates:
 
     def test_get_energy_points(self):
         """
-        Test the `_get_energy_points` method.
+        Test the `_get_energy_points` private method. We test here that the function indeed returns the points from a `Energy` variable.
         """
         electronic_dos = ElectronicDensityOfStates()
         electronic_dos.variables = [
@@ -203,7 +203,6 @@ class TestElectronicDensityOfStates:
         'value, result',
         [
             (None, [1.5, 1.2, 0, 0, 0, 0.8, 1.3]),
-            ([1.5, 1.2, 0, 0, 0, 0.8, 1.3], [1.5, 1.2, 0, 0, 0, 0.8, 1.3]),
             ([30.5, 1.2, 0, 0, 0, 0.8, 1.3], [30.5, 1.2, 0, 0, 0, 0.8, 1.3]),
         ],
     )
@@ -273,6 +272,8 @@ class TestXASSpectra:
             ([0, 1, 2], None, None),
             (None, [3, 4, 5], None),
             ([0, 1, 2], [3, 4, 5], [0.5, 0.1, 0.3, 0.2, 0.4, 0.6]),
+            ([0, 1, 4], [3, 4, 5], None),
+            ([0, 1, 2], [0, 4, 5], None),
         ],
     )
     def test_generate_from_contributions(
@@ -284,7 +285,6 @@ class TestXASSpectra:
         """
         Test the `generate_from_contributions` method.
         """
-        # ! extend this test
         xas_spectra = XASSpectra()
         if xanes_energies is not None:
             xanes_spectra = SpectralProfile()

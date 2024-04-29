@@ -55,7 +55,7 @@ def generate_simulation(
 ) -> Simulation:
     """
     Generate a `Simulation` section with the main sub-sections, `ModelSystem`, `ModelMethod`, and `Outputs`. If `ModelSystem`
-    and `Outputs` is not None, then it adds `ModelSystem` as a reference in `Outputs`.
+    and `Outputs` are set, then it adds `ModelSystem` as a reference in `Outputs`.
     """
     simulation = Simulation()
     if model_method is not None:
@@ -64,8 +64,7 @@ def generate_simulation(
         simulation.model_system.append(model_system)
     if outputs is not None:
         simulation.outputs.append(outputs)
-        if model_system is not None:
-            outputs.model_system_ref = model_system
+        outputs.model_system_ref = model_system
     return simulation
 
 
