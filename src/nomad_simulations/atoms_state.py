@@ -23,7 +23,6 @@ from typing import Optional, Union, Dict, Any
 from structlog.stdlib import BoundLogger
 
 from nomad.units import ureg
-
 from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity

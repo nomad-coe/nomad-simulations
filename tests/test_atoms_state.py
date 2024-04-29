@@ -75,8 +75,7 @@ class TestOrbitalsState:
             if number_label == 'ml_quantum_number':
                 orbital_state.l_quantum_number = 2
             setattr(orbital_state, number_label, val)
-            check = orbital_state._check_quantum_numbers(logger)
-            assert check == res
+            assert orbital_state._check_quantum_numbers(logger) == res
 
     @pytest.mark.parametrize(
         'quantum_name, value, expected_result',
@@ -157,8 +156,7 @@ class TestOrbitalsState:
             j_quantum_number,
             mj_quantum_number,
         )
-        resolved_degeneracy = orbital_state.resolve_degeneracy()
-        assert resolved_degeneracy == degeneracy
+        assert orbital_state.resolve_degeneracy() == degeneracy
 
     def test_normalize(self):
         """

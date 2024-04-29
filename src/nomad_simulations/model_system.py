@@ -563,13 +563,13 @@ class Symmetry(ArchiveSection):
         symmetry['hall_symbol'] = symmetry_analyzer.get_hall_symbol()
         symmetry['point_group_symbol'] = symmetry_analyzer.get_point_group()
         symmetry['space_group_number'] = symmetry_analyzer.get_space_group_number()
-        symmetry[
-            'space_group_symbol'
-        ] = symmetry_analyzer.get_space_group_international_short()
+        symmetry['space_group_symbol'] = (
+            symmetry_analyzer.get_space_group_international_short()
+        )
         symmetry['origin_shift'] = symmetry_analyzer._get_spglib_origin_shift()
-        symmetry[
-            'transformation_matrix'
-        ] = symmetry_analyzer._get_spglib_transformation_matrix()
+        symmetry['transformation_matrix'] = (
+            symmetry_analyzer._get_spglib_transformation_matrix()
+        )
 
         # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
         original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()
@@ -627,6 +627,8 @@ class Symmetry(ArchiveSection):
         return primitive_atomic_cell, conventional_atomic_cell
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name='cell', logger=logger
         )
@@ -712,6 +714,8 @@ class ChemicalFormula(ArchiveSection):
         self.anonymous = formula.format('anonymous')
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name='cell', logger=logger
         )
@@ -957,9 +961,6 @@ class ModelSystem(System):
         return system_type, dimensionality
 
     def normalize(self, archive, logger) -> None:
-        # ! Patch done in order to test when passing archive=None. This should be covered by default in all normalize functions
-        if not archive:
-            return
         super().normalize(archive, logger)
 
         # We don't need to normalize if the system is not representative
