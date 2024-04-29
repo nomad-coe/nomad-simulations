@@ -21,6 +21,7 @@ import pytest
 from typing import List, Optional
 
 from nomad.units import ureg
+from nomad.datamodel import EntryArchive
 
 from . import logger
 
@@ -96,10 +97,49 @@ def generate_model_system(
             )  # TODO add this split setter as part of the `OrbitalsState` methods
         atom_state = AtomsState(chemical_symbol=element, orbitals_state=orbitals_state)
         # and obtain the atomic number for each AtomsState
-        atom_state.resolve_chemical_symbol_and_number(logger)
+        atom_state.normalize(EntryArchive(), logger)
         atoms_state.append(atom_state)
     atomic_cell.atoms_state = atoms_state
     return model_system
+
+
+def generate_atomic_cell(
+    lattice_vectors: List = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    positions=None,
+    periodic_boundary_conditions=None,
+    chemical_symbols: List = ['H', 'H', 'O'],
+    atomic_numbers: List = [1, 1, 8],
+) -> AtomicCell:
+    """
+    Generate an `AtomicCell` section with the given parameters.
+    """
+    # Define positions if not provided
+    if positions is None and chemical_symbols is not None:
+        n_atoms = len(chemical_symbols)
+        positions = [[i / n_atoms, i / n_atoms, i / n_atoms] for i in range(n_atoms)]
+    # Define periodic boundary conditions if not provided
+    if periodic_boundary_conditions is None:
+        periodic_boundary_conditions = [False, False, False]
+
+    # Define the atomic cell
+    atomic_cell = AtomicCell()
+    if lattice_vectors:
+        atomic_cell.lattice_vectors = lattice_vectors * ureg('angstrom')
+    if positions:
+        atomic_cell.positions = positions * ureg('angstrom')
+    if periodic_boundary_conditions:
+        atomic_cell.periodic_boundary_conditions = periodic_boundary_conditions
+
+    # Add the elements information
+    for index, atom in enumerate(chemical_symbols):
+        atom_state = AtomsState()
+        setattr(atom_state, 'chemical_symbol', atom)
+        atomic_number = atom_state.resolve_atomic_number(logger)
+        assert atomic_number == atomic_numbers[index]
+        atom_state.atomic_number = atomic_number
+        atomic_cell.atoms_state.append(atom_state)
+
+    return atomic_cell
 
 
 def generate_scf_electronic_band_gap_template(
@@ -171,6 +211,11 @@ def generate_simulation_electronic_dos(
 @pytest.fixture(scope='session')
 def model_system() -> ModelSystem:
     return generate_model_system()
+
+
+@pytest.fixture(scope='session')
+def atomic_cell() -> AtomicCell:
+    return generate_atomic_cell()
 
 
 @pytest.fixture(scope='session')

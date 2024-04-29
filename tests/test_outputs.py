@@ -18,10 +18,12 @@
 
 import pytest
 
+from nomad.units import ureg
+from nomad.datamodel import EntryArchive
+
 from . import logger
 from .conftest import generate_scf_electronic_band_gap_template
 
-from nomad.units import ureg
 from nomad_simulations.outputs import Outputs, ElectronicBandGap
 
 
@@ -86,5 +88,5 @@ class TestOutputs:
             threshold_change=threshold_change
         )
 
-        scf_outputs.normalize(None, logger)
+        scf_outputs.normalize(EntryArchive(), logger)
         assert scf_outputs.electronic_band_gap[0].is_scf_converged == result

@@ -18,6 +18,8 @@
 
 import pytest
 
+from nomad.datamodel import EntryArchive
+
 from . import logger
 
 from nomad_simulations.variables import Variables
@@ -48,5 +50,5 @@ class TestVariables:
             grid_points=grid_points,
         )
         assert variable.get_n_grid_points(logger) == result
-        variable.normalize(None, logger)
+        variable.normalize(EntryArchive(), logger)
         assert variable.n_grid_points == result

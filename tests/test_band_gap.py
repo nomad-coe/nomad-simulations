@@ -20,9 +20,11 @@ import pytest
 import numpy as np
 from typing import Optional, List, Union
 
+from nomad.units import ureg
+from nomad.datamodel import EntryArchive
+
 from . import logger
 
-from nomad.units import ureg
 from nomad_simulations.properties import ElectronicBandGap
 from nomad_simulations.variables import Temperature
 
@@ -113,7 +115,7 @@ class TestElectronicBandGap:
         """
         scalar_band_gap = ElectronicBandGap(variables=[], type='direct')
         scalar_band_gap.value = 1.0 * ureg.joule
-        scalar_band_gap.normalize(None, logger)
+        scalar_band_gap.normalize(EntryArchive(), logger)
         assert scalar_band_gap.type == 'direct'
         assert np.isclose(scalar_band_gap.value.magnitude, 1.0)
 
@@ -122,7 +124,7 @@ class TestElectronicBandGap:
             type='direct',
         )
         t_dependent_band_gap.value = [1.0, 2.0, 3.0, 4.0] * ureg.joule
-        t_dependent_band_gap.normalize(None, logger)
+        t_dependent_band_gap.normalize(EntryArchive(), logger)
         assert t_dependent_band_gap.type == 'direct'
         assert (
             np.isclose(t_dependent_band_gap.value.magnitude, [1.0, 2.0, 3.0, 4.0])

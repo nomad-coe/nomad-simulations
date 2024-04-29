@@ -16,12 +16,6 @@
 # limitations under the License.
 #
 
-import pytest
-import numpy as np
-from typing import Optional, List, Union
-
-from . import logger
-
 from nomad_simulations.properties import FermiLevel, ChemicalPotential
 
 
