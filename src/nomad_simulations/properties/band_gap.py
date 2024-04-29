@@ -31,9 +31,7 @@ class ElectronicBandGap(PhysicalProperty):
     Energy difference between the highest occupied electronic state and the lowest unoccupied electronic state.
     """
 
-    # ! implement `iri` and `rank` as part of `m_def = Section()`
-
-    iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicBandGap'
+    m_def = Section(iri='http://fairmat-nfdi.eu/taxonomy/ElectronicBandGap', rank=[])
 
     type = Quantity(
         type=MEnum('direct', 'indirect'),
@@ -80,8 +78,6 @@ class ElectronicBandGap(PhysicalProperty):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
-        self.name = self.m_def.name
-        self.rank = []
 
     def _check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """

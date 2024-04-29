@@ -36,6 +36,8 @@ class SpectralProfile(PhysicalProperty):
     A base section used to define the spectral profile.
     """
 
+    m_def = Section(rank=[])
+
     value = Quantity(
         type=np.float64,
         description="""
@@ -47,7 +49,6 @@ class SpectralProfile(PhysicalProperty):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
-        self.rank = []
 
     def _get_energy_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
@@ -145,8 +146,9 @@ class ElectronicDensityOfStates(DOSProfile):
     Number of electronic states accessible for the charges per energy and per volume.
     """
 
-    # ! implement `iri` and `rank` as part of `m_def = Section()`
-    iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates'
+    m_def = Section(
+        iri='http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates', rank=[]
+    )
 
     spin_channel = Quantity(
         type=np.int32,
@@ -533,7 +535,7 @@ class XASSpectra(SpectralProfile):
     X-ray Absorption Spectra (XAS).
     """
 
-    # ! implement `iri` and `rank` as part of `m_def = Section()`
+    m_def = Section(rank=[])  # TODO add XASSpectra to taxonomy
 
     xanes_spectra = SubSection(
         sub_section=SpectralProfile.m_def,

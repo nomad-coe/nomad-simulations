@@ -28,9 +28,7 @@ class FermiLevel(PhysicalProperty):
     Energy required to add or extract a charge from a material at zero temperature. It can be also defined as the chemical potential at zero temperature.
     """
 
-    # ! implement `iri` and `rank` as part of `m_def = Section()`
-
-    iri = 'http://fairmat-nfdi.eu/taxonomy/FermiLevel'
+    m_def = Section(iri='http://fairmat-nfdi.eu/taxonomy/FermiLevel', rank=[])
 
     value = Quantity(
         type=np.float64,
@@ -44,8 +42,6 @@ class FermiLevel(PhysicalProperty):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
-        self.rank = []
-        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -56,9 +52,7 @@ class ChemicalPotential(PhysicalProperty):
     Free energy cost of adding or extracting a particle from a thermodynamic system.
     """
 
-    # ! implement `iri` and `rank` as part of `m_def = Section()`
-
-    iri = 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
+    m_def = Section(iri='http://fairmat-nfdi.eu/taxonomy/ChemicalPotential', rank=[])
 
     value = Quantity(
         type=np.float64,
@@ -72,8 +66,6 @@ class ChemicalPotential(PhysicalProperty):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
-        self.rank = []
-        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)

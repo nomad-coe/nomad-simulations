@@ -67,11 +67,10 @@ class TestElectronicDensityOfStates:
         """
         electronic_dos = ElectronicDensityOfStates()
         assert (
-            electronic_dos.iri
+            electronic_dos.m_def.iri
             == 'http://fairmat-nfdi.eu/taxonomy/ElectronicDensityOfStates'
         )
-        assert electronic_dos.name == 'ElectronicDensityOfStates'
-        assert electronic_dos.rank == []
+        assert electronic_dos.m_def.rank == []
 
     def test_get_energy_points(self):
         """
@@ -262,9 +261,8 @@ class TestXASSpectra:
         Test the default quantities assigned when creating an instance of the `XASSpectra` class.
         """
         xas_spectra = XASSpectra()
-        assert xas_spectra.iri is None  # Add iri when available
-        assert xas_spectra.name == 'XASSpectra'
-        assert xas_spectra.rank == []
+        assert xas_spectra.m_def.iri is None  # TODO add iri when available
+        assert xas_spectra.m_def.rank == []
 
     @pytest.mark.parametrize(
         'xanes_energies, exafs_energies, xas_values',

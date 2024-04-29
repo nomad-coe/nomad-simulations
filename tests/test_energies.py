@@ -30,9 +30,8 @@ class TestFermiLevel:
         Test the default quantities assigned when creating an instance of the `FermiLevel` class.
         """
         fermi_level = FermiLevel()
-        assert fermi_level.iri == 'http://fairmat-nfdi.eu/taxonomy/FermiLevel'
-        assert fermi_level.name == 'FermiLevel'
-        assert fermi_level.rank == []
+        assert fermi_level.m_def.iri == 'http://fairmat-nfdi.eu/taxonomy/FermiLevel'
+        assert fermi_level.m_def.rank == []
 
 
 class TestChemicalPotential:
@@ -47,8 +46,7 @@ class TestChemicalPotential:
         """
         chemical_potential = ChemicalPotential()
         assert (
-            chemical_potential.iri
+            chemical_potential.m_def.iri
             == 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
         )
-        assert chemical_potential.name == 'ChemicalPotential'
-        assert chemical_potential.rank == []
+        assert chemical_potential.m_def.rank == []

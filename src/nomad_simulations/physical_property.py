@@ -54,18 +54,12 @@ class PhysicalProperty(ArchiveSection):
     # TODO add `errors`
     # TODO add `smearing`
 
+    m_def = Section()  # modify `m_def` adding `iri` and `rank`
+
     name = Quantity(
         type=str,
         description="""
-        Name of the physical property. Example: `'ElectronicBandGap'`.
-        """,
-    )
-
-    iri = Quantity(
-        type=URL,
-        description="""
-        Internationalized Resource Identifier (IRI) of the physical property defined in the FAIRmat
-        taxonomy, https://fairmat-nfdi.github.io/fairmat-taxonomy/.
+        Name of the physical property.
         """,
     )
 
@@ -94,20 +88,6 @@ class PhysicalProperty(ArchiveSection):
         can be labeled as `'DFT'` or `'GW'` depending on the methodology used to calculate it.
         """,
         # ! add more examples in the description to improve the understanding of this quantity
-    )
-
-    rank = DirectQuantity(
-        type=Dimension,
-        shape=['0..*'],
-        default=[],
-        name='rank',
-        description="""
-        Rank of the tensor describing the physical property. This quantity is stored as a Dimension:
-            - scalars (tensor rank 0) have `rank=[]` (`len(rank) = 0`),
-            - vectors (tensor rank 1) have `rank=[a]` (`len(rank) = 1`),
-            - matrices (tensor rank 2), have `rank=[a, b]` (`len(rank) = 2`),
-            - etc.
-        """,
     )
 
     variables = SubSection(sub_section=Variables.m_def, repeats=True)
@@ -196,7 +176,7 @@ class PhysicalProperty(ArchiveSection):
         Returns:
             (list): The full shape of the physical property.
         """
-        return self.variables_shape + self.rank
+        return self.variables_shape + self.m_def.rank
 
     @property
     def _new_value(self) -> Quantity:
@@ -221,9 +201,10 @@ class PhysicalProperty(ArchiveSection):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
-        if self.iri is None:
+        if self.m_def.iri is None:
             logger.warning(
-                'The used property is not defined in the FAIRmat taxonomy (https://fairmat-nfdi.github.io/fairmat-taxonomy/). You can contribute there if you want to extend the list of available materials properties.'
+                'The used property is not defined in the FAIRmat taxonomy (http://fairmat-nfdi.eu/taxonomy/). '
+                'You can contribute there if you want to extend the list of available materials properties.'
             )
 
     def __setattr__(self, name: str, val: Any) -> None:
