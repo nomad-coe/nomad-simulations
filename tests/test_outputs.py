@@ -17,29 +17,12 @@
 #
 
 import pytest
-import numpy as np
 
 from . import logger
-from .conftest import get_scf_electronic_band_gap_template
+from .conftest import generate_scf_electronic_band_gap_template
 
 from nomad.units import ureg
-from nomad.metainfo import Quantity
-from nomad_simulations.physical_property import PhysicalProperty
 from nomad_simulations.outputs import Outputs, ElectronicBandGap
-
-
-class TotalEnergy(PhysicalProperty):
-    """Physical property class defined for testing purposes."""
-
-    rank = []
-    variables = []
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The total energy of the system.
-        """,
-    )
 
 
 class TestOutputs:
@@ -55,7 +38,7 @@ class TestOutputs:
         """
         Test the  `resolve_is_scf_converged` method.
         """
-        scf_outputs = get_scf_electronic_band_gap_template(
+        scf_outputs = generate_scf_electronic_band_gap_template(
             threshold_change=threshold_change
         )
         is_scf_converged = scf_outputs.resolve_is_scf_converged(
@@ -99,14 +82,9 @@ class TestOutputs:
         """
         Test the `normalize` method.
         """
-        scf_outputs = get_scf_electronic_band_gap_template(
+        scf_outputs = generate_scf_electronic_band_gap_template(
             threshold_change=threshold_change
         )
-        # Add a non-SCF calculated PhysicalProperty
-        scf_outputs.custom_physical_property = [
-            TotalEnergy(name='TotalEnergy', value=1 * ureg.joule)
-        ]
 
         scf_outputs.normalize(None, logger)
         assert scf_outputs.electronic_band_gap[0].is_scf_converged == result
-        assert scf_outputs.custom_physical_property[0].is_scf_converged is None

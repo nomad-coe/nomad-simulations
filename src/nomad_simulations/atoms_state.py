@@ -25,12 +25,13 @@ from nomad.units import ureg
 
 from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.basesections import Entity
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .utils import RussellSaundersState
 
 
-class OrbitalsState(ArchiveSection):
+class OrbitalsState(Entity):
     """
     A base section used to define the orbital state of an atom.
     """
@@ -537,7 +538,7 @@ class HubbardInteractions(ArchiveSection):
                 )
 
 
-class AtomsState(ArchiveSection):
+class AtomsState(Entity):
     """
     A base section to define each atom state information.
     """

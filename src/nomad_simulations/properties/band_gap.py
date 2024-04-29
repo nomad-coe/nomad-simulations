@@ -31,6 +31,8 @@ class ElectronicBandGap(PhysicalProperty):
     Energy difference between the highest occupied electronic state and the lowest unoccupied electronic state.
     """
 
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
+
     iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicBandGap'
 
     type = Quantity(

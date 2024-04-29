@@ -16,4 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .energies import FermiLevel, ChemicalPotential
 from .band_gap import ElectronicBandGap
+from .spectral_profile import (
+    SpectralProfile,
+    DOSProfile,
+    ElectronicDensityOfStates,
+    XASSpectra,
+)
