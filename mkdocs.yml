@@ -5,6 +5,13 @@ site_author: FAIRmat consortium
 repo_url: https://github.com/nomad-coe/nomad-schema-plugin-simulation-data
 nav:
   - Home: index.md
+  - Simulation schema:
+    - Overview: general.md
+    - ModelSystem: model_system/model_system.md
+    - ModelMethod: model_method/model_method.md
+    - Outputs: outputs/outputs.md
+  - How to use the Simulation schema: howto_use.md
+  - The normalize function: normalize.md
   - Contact: contact.md
 theme:
   name: material
@@ -54,9 +61,6 @@ markdown_extensions:
       toc_depth: 3
   - pymdownx.arithmatex:
       generic: true
-  - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
 extra_css:
   - stylesheets/extra.css
 extra_javascript:

@@ -13,6 +13,7 @@ readme = "README.md"
 authors = [
     { name = "Jose M. Pizarro", email = "jose.pizarro@physik.hu-berlin.de" },
     { name = "Nathan Daelman", email = "ndaelman@physik.hu-berlin.de" },
+    { name = "Bernadette Mohr", email = "mohrbern@physik.hu-berlin.de" },
     { name = "Joseph F. Rudzinski", email = "joseph.rudzinski@physik.hu-berlin.de" }
 ]
 license = { text = "Apache-2.0" }
