@@ -21,6 +21,7 @@ import numpy as np
 from typing import List, Union, Optional, Tuple
 
 from nomad.units import ureg
+from nomad.datamodel import EntryArchive
 
 from . import logger
 
@@ -165,7 +166,7 @@ class TestOrbitalsState:
         """
         orbital_state = OrbitalsState(n_quantum_number=2)
         self.add_state(orbital_state, 2, -2, None, None, None)
-        orbital_state.normalize(None, logger)
+        orbital_state.normalize(EntryArchive(), logger)
         assert orbital_state.n_quantum_number == 2
         assert orbital_state.l_quantum_number == 2
         assert orbital_state.l_quantum_symbol == 'd'
@@ -239,7 +240,7 @@ class TestCoreHole:
             n_excited_electrons=n_excited_electrons,
             dscf_state=dscf_state,
         )
-        core_hole.normalize(None, logger)
+        core_hole.normalize(EntryArchive(), logger)
         assert core_hole.n_excited_electrons == results[0]
         if core_hole.orbital_ref:
             assert core_hole.orbital_ref.degeneracy == results[1]
@@ -335,7 +336,7 @@ class TestHubbardInteractions:
             j_hunds_coupling=2.0 * ureg.eV,
             j_local_exchange_interaction=2.0 * ureg.eV,
         )
-        hubbard_interactions.normalize(None, logger)
+        hubbard_interactions.normalize(EntryArchive(), logger)
         assert np.isclose(hubbard_interactions.u_effective.to('eV').magnitude, 1.0)
         assert np.isclose(hubbard_interactions.u_interaction.to('eV').magnitude, 3.0)
 

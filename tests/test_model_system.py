@@ -23,7 +23,8 @@ from typing import List, Optional
 from nomad.datamodel import EntryArchive
 
 from . import logger
-from .conftest import get_template_atomic_cell
+from .conftest import generate_atomic_cell
+
 from nomad_simulations.model_system import (
     Symmetry,
     ChemicalFormula,
@@ -93,7 +94,7 @@ class TestAtomicCell:
         """
         Test the creation of `ase.Atoms` from `AtomicCell`.
         """
-        atomic_cell = get_template_atomic_cell(
+        atomic_cell = generate_atomic_cell(
             lattice_vectors,
             positions,
             periodic_boundary_conditions,
@@ -188,7 +189,7 @@ class TestAtomicCell:
         Test the `GeometricSpace` quantities normalization from `AtomicCell`.
         """
         pbc = [False, False, False]
-        atomic_cell = get_template_atomic_cell(
+        atomic_cell = generate_atomic_cell(
             lattice_vectors,
             positions,
             pbc,
@@ -197,7 +198,7 @@ class TestAtomicCell:
         )
 
         # Get `GeometricSpace` quantities via normalization of `AtomicCell`
-        atomic_cell.normalize(None, logger)
+        atomic_cell.normalize(EntryArchive(), logger)
         # Testing lengths of cell vectors
         for index, name in enumerate(
             ['length_vector_a', 'length_vector_b', 'length_vector_c']
@@ -239,7 +240,7 @@ class TestModelSystem:
         Test the empty `ChemicalFormula` normalization if a sibling `AtomicCell` is not provided.
         """
         chemical_formula = ChemicalFormula()
-        chemical_formula.normalize(None, logger)
+        chemical_formula.normalize(EntryArchive(), logger)
         for name in ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']:
             assert getattr(chemical_formula, name) is None
 
@@ -272,13 +273,13 @@ class TestModelSystem:
         """
         Test the `ChemicalFormula` normalization if a sibling `AtomicCell` is created, and thus the `Formula` class can be used.
         """
-        atomic_cell = get_template_atomic_cell(
+        atomic_cell = generate_atomic_cell(
             chemical_symbols=chemical_symbols, atomic_numbers=atomic_numbers
         )
         chemical_formula = ChemicalFormula()
         model_system = ModelSystem(chemical_formula=chemical_formula)
         model_system.cell.append(atomic_cell)
-        chemical_formula.normalize(None, logger)
+        chemical_formula.normalize(EntryArchive(), logger)
         for index, name in enumerate(
             ['descriptive', 'reduced', 'iupac', 'hill', 'anonymous']
         ):
@@ -329,7 +330,7 @@ class TestModelSystem:
         """
         Test the `ModelSystem` normalization of `type` and `dimensionality` from `AtomicCell`.
         """
-        atomic_cell = get_template_atomic_cell(
+        atomic_cell = generate_atomic_cell(
             positions=positions, periodic_boundary_conditions=pbc
         )
         ase_atoms = atomic_cell.to_ase_atoms(logger)
@@ -346,7 +347,7 @@ class TestModelSystem:
         """
         Test the `Symmetry` normalization from a sibling `AtomicCell` section.
         """
-        atomic_cell = get_template_atomic_cell(
+        atomic_cell = generate_atomic_cell(
             periodic_boundary_conditions=[True, True, True]
         )
         assert (
@@ -395,7 +396,7 @@ class TestModelSystem:
         Test the normalization of a `ModelSystem` is not run if it is not representative.
         """
         model_system = ModelSystem(is_representative=False)
-        model_system.normalize(None, logger)
+        model_system.normalize(EntryArchive(), logger)
         assert model_system.type is None
         assert model_system.dimensionality is None
 
@@ -404,7 +405,7 @@ class TestModelSystem:
         Test the normalization of a `ModelSystem` is not run if it has no `AtomicCell` child section.
         """
         model_system = ModelSystem(is_representative=True)
-        model_system.normalize(None, logger)
+        model_system.normalize(EntryArchive(), logger)
         assert model_system.type is None
         assert model_system.dimensionality is None
 
@@ -412,7 +413,7 @@ class TestModelSystem:
         """
         Test the full normalization of a representative `ModelSystem`.
         """
-        atomic_cell = get_template_atomic_cell(
+        atomic_cell = generate_atomic_cell(
             periodic_boundary_conditions=[True, True, True]
         )
         model_system = ModelSystem(is_representative=True)

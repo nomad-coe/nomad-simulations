@@ -19,10 +19,11 @@
 import numpy as np
 import pytest
 
-from . import logger
-
 from nomad.units import ureg
+from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
+
+from . import logger
 
 from nomad_simulations.variables import Variables
 from nomad_simulations.physical_property import PhysicalProperty
@@ -147,7 +148,7 @@ class TestPhysicalProperty:
         # Testing a directly parsed physical property
         not_derived_physical_property = PhysicalProperty(source='simulation')
         assert not_derived_physical_property._is_derived() is False
-        not_derived_physical_property.normalize(None, logger)
+        not_derived_physical_property.normalize(EntryArchive(), logger)
         assert not_derived_physical_property.is_derived is False
         # Testing a derived physical property
         derived_physical_property = PhysicalProperty(
@@ -155,5 +156,5 @@ class TestPhysicalProperty:
             physical_property_ref=not_derived_physical_property,
         )
         assert derived_physical_property._is_derived() is True
-        derived_physical_property.normalize(None, logger)
+        derived_physical_property.normalize(EntryArchive(), logger)
         assert derived_physical_property.is_derived is True

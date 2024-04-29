@@ -20,9 +20,10 @@ import pytest
 import numpy as np
 from typing import List, Optional
 
-from . import logger
-
 from nomad.units import ureg
+from nomad.datamodel import EntryArchive
+
+from . import logger
 
 from nomad_simulations import Simulation
 from nomad_simulations.model_system import ModelSystem, AtomicCell
@@ -128,7 +129,7 @@ class TestElectronicDensityOfStates:
             AtomsState(chemical_symbol='As'),
         ]
         for atom in atoms_state:
-            atom.resolve_chemical_symbol_and_number(logger)
+            atom.normalize(EntryArchive(), logger)
         atomic_cell.atoms_state = atoms_state
         # Non spin-polarized
         normalization_factor = electronic_dos.resolve_normalization_factor(logger)

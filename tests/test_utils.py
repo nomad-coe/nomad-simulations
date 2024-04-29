@@ -17,6 +17,7 @@
 #
 
 from . import logger
+
 from nomad_simulations.utils import (
     get_sibling_section,
     is_not_representative,
