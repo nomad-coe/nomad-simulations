@@ -136,7 +136,7 @@ The settings configuration file `.vscode/settings.json` performs automatically a
 ## Main contributors
 | Name | E-mail     | Topics | Github profiles |
 |------|------------|--------|-----------------|
-| Dr. Nathan Daelman | [nathan.daelman@physik.hu-berlin.de](mailto:nathan.daelman@physik.hu-berlin.de) | DFT | [@ndaelman-hu](https://github.com/ndaelman-hu) |
+| Dr. Nathan Daelman | [nathan.daelman@physik.hu-berlin.de](mailto:nathan.daelman@physik.hu-berlin.de) | DFT, Precision | [@ndaelman-hu](https://github.com/ndaelman-hu) |
 | Dr. Bernadette Mohr | [mohrbern@physik.hu-berlin.de](mailto:mohrbern@physik.hu-berlin.de) | MD, FF | [@Bernadette-Mohr](https://github.com/Bernadette-Mohr) |
 | Dr. José M. Pizarro | [jose.pizarro@physik.hu-berlin.de](mailto:jose.pizarro@physik.hu-berlin.de) | GW, DMFT, BSE | [@JosePizarro3](https://github.com/JosePizarro3) |
 | Dr. Joseph F. Rudzinski (**Coordinator**) | [joseph.rudzinski@physik.hu-berlin.de](mailto:joseph.rudzinski@physik.hu-berlin.de) | General | [@JFRudzinski](https://github.com/JFRudzinski) |
