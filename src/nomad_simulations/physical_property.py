@@ -105,12 +105,13 @@ class PhysicalProperty(ArchiveSection):
         """,
     )
 
-    physical_property_ref = Quantity(
-        type=Reference(SectionProxy('PhysicalProperty')),
+    physical_property_ref = SubSection(
+        section_def=SectionProxy('PhysicalProperty'),
         description="""
         Reference to the `PhysicalProperty` section from which the physical property was derived. If `physical_property_ref`
         is populated, the quantity `is_derived` is set to True via normalization.
         """,
+        repeats=False,
     )
 
     is_derived = Quantity(

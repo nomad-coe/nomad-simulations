@@ -21,7 +21,8 @@ import pytest
 
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
-from nomad.metainfo import Quantity, Section, Context
+from nomad.datamodel.data import ArchiveSection
+from nomad.metainfo import Quantity, Section, Context, SubSection
 
 from . import logger
 
@@ -46,6 +47,12 @@ class DummyPhysicalProperty(PhysicalProperty):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
+
+
+class SectionWithProperties(ArchiveSection):
+    m_def = Section()
+
+    physical_property = SubSection(sub_section=PhysicalProperty.m_def, repeats=True)
 
 
 class TestPhysicalProperty:
@@ -162,24 +169,27 @@ class TestPhysicalProperty:
         """
         Test the `normalize` and `_is_derived` methods.
         """
+        section = SectionWithProperties()
         # Testing a directly parsed physical property
-        not_derived_physical_property = PhysicalProperty(
+        not_derived_property = PhysicalProperty(
             m_def=Section(
                 iri='http://fairmat-nfdi.eu/taxonomy/PhysicalProperty', rank=[]
             )
         )
-        not_derived_physical_property.source = 'simulation'
-        assert not_derived_physical_property._is_derived() is False
-        not_derived_physical_property.normalize(EntryArchive(), logger)
-        assert not_derived_physical_property.is_derived is False
+        not_derived_property.source = 'simulation'
+        section.physical_property.append(not_derived_property)
+        assert not_derived_property._is_derived() is False
+        not_derived_property.normalize(EntryArchive(), logger)
+        assert not_derived_property.is_derived is False
         # Testing a derived physical property
-        derived_physical_property = PhysicalProperty(
+        derived_property = PhysicalProperty(
             m_def=Section(
                 iri='http://fairmat-nfdi.eu/taxonomy/PhysicalProperty', rank=[]
             )
         )
-        derived_physical_property.source = 'analysis'
-        derived_physical_property.physical_property_ref = not_derived_physical_property
-        assert derived_physical_property._is_derived() is True
-        derived_physical_property.normalize(EntryArchive(), logger)
-        assert derived_physical_property.is_derived is True
+        section.physical_property.append(derived_property)
+        derived_property.source = 'analysis'
+        derived_property.physical_property_ref = not_derived_property
+        assert derived_property._is_derived() is True
+        derived_property.normalize(EntryArchive(), logger)
+        assert derived_property.is_derived is True

@@ -22,6 +22,8 @@ from typing import List, Optional
 
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
+from nomad.datamodel.data import ArchiveSection
+from nomad.metainfo import Quantity, Section, Context, SubSection
 
 from . import logger
 
@@ -31,6 +33,7 @@ from nomad_simulations.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.model_method import ModelMethod
 from nomad_simulations.numerical_settings import SelfConsistency
 from nomad_simulations.outputs import Outputs, SCFOutputs
+from nomad_simulations.physical_property import PhysicalProperty
 from nomad_simulations.variables import Energy2 as Energy
 from nomad_simulations.properties import (
     ElectronicBandGap,
