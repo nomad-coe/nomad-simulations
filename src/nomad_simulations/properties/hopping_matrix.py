@@ -65,6 +65,8 @@ class HoppingMatrix(PhysicalProperty):
         )
         self.name = self.m_def.name
 
+    # TODO add normalization to extract DOS, band structure, etc, properties from `HoppingMatrix`
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
