@@ -16,8 +16,6 @@
 # limitations under the License.
 #
 
-# import typing
-# from structlog.stdlib import BoundLogger
 import numpy as np
 
 from nomad.metainfo import Quantity, Section, Context
@@ -62,7 +60,9 @@ class HoppingMatrix(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! n_orbitals need to be set up during initialization of the class
-        self.rank = [self.n_orbitals, self.n_orbitals]
+        self.rank = (
+            [] if self.n_orbitals is None else [self.n_orbitals, self.n_orbitals]
+        )
         self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
@@ -97,7 +97,8 @@ class CrystalFieldSplitting(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! n_orbitals need to be set up during initialization of the class
-        self.rank = [self.n_orbitals]
+        self.rank = [] if self.n_orbitals is None else [self.n_orbitals]
+        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
