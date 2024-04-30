@@ -27,9 +27,11 @@ from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
 from .properties import (
-    ElectronicBandGap,
     FermiLevel,
     ChemicalPotential,
+    CrystalFieldSplitting,
+    HoppingMatrix,
+    ElectronicBandGap,
     ElectronicDensityOfStates,
     XASSpectra,
 )
@@ -64,6 +66,12 @@ class Outputs(ArchiveSection):
     fermi_level = SubSection(sub_section=FermiLevel.m_def, repeats=True)
 
     chemical_potential = SubSection(sub_section=ChemicalPotential.m_def, repeats=True)
+
+    crystal_field_splitting = SubSection(
+        sub_section=CrystalFieldSplitting.m_def, repeats=True
+    )
+
+    hopping_matrix = SubSection(sub_section=HoppingMatrix.m_def, repeats=True)
 
     electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 

@@ -24,3 +24,4 @@ from .spectral_profile import (
     ElectronicDensityOfStates,
     XASSpectra,
 )
+from .hopping_matrix import HoppingMatrix, CrystalFieldSplitting
