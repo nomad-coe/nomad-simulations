@@ -129,3 +129,27 @@ class Energy2(Variables):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+
+class WignerSeitz(Variables):
+    """
+    Wigner-Seitz points in which the real space is discretized. This variable is used to define `HoppingMatrix(PhysicalProperty)` and
+    other inter-cell properties. See, e.g., https://en.wikipedia.org/wiki/Wigner–Seitz_cell.
+    """
+
+    grid_points = Quantity(
+        type=np.float64,
+        shape=['n_grid_points', 3],
+        description="""
+        Wigner-Seitz points with respect to the origin cell, (0, 0, 0). These are 3D arrays stored in fractional coordinates.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
