@@ -350,7 +350,7 @@ class GeometryDistribution(ArchiveSection):
         """,
     )
 
-    elements = Quantity(
+    atom_labels = Quantity(
         type=str,
         shape=['*'],
         description="""
