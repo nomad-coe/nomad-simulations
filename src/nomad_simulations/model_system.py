@@ -318,16 +318,6 @@ class Cell(GeometricSpace):
         super().normalize(archive, logger)
 
 
-def convert_combo_to_name(combo: tuple[str]) -> str:
-    """Convert a combo tuple to a hyphen-separated string.
-    For angles, the center element is now indeed placed at the center."""
-    if 1 < len(combo) < 4:
-        if len(combo) == 3:
-            combo = (combo[1], combo[0], combo[2])  # flip order
-        return '-'.join(combo)
-    raise ValueError('Only pairs and triplets are supported.')
-
-
 class GeometryDistribution(ArchiveSection):
     """
     A base section used to specify the geometry distributions of the system.
@@ -338,25 +328,31 @@ class GeometryDistribution(ArchiveSection):
         type=str,
         description="""
         Elements of which the geometry distribution is described.
-        The name is a hyphen-separated and sorted according to atomic number.
-        Central elements are placed in the middle.
+        The name is a hyphen-separated and sorted alphabetically.
         """,
-    )  # ! add combo with a list of elements, but what about triples / quadruples centers?
+    )
 
     type = Quantity(
-        type=MEnum('distances', 'angles'),
+        type=str,
         description="""
         Type of the geometry distribution described.
         """,
     )
 
-    atom_labels = Quantity(
+    extremity_atom_labels = Quantity(
         type=str,
-        shape=['*'],
+        shape=[2],
         description="""
-        Elements involved in the geometry distribution:
-         - 2 for distance distributions.
-         - 3 for angle distributions, with the center element first.
+        Elements for which the geometry distribution is defined.
+        (Note: the order of the elements is not algorithmically enforced.)
+        """,
+    )  # ? should we enforce this algorithmically. this also has implications for the distribution
+
+    bins = Quantity(
+        type=np.float64,
+        shape=['n_bins'],
+        description="""
+        Binning used to create the histogram.
         """,
     )
 
@@ -364,14 +360,6 @@ class GeometryDistribution(ArchiveSection):
         type=np.int32,
         description="""
         Number of bins used to create the histogram.
-        """,
-    )
-
-    bins = Quantity(
-        type=np.float64,
-        shape=['n_bins'],
-        description="""
-        Binning used to create the histogram.
         """,
     )
 
@@ -385,7 +373,75 @@ class GeometryDistribution(ArchiveSection):
 
     def normalize(self, archive, logger: BoundLogger):
         super().normalize(archive, logger)
-        self.name = convert_combo_to_name(self.combo)
+        return self
+
+
+class DistanceGeometryDistribution(GeometryDistribution):
+    bins = GeometryDistribution.bins.m_copy()
+    bins.unit = 'meter'
+
+    def normalize(self, archive, logger: BoundLogger):
+        super().normalize(archive, logger)
+        self.name = '-'.join(self.extremity_atom_labels)
+        self.type = 'distances'
+        return self
+
+
+class AngleGeometryDistribution(GeometryDistribution):
+    name = GeometryDistribution.name.m_copy()
+    name.description += """
+    The center element is placed at the center of the name.
+    """
+
+    central_atom_labels = Quantity(
+        type=str,
+        shape=[1],
+        description="""
+        Element at the center of the angle.
+        """,
+    )
+
+    bins = GeometryDistribution.bins.m_copy()
+    bins.unit = 'radian'
+
+    def normalize(self, archive, logger: BoundLogger):
+        super().normalize(archive, logger)
+        self.name = '-'.join(
+            [self.extremity_atom_labels[0]]
+            + self.central_atom_labels
+            + [self.extremity_atom_labels[1]]
+        )
+        self.type = 'angles'
+        return self
+
+
+class DihedralGeometryDistribution(GeometryDistribution):
+    name = GeometryDistribution.name.m_copy()
+    name.description += """
+    The central axis is placed in the middle, with the same ordering.
+    """
+
+    central_atom_labels = Quantity(
+        type=str,
+        shape=[2],
+        description="""
+        Elements along which the axis of the dihedral angle is aligned.
+        The direction vector runs from element 1 to 2.
+        (Note: the order of the elements is not algorithmically enforced.)
+        """,
+    )  # ? should we enforce this algorithmically. this also has implications for the distribution
+
+    bins = GeometryDistribution.bins.m_copy()
+    bins.unit = 'radian'
+
+    def normalize(self, archive, logger: BoundLogger):
+        super().normalize(archive, logger)
+        self.name = '-'.join(
+            [self.extremity_atom_labels[0]]
+            + self.central_atom_labels
+            + [self.extremity_atom_labels[1]]
+        )
+        self.type = 'dihedrals'
         return self
 
 
@@ -414,17 +470,22 @@ class DistributionHistogram:
             self.frequency = counts
 
     def produce_nomad_distribution(self) -> GeometryDistribution:
-        geom_dist = GeometryDistribution(
-            name=convert_combo_to_name(self.combo),
+        if self.type == 'distances':
+            constructor = DistanceGeometryDistribution
+        elif self.type == 'angles':
+            constructor = AngleGeometryDistribution
+        elif self.type == 'dihedrals':
+            constructor = DihedralGeometryDistribution
+        else:
+            raise ValueError('Type not recognized.')
+
+        geom_dist = constructor(
+            extremity_atom_labels=[self.combo[0], self.combo[-1]],
             n_bins=len(self.bins),
             frequency=self.frequency,
         )
-
-        # set the bin units in `GeometryDistribution`
-        geom_dist.all_quantities['bins'].unit = self.bins.to_preferred(
-            [ureg.m, ureg.radian]
-        ).units
-        geom_dist.bins = self.bins
+        if len(self.combo) > 2:
+            geom_dist.central_atom_labels = self.combo[1:-1]
         return geom_dist
 
 
@@ -441,7 +502,7 @@ class Distribution:
         ase_atoms: ase.Atoms,
         neighbor_list: ase_nl.NeighborList,
     ) -> None:
-        self.name, self.combo = combo, convert_combo_to_name(combo)
+        self.combo = combo
         self.type = type
 
         geom_analysis = ase_as.Analysis(
@@ -453,7 +514,7 @@ class Distribution:
             else:
                 self.values = np.array([])
             self.values *= ureg.angstrom
-        elif self.type == 'angles':
+        elif self.type == 'angles' or self.type == 'dihedrals':
             if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]):
                 self.values = np.array(geom_analysis.get_values(matches))
                 self.values = np.abs(
@@ -498,11 +559,24 @@ class DistributionFactory:
         Permutations between the outer elements are not considered, i.e., (A, C, B) is converted into (A, B, C).
         """
         return [
-            (atom_c, atom_1, atom_2)
+            (atom_1, atom_c, atom_2)
             for atom_c in self._elements
             for i, atom_1 in enumerate(self._elements)
             for atom_2 in self._elements[i:]
-        ]
+        ]  # matching the order of the `ase` package: https://wiki.fysik.dtu.dk/ase/_modules/ase/geometry/analysis.html#Analysis.get_angles
+
+    @property
+    def get_elemental_quadruples_centered(self) -> list[tuple[str, str, str, str]]:
+        """Generate all possible quadruples of element symbols with the center elements first.
+        Permutations between the outer elements are not considered, i.e., (A, D, B, C) is converted into (A, B, C, D).
+        """
+        return [
+            (atom_1, atom_c, atom_d, atom_2)
+            for atom_c in self._elements
+            for atom_d in self._elements
+            for i, atom_1 in enumerate(self._elements)
+            for atom_2 in self._elements[i:]
+        ]  # matching the order of the `ase` package: https://wiki.fysik.dtu.dk/ase/_modules/ase/geometry/analysis.html#Analysis.get_dihedrals
 
     def produce_distributions(self) -> list[Distribution]:
         """Generate all possible distributions of distances and angles

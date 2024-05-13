@@ -178,3 +178,6 @@ def test_distribution_histogram(
     assert np.min(dh.frequency[dh.frequency > 0]) == 1  # 3.
     for bin, count in count_reference_map.items():  # 4.
         assert dh.frequency[np.where(dh.bins.magnitude == bin)] == count
+
+
+# ! add normalization test for `GeometryDistribution`, i.e. `dh.produce_nomad_distribution().normalize(None, None)`
