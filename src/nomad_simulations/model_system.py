@@ -319,7 +319,7 @@ class Cell(GeometricSpace):
 
 
 def convert_combo_to_name(combo: tuple[str]) -> str:
-    """Convert a combo tuple to a hypen-separated string.
+    """Convert a combo tuple to a hyphen-separated string.
     For angles, the center element is now indeed placed at the center."""
     if 1 < len(combo) < 4:
         if len(combo) == 3:
@@ -337,7 +337,9 @@ class GeometryDistribution(ArchiveSection):
     name = Quantity(
         type=str,
         description="""
-        Denotes the elements involved.
+        Elements of which the geometry distribution is described.
+        The name is a hyphen-separated and sorted according to atomic number.
+        Central elements are placed in the middle.
         """,
     )  # ! add combo with a list of elements, but what about triples / quadruples centers?
 
@@ -564,6 +566,7 @@ class AtomicCell(Cell):
 
     geometry_analysis_cutoffs = Quantity(
         type=np.float64,
+        unit='meter',
         shape=['*'],
         description="""
         Cutoff radius within which atomic geometries are analyzed.
@@ -605,12 +608,12 @@ class AtomicCell(Cell):
         if self.analyze_geometry:
             # set up neighbor list
             if not self.geometry_analysis_cutoffs:
-                self.geometry_analysis_cutoffs = ase_nl.natural_cutoffs(
-                    self.ase_atoms, mult=3.0
+                self.geometry_analysis_cutoffs = (
+                    ase_nl.natural_cutoffs(self.ase_atoms, mult=3.0) * ureg.angstrom
                 )
             self.neighbor_list = ase_nl.build_neighbor_list(
                 self.ase_atoms,
-                self.geometry_analysis_cutoffs,
+                self.geometry_analysis_cutoffs.to('angstrom').magnitude,
                 self_interaction=False,
             )
 
