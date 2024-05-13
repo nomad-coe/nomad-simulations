@@ -17,3 +17,6 @@
 # limitations under the License.
 
 from .utils import get_sibling_section, RussellSaundersState, is_not_representative
+from .config_tolerances import ConfigTolerances
+
+config = ConfigTolerances()

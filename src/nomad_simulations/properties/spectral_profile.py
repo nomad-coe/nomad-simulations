@@ -21,10 +21,9 @@ from structlog.stdlib import BoundLogger
 from typing import Optional, List, Dict
 import pint
 
-from nomad import config
 from nomad.metainfo import Quantity, SubSection, Section, Context
 
-from ..utils import get_sibling_section
+from ..utils import get_sibling_section, config
 from ..physical_property import PhysicalProperty
 from ..variables import Energy2 as Energy
 from ..atoms_state import AtomsState, OrbitalsState
@@ -251,8 +250,8 @@ class ElectronicDensityOfStates(DOSProfile):
             self.m_cache['lowest_occupied_energy'] = lowest_occupied_energy
 
         # Set thresholds for the energies and values
-        energy_threshold = config.normalize.band_structure_energy_tolerance
-        value_threshold = 1e-8  # The DOS value that is considered to be zero
+        energy_tolerance = config.dos_energy_tolerance
+        value_threshold = config.dos_value_threshold
 
         # Check that the closest `energies` to the energy reference is not too far away.
         # If it is very far away, normalization may be very inaccurate and we do not report it.
@@ -262,7 +261,7 @@ class ElectronicDensityOfStates(DOSProfile):
         fermi_energy_closest = energies[fermi_idx]
         distance = np.abs(fermi_energy_closest - eref)
         single_peak_fermi = False
-        if distance.magnitude <= energy_threshold:
+        if distance.magnitude <= energy_tolerance:
             # See if there are zero values close below the energy reference.
             idx = fermi_idx
             idx_descend = fermi_idx
@@ -272,7 +271,7 @@ class ElectronicDensityOfStates(DOSProfile):
                     energy_distance = np.abs(eref - energies[idx])
                 except IndexError:
                     break
-                if energy_distance.magnitude > energy_threshold:
+                if energy_distance.magnitude > energy_tolerance:
                     break
                 if value <= value_threshold:
                     idx_descend = idx
@@ -288,7 +287,7 @@ class ElectronicDensityOfStates(DOSProfile):
                     energy_distance = np.abs(eref - energies[idx])
                 except IndexError:
                     break
-                if energy_distance.magnitude > energy_threshold:
+                if energy_distance.magnitude > energy_tolerance:
                     break
                 if value <= value_threshold:
                     idx_ascend = idx

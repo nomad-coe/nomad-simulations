@@ -33,7 +33,6 @@ from matid.classification.classifications import (
     Class3D,
 )  # pylint: disable=import-error
 
-from nomad import config
 from nomad.units import ureg
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
 
@@ -43,7 +42,7 @@ from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .atoms_state import AtomsState
-from .utils import get_sibling_section, is_not_representative
+from .utils import get_sibling_section, is_not_representative, config
 
 
 class GeometricSpace(Entity):
@@ -547,7 +546,7 @@ class Symmetry(ArchiveSection):
         try:
             ase_atoms = original_atomic_cell.to_ase_atoms(logger)
             symmetry_analyzer = SymmetryAnalyzer(
-                ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
+                ase_atoms, symmetry_tol=config.symmetry_tolerance
             )
         except ValueError as e:
             logger.debug(
@@ -919,14 +918,11 @@ class ModelSystem(System):
         """
         classification = None
         system_type, dimensionality = self.type, self.dimensionality
-        if (
-            len(ase_atoms)
-            <= config.normalize.system_classification_with_clusters_threshold
-        ):
+        if len(ase_atoms) <= config.system_classification_with_clusters_threshold:
             try:
                 classifier = Classifier(
                     radii='covalent',
-                    cluster_threshold=config.normalize.cluster_threshold,
+                    cluster_threshold=config.cluster_threshold,
                 )
                 classification = classifier.classify(ase_atoms)
             except Exception as e:

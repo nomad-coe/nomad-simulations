@@ -21,6 +21,7 @@ requires-python = ">=3.9"
 dependencies = [
     "nomad-lab>=1.2.2dev578",
     "matid>=2.0.0.dev2",
+    'pydantic>=1.10.8,<2.0.0',
 ]
 
 [project.urls]
