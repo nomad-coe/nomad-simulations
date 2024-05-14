@@ -47,7 +47,7 @@ class TestSpectralProfile:
         Test the `is_valid_spectral_profile` method.
         """
         spectral_profile = SpectralProfile(
-            variables=[Energy(grid_points=[-1, 0, 1] * ureg.joule)]
+            variables=[Energy(points=[-1, 0, 1] * ureg.joule)]
         )
         spectral_profile.value = [1.5, 0, 0.8]
         assert spectral_profile.is_valid_spectral_profile()
@@ -79,12 +79,10 @@ class TestElectronicDensityOfStates:
         """
         electronic_dos = ElectronicDensityOfStates()
         electronic_dos.variables = [
-            Temperature(grid_points=list(range(-3, 4)) * ureg.kelvin)
+            Temperature(points=list(range(-3, 4)) * ureg.kelvin)
         ]
         assert electronic_dos._get_energy_points(logger) is None
-        electronic_dos.variables.append(
-            Energy(grid_points=list(range(-3, 4)) * ureg.joule)
-        )
+        electronic_dos.variables.append(Energy(points=list(range(-3, 4)) * ureg.joule))
         energies = electronic_dos._get_energy_points(logger)
         assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
 
@@ -289,12 +287,12 @@ class TestXASSpectra:
         xas_spectra = XASSpectra()
         if xanes_energies is not None:
             xanes_spectra = SpectralProfile()
-            xanes_spectra.variables = [Energy(grid_points=xanes_energies * ureg.joule)]
+            xanes_spectra.variables = [Energy(points=xanes_energies * ureg.joule)]
             xanes_spectra.value = [0.5, 0.1, 0.3]
             xas_spectra.xanes_spectra = xanes_spectra
         if exafs_energies is not None:
             exafs_spectra = SpectralProfile()
-            exafs_spectra.variables = [Energy(grid_points=exafs_energies * ureg.joule)]
+            exafs_spectra.variables = [Energy(points=exafs_energies * ureg.joule)]
             exafs_spectra.value = [0.2, 0.4, 0.6]
             xas_spectra.exafs_spectra = exafs_spectra
         xas_spectra.generate_from_contributions(logger)

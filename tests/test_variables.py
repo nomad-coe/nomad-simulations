@@ -31,7 +31,7 @@ class TestVariables:
     """
 
     @pytest.mark.parametrize(
-        'n_grid_points, grid_points, result',
+        'n_points, points, result',
         [
             (3, [-1, 0, 1], 3),
             (5, [-1, 0, 1], 3),
@@ -40,15 +40,15 @@ class TestVariables:
             (4, [], 4),
         ],
     )
-    def test_normalize(self, n_grid_points: int, grid_points: list, result: int):
+    def test_normalize(self, n_points: int, points: list, result: int):
         """
-        Test the `normalize` and `get_n_grid_points` methods.
+        Test the `normalize` and `get_n_points` methods.
         """
         variable = Variables(
             name='variable_1',
-            n_grid_points=n_grid_points,
-            grid_points=grid_points,
+            n_points=n_points,
+            points=points,
         )
-        assert variable.get_n_grid_points(logger) == result
+        assert variable.get_n_points(logger) == result
         variable.normalize(EntryArchive(), logger)
-        assert variable.n_grid_points == result
+        assert variable.n_points == result

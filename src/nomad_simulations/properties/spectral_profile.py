@@ -51,17 +51,17 @@ class SpectralProfile(PhysicalProperty):
 
     def _get_energy_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
-        Gets the `grid_points` of the `Energy` variable if the required `Energy` variable is present in the `variables`.
+        Gets the `points` of the `Energy` variable if the required `Energy` variable is present in the `variables`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[pint.Quantity]): The `grid_points` of the `Energy` variable.
+            (Optional[pint.Quantity]): The `points` of the `Energy` variable.
         """
         for var in self.variables:
             if isinstance(var, Energy):
-                return var.grid_points
+                return var.points
         logger.error(
             'The required `Energy` variable is not present in the `variables`.'
         )
@@ -582,7 +582,7 @@ class XASSpectra(SpectralProfile):
                 )
                 return
             self.variables = [
-                Energy(grid_points=np.concatenate([xanes_energies, exafs_energies]))
+                Energy(points=np.concatenate([xanes_energies, exafs_energies]))
             ]
             # Concatenate XANES and EXAFS `value` if they have the same shape ['n_energies']
             try:

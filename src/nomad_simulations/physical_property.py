@@ -165,7 +165,7 @@ class PhysicalProperty(ArchiveSection):
     def variables_shape(self) -> Optional[list]:
         """
         Shape of the variables over which the physical property varies. This is extracted from
-        `Variables.n_grid_points` and appended in a list.
+        `Variables.n_points` and appended in a list.
 
         Example, a physical property which varies with `Temperature` and `ElectricField` will
         return `variables_shape = [n_temperatures, n_electric_fields]`.
@@ -174,7 +174,7 @@ class PhysicalProperty(ArchiveSection):
             (list): The shape of the variables over which the physical property varies.
         """
         if self.variables is not None:
-            return [v.get_n_grid_points(logger) for v in self.variables]
+            return [v.get_n_points(logger) for v in self.variables]
         return []
 
     @property
@@ -248,7 +248,7 @@ class PhysicalProperty(ArchiveSection):
             if value_shape != self.full_shape:
                 raise ValueError(
                     f'The shape of the stored `value` {value_shape} does not match the full shape {self.full_shape} '
-                    f'extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
+                    f'extracted from the variables `n_points` and the `shape` defined in `PhysicalProperty`.'
                 )
             _new_value.shape = self.full_shape
             if hasattr(val, 'magnitude'):
