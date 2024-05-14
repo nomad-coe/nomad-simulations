@@ -50,24 +50,24 @@ class TestPhysicalProperty:
             ([], [], [], []),
             ([3], [], [], [3]),
             ([3, 3], [], [], [3, 3]),
-            ([], [Variables(n_grid_points=4)], [4], [4]),
-            ([3], [Variables(n_grid_points=4)], [4], [4, 3]),
-            ([3, 3], [Variables(n_grid_points=4)], [4], [4, 3, 3]),
+            ([], [Variables(n_points=4)], [4], [4]),
+            ([3], [Variables(n_points=4)], [4], [4, 3]),
+            ([3, 3], [Variables(n_points=4)], [4], [4, 3, 3]),
             (
                 [],
-                [Variables(n_grid_points=4), Variables(n_grid_points=10)],
+                [Variables(n_points=4), Variables(n_points=10)],
                 [4, 10],
                 [4, 10],
             ),
             (
                 [3],
-                [Variables(n_grid_points=4), Variables(n_grid_points=10)],
+                [Variables(n_points=4), Variables(n_points=10)],
                 [4, 10],
                 [4, 10, 3],
             ),
             (
                 [3, 3],
-                [Variables(n_grid_points=4), Variables(n_grid_points=10)],
+                [Variables(n_points=4), Variables(n_points=10)],
                 [4, 10],
                 [4, 10, 3, 3],
             ),
@@ -98,7 +98,7 @@ class TestPhysicalProperty:
         physical_property = DummyPhysicalProperty(
             source='simulation',
             rank=[3, 3],
-            variables=[Variables(n_grid_points=4), Variables(n_grid_points=10)],
+            variables=[Variables(n_points=4), Variables(n_points=10)],
         )
         # `physical_property.value` must have full_shape=[4, 10, 3, 3]
         value = np.ones((4, 10, 3, 3)) * ureg.eV
@@ -122,7 +122,7 @@ class TestPhysicalProperty:
             physical_property.value = value
         assert (
             str(exc_info.value)
-            == f'The shape of the stored `value` {wrong_shape} does not match the full shape {physical_property.full_shape} extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
+            == f'The shape of the stored `value` {wrong_shape} does not match the full shape {physical_property.full_shape} extracted from the variables `n_points` and the `shape` defined in `PhysicalProperty`.'
         )
 
     def test_setattr_none(self):

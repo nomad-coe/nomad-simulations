@@ -181,7 +181,7 @@ def generate_simulation_electronic_dos(
     simulation = generate_simulation(model_system=model_system, outputs=outputs)
 
     # Populating the `ElectronicDensityOfStates` section
-    variables_energy = [Energy(grid_points=energy_points * ureg.joule)]
+    variables_energy = [Energy(points=energy_points * ureg.joule)]
     electronic_dos = ElectronicDensityOfStates(variables=variables_energy)
     outputs.electronic_dos.append(electronic_dos)
     # electronic_dos.value = total_dos * ureg('1/joule')

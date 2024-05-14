@@ -64,7 +64,7 @@ class TestElectronicBandGap:
         """
         if isinstance(value, list):
             electronic_band_gap = ElectronicBandGap(
-                variables=[Temperature(grid_points=[1, 2, 3] * ureg.kelvin)]
+                variables=[Temperature(points=[1, 2, 3] * ureg.kelvin)]
             )
         else:
             electronic_band_gap = ElectronicBandGap()
@@ -120,7 +120,7 @@ class TestElectronicBandGap:
         assert np.isclose(scalar_band_gap.value.magnitude, 1.0)
 
         t_dependent_band_gap = ElectronicBandGap(
-            variables=[Temperature(grid_points=[0, 10, 20, 30] * ureg.kelvin)],
+            variables=[Temperature(points=[0, 10, 20, 30] * ureg.kelvin)],
             type='direct',
         )
         t_dependent_band_gap.value = [1.0, 2.0, 3.0, 4.0] * ureg.joule
