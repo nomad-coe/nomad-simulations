@@ -18,9 +18,9 @@
 
 import numpy as np
 import pint
-from itertools import accumulate, tee, chain
+import itertools
 from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple, Union, Dict
+from typing import Optional, List, Tuple, Union
 from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
 from nomad.units import ureg
@@ -339,7 +339,6 @@ class KMesh(Mesh):
             high_symmetry_points = {
                 'Gamma': [0, 0, 0],
                 'X': [0.5, 0, 0],
-                'Y': [0, 0.5, 0],
                 ...
             ]
         """,
@@ -679,7 +678,6 @@ class KLinePath(ArchiveSection):
                 'The `reciprocal_lattice_vectors` are not passed as an input.'
             )
             return None
-
         # Check if `points_norm` is a list and convert it to a numpy array
         if isinstance(points_norm, list):
             points_norm = np.array(points_norm)
@@ -802,10 +800,6 @@ class KSpace(NumericalSettings):
         for model_system in model_systems:
             # General checks to proceed with normalization
             if is_not_representative(model_system, logger):
-                continue
-            # TODO extend this for other dimensions (@ndaelman-hu)
-            if model_system.type != 'bulk':
-                logger.warning('`ModelSystem.type` is not describing a bulk system.')
                 continue
 
             atomic_cell = model_system.cell
