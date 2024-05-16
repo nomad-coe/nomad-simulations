@@ -17,6 +17,7 @@
 #
 
 import os
+import numpy as np
 import pytest
 from typing import List, Optional
 
@@ -29,7 +30,12 @@ from nomad_simulations import Simulation
 from nomad_simulations.model_system import ModelSystem, AtomicCell
 from nomad_simulations.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.model_method import ModelMethod
-from nomad_simulations.numerical_settings import SelfConsistency
+from nomad_simulations.numerical_settings import (
+    SelfConsistency,
+    KSpace,
+    KMesh as KMeshSettings,
+    KLinePath as KLinePathSettings,
+)
 from nomad_simulations.outputs import Outputs, SCFOutputs
 from nomad_simulations.variables import Energy2 as Energy
 from nomad_simulations.properties import (
@@ -71,9 +77,12 @@ def generate_simulation(
 
 def generate_model_system(
     type: str = 'original',
+    system_type: str = 'bulk',
     positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
+    lattice_vectors: List[List[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
     chemical_symbols: List[str] = ['Ga', 'As'],
     orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
+    is_representative: bool = True,
 ) -> Optional[ModelSystem]:
     """
     Generate a `ModelSystem` section with the given parameters.
@@ -81,8 +90,12 @@ def generate_model_system(
     if len(chemical_symbols) != len(orbitals_symbols):
         return None
 
-    model_system = ModelSystem()
-    atomic_cell = AtomicCell(type=type, positions=positions * ureg.meter)
+    model_system = ModelSystem(type=system_type, is_representative=is_representative)
+    atomic_cell = AtomicCell(
+        type=type,
+        positions=positions * ureg.angstrom,
+        lattice_vectors=lattice_vectors * ureg.angstrom,
+    )
     model_system.cell.append(atomic_cell)
 
     # Add atoms_state to the model_system
@@ -208,6 +221,47 @@ def generate_simulation_electronic_dos(
     return simulation
 
 
+def generate_k_line_path(
+    high_symmetry_path: dict = {
+        'Gamma1': [0, 0, 0],
+        'X': [0.5, 0, 0],
+        'Y': [0, 0.5, 0],
+        'Gamma2': [0, 0, 0],
+    },  # ! fix the patch on naming 'Gamma1' and 'Gamma2'
+) -> KLinePathSettings:
+    return KLinePathSettings(high_symmetry_path=high_symmetry_path)
+
+
+def generate_k_space_simulation(
+    system_type: str = 'bulk',
+    is_representative: bool = True,
+    reciprocal_lattice_vectors: Optional[List[List[int]]] = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+    ],
+    high_symmetry_path: dict = {
+        'Gamma1': [0, 0, 0],
+        'X': [0.5, 0, 0],
+        'Y': [0, 0.5, 0],
+        'Gamma2': [0, 0, 0],
+    },
+) -> Simulation:
+    model_system = generate_model_system(
+        system_type=system_type, is_representative=is_representative
+    )
+    k_space = KSpace()
+    if reciprocal_lattice_vectors is not None:
+        k_space.reciprocal_lattice_vectors = (
+            2 * np.pi * np.array(reciprocal_lattice_vectors) / ureg.angstrom
+        )
+    k_line_path = KLinePathSettings(high_symmetry_path=high_symmetry_path)
+    k_space.k_line_path = k_line_path
+    model_method = ModelMethod()
+    model_method.numerical_settings.append(k_space)
+    return generate_simulation(model_method=model_method, model_system=model_system)
+
+
 @pytest.fixture(scope='session')
 def model_system() -> ModelSystem:
     return generate_model_system()
@@ -226,3 +280,13 @@ def scf_electronic_band_gap() -> SCFOutputs:
 @pytest.fixture(scope='session')
 def simulation_electronic_dos() -> Simulation:
     return generate_simulation_electronic_dos()
+
+
+@pytest.fixture(scope='session')
+def k_line_path() -> KLinePathSettings:
+    return generate_k_line_path()
+
+
+@pytest.fixture(scope='session')
+def k_space_simulation() -> Simulation:
+    return generate_k_space_simulation()
