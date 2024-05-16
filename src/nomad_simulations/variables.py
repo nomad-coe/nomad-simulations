@@ -163,14 +163,6 @@ class KMesh(Variables):
     other k-space properties. The `points` are obtained from a refernece to the `NumericalSettings` section, `KMesh(NumericalSettings)`.
     """
 
-    k_mesh_settings_ref = Quantity(
-        type=KMeshSettings,
-        description="""
-        Reference to the `KMesh(NumericalSettings)` section in the `ModelMethod` section. This reference is useful
-        to extract `points` and, then, obtain the shape of `value` of the `PhysicalProperty`.
-        """,
-    )
-
     points = Quantity(
         type=KMeshSettings.points,
         description="""
@@ -185,25 +177,11 @@ class KMesh(Variables):
         self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
-        # Extracting `points` from the `k_mesh_settings_ref` BEFORE doing `super().normalize()`
-        if self.k_mesh_settings_ref is None:
-            logger.error('`k_mesh_settings_ref` is not defined.')
-            return
-        self.points = self.k_mesh_settings_ref  # ref to `points`
-
         super().normalize(archive, logger)
 
 
 class KLinePath(Variables):
     """ """
-
-    k_line_path_settings_ref = Quantity(
-        type=KLinePathSettings,
-        description="""
-        Reference to the `KLinePath(NumericalSettings)` section in the `ModelMethod.KMesh` section. This reference is useful
-        to extract `points` and, then, obtain the shape of `value` of the `PhysicalProperty`.
-        """,
-    )
 
     points = Quantity(
         type=KLinePathSettings.points,
@@ -219,10 +197,4 @@ class KLinePath(Variables):
         self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
-        # Extracting `points` from the `k_line_path_settings_ref` BEFORE doing `super().normalize()`
-        if self.k_line_path_settings_ref is None:
-            logger.error('`k_line_path_settings_ref` is not defined.')
-            return
-        self.points = self.k_line_path_settings_ref  # ref to `points`
-
         super().normalize(archive, logger)

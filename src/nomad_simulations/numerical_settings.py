@@ -336,7 +336,7 @@ class KMesh(Mesh):
         description="""
         Dictionary containing the high-symmetry point labels and their values in units of `reciprocal_lattice_vectors`.
         E.g., in a cubic lattice:
-            high_symmetry_points ={
+            high_symmetry_points = {
                 'Gamma': [0, 0, 0],
                 'X': [0.5, 0, 0],
                 'Y': [0, 0.5, 0],
@@ -679,7 +679,6 @@ class KLinePath(ArchiveSection):
                 'The `reciprocal_lattice_vectors` are not passed as an input.'
             )
             return None
-
         # Check if `points_norm` is a list and convert it to a numpy array
         if isinstance(points_norm, list):
             points_norm = np.array(points_norm)
