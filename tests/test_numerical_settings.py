@@ -75,6 +75,9 @@ class TestKSpace:
             assert k_space.reciprocal_lattice_vectors == result
 
 
+# TODO add testing for KMesh
+
+
 class TestKLinePath:
     """
     Test the `KLinePath` class defined in `numerical_settings.py`.
