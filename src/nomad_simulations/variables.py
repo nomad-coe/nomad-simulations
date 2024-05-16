@@ -23,6 +23,11 @@ from structlog.stdlib import BoundLogger
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, Section, Context
 
+from nomad_simulations.numerical_settings import (
+    KMesh as KMeshSettings,
+    KLinePath as KLinePathSettings,
+)
+
 
 class Variables(ArchiveSection):
     """
@@ -149,4 +154,100 @@ class WignerSeitz(Variables):
         self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class KMesh(Variables):
+    """
+    K-point mesh over which the physical property is calculated. This is used to define `ElectronicEigenvalues(PhysicalProperty)` and
+    other k-space properties. The `points` are obtained from a refernece to the `NumericalSettings` section, `KMesh(NumericalSettings)`.
+    """
+
+    k_mesh_ref = Quantity(
+        type=KMeshSettings,
+        description="""
+        Reference to the `KMesh(NumericalSettings)` section in the `ModelMethod` section. This reference is useful
+        to extract `points` and, then, obtain the shape of `value` of the `PhysicalProperty`.
+        """,
+    )
+
+    points = Quantity(
+        type=np.float64,
+        shape=['n_points', 'dimensionality'],
+        description="""
+        K-point mesh over which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def extract_points(self, logger: BoundLogger) -> Optional[list]:
+        """
+        Extract the `points` list from the `k_mesh_settings_ref` pointing to the `KMesh` section.
+        Args:
+            logger (BoundLogger): The logger to log messages.
+        Returns:
+            (Optional[list]): The `points` list.
+        """
+        if self.k_mesh_settings_ref is not None:
+            if self.k_mesh_settings_ref.points is not None:
+                return self.k_mesh_settings_ref.points
+            points, _ = self.k_mesh_settings_ref.resolve_points_and_offset(logger)
+            return points
+        logger.error('`k_mesh_settings_ref` is not defined.')
+        return None
+
+    def normalize(self, archive, logger) -> None:
+        # Extracting `points` from the `k_mesh_settings_ref` BEFORE doing `super().normalize()`
+        self.points = self.extract_points(logger)
+
+        super().normalize(archive, logger)
+
+
+class KLinePath(Variables):
+    """ """
+
+    k_line_path_ref = Quantity(
+        type=KLinePathSettings,
+        description="""
+        Reference to the `KLinePath(NumericalSettings)` section in the `ModelMethod.KMesh` section. This reference is useful
+        to extract `points` and, then, obtain the shape of `value` of the `PhysicalProperty`.
+        """,
+    )
+
+    points = Quantity(
+        type=np.float64,
+        shape=['n_points', 3],
+        description="""
+        Points along the k-line path in which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def extract_points(self, logger: BoundLogger) -> Optional[list]:
+        """
+        Extract the `points` list from the `k_line_path_ref` pointing to the `KLinePath` section.
+        Args:
+            logger (BoundLogger): The logger to log messages.
+        Returns:
+            (Optional[list]): The `points` list.
+        """
+        if self.k_line_path_ref is not None:
+            return self.k_line_path_ref.points
+        logger.error('`k_line_path_ref` is not defined.')
+        return None
+
+    def normalize(self, archive, logger) -> None:
+        # Extracting `points` from the `k_line_path_ref` BEFORE doing `super().normalize()`
+        self.points = self.extract_points(logger)
+
         super().normalize(archive, logger)

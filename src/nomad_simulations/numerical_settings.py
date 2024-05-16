@@ -18,8 +18,9 @@
 
 import numpy as np
 import pint
+import itertools
 from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Union
 from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
 from nomad.units import ureg
@@ -33,8 +34,8 @@ from nomad.metainfo import (
     JSON,
 )
 
-from .model_system import ModelSystem
-from .utils import is_not_representative
+from nomad_simulations.model_system import ModelSystem
+from nomad_simulations.utils import is_not_representative
 
 
 class NumericalSettings(ArchiveSection):
@@ -56,7 +57,7 @@ class NumericalSettings(ArchiveSection):
         super().normalize(archive, logger)
 
 
-class Mesh(NumericalSettings):
+class Mesh(ArchiveSection):
     """
     A base section used to specify the settings of a sampling mesh. It supports uniformly-spaced
     meshes and symmetry-reduced representations.
@@ -166,88 +167,17 @@ class Mesh(NumericalSettings):
         super().normalize(archive, logger)
 
 
-class LinePathSegment(ArchiveSection):
-    """
-    A base section used to define the settings of a single line path segment within a multidimensional mesh.
-    """
-
-    high_symmetry_path = Quantity(
-        type=str,
-        shape=[2],
-        description="""
-        List of the two high-symmetry points followed in the line path segment, e.g., ['Gamma', 'X']. The
-        point's coordinates can be extracted from the values in the `self.m_parent.high_symmetry_points` JSON quantity.
-        """,
-    )
-
-    n_line_points = Quantity(
-        type=np.int32,
-        description="""
-        Number of points in the line path segment.
-        """,
-    )
-
-    points = Quantity(
-        type=np.float64,
-        shape=['n_line_points', 3],
-        description="""
-        List of all the points in the line path segment in units of the `reciprocal_lattice_vectors`.
-        """,
-    )
-
-    def resolve_points(
-        self,
-        high_symmetry_path: List[str],
-        n_line_points: int,
-        logger: BoundLogger,
-    ) -> Optional[np.ndarray]:
-        """
-        Resolves the `points` of the `LinePathSegment` from the `high_symmetry_path` and the `n_line_points`.
-
-        Args:
-            high_symmetry_path (List[str]): The high-symmetry path of the `LinePathSegment`.
-            n_line_points (int): The number of points in the line path segment.
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[List[np.ndarray]]): The resolved `points` of the `LinePathSegment`.
-        """
-        if high_symmetry_path is None or n_line_points is None:
-            logger.warning(
-                'Could not resolve `LinePathSegment.points` from `LinePathSegment.high_symmetry_path` and `LinePathSegment.n_line_points`.'
-            )
-            return None
-        if self.m_parent.high_symmetry_points is None:
-            logger.warning(
-                'Could not resolve the parent of `LinePathSegment` to extract `LinePathSegment.m_parent.high_symmetry_points`.'
-            )
-            return None
-        start_point = self.m_parent.high_symmetry_points.get(self.high_symmetry_path[0])
-        end_point = self.m_parent.high_symmetry_points.get(self.high_symmetry_path[1])
-        return np.linspace(start_point, end_point, self.n_line_points)
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-        if self.points is None:
-            self.points = self.resolve_points(
-                self.high_symmetry_path, self.n_line_points, logger
-            )
-
-
 class KMesh(Mesh):
     """
     A base section used to specify the settings of a sampling mesh in reciprocal space.
     """
 
-    reciprocal_lattice_vectors = Quantity(
-        type=np.float64,
-        shape=[3, 3],
-        unit='1/meter',
+    label = Quantity(
+        type=MEnum('k-mesh', 'q-mesh'),
+        default='k-mesh',
         description="""
-        Reciprocal lattice vectors of the simulated cell, in Cartesian coordinates and
-        including the $2 pi$ pre-factor. The first index runs over each lattice vector. The
-        second index runs over the $x, y, z$ Cartesian coordinates.
+        Label used to identify the `KMesh` with the reciprocal vector used. In linear response, `k` is used for
+        refering to the wave-vector of electrons, while `q` is used for the scattering effect of the Coulomb potential.
         """,
     )
 
@@ -263,8 +193,8 @@ class KMesh(Mesh):
         type=np.float64,
         shape=['*', 3],
         description="""
-        Full list of the mesh points without any symmetry operations. In the presence of symmetry
-        operations, this quantity is a larger list than `points` (as it will contain all the points in the Brillouin zone).
+        Full list of the mesh points without any symmetry operations. In the presence of symmetry operations, this quantity is a
+        larger list than `points` (as it will contain all the points in the Brillouin zone).
         """,
     )
 
@@ -273,10 +203,10 @@ class KMesh(Mesh):
         description="""
         Dictionary containing the high-symmetry points and their points in terms of `reciprocal_lattice_vectors`.
         E.g., in a cubic lattice:
-
             high_symmetry_points = {
-                'Gamma': [0, 0, 0],
+                'Gamma1': [0, 0, 0],
                 'X': [0.5, 0, 0],
+                ...
             }
         """,
     )
@@ -291,14 +221,30 @@ class KMesh(Mesh):
         """,
     )
 
-    line_path_segments = SubSection(sub_section=LinePathSegment.m_def, repeats=True)
-
     # TODO add extraction of `high_symmetry_points` using BandStructureNormalizer idea (left for later when defining outputs.py)
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
-        # Set the name of the section
-        self.name = self.m_def.name
+    def _check_reciprocal_lattice_vectors(
+        self, reciprocal_lattice_vectors: Optional[pint.Quantity], logger: BoundLogger
+    ) -> bool:
+        """
+        Check if the `reciprocal_lattice_vectors` exist and if they have the same dimensionality as `grid`.
+
+        Args:
+            reciprocal_lattice_vectors (Optional[pint.Quantity]): The reciprocal lattice vectors of the atomic cell.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (bool): True if the `reciprocal_lattice_vectors` exist and have the same dimensionality as `grid`, False otherwise.
+        """
+        if reciprocal_lattice_vectors is None:
+            logger.warning('Could not find `reciprocal_lattice_vectors`.')
+            return False
+        if len(reciprocal_lattice_vectors) != 3 or len(self.grid) != 3:
+            logger.warning(
+                'The `reciprocal_lattice_vectors` and the `grid` should have the same dimensionality.'
+            )
+            return False
+        return True
 
     def resolve_points_and_offset(
         self, logger: BoundLogger
@@ -330,7 +276,7 @@ class KMesh(Mesh):
         return points, offset
 
     def get_k_line_density(
-        self, reciprocal_lattice_vectors: pint.Quantity, logger: BoundLogger
+        self, reciprocal_lattice_vectors: Optional[pint.Quantity], logger: BoundLogger
     ) -> Optional[np.float64]:
         """
         Gets the k-line density of the `KMesh`. This quantity is used as a precision measure
@@ -342,13 +288,8 @@ class KMesh(Mesh):
         Returns:
             (np.float64): The k-line density of the `KMesh`.
         """
-        if reciprocal_lattice_vectors is None:
-            logger.error('No `reciprocal_lattice_vectors` input found.')
-            return None
-        if len(reciprocal_lattice_vectors) != 3 or len(self.grid) != 3:
-            logger.error(
-                'The `reciprocal_lattice_vectors` and the `grid` should have the same dimensionality.'
-            )
+        # Initial check
+        if self._check_reciprocal_lattice_vectors(reciprocal_lattice_vectors, logger):
             return None
 
         reciprocal_lattice_vectors = reciprocal_lattice_vectors.magnitude
@@ -360,7 +301,10 @@ class KMesh(Mesh):
         )
 
     def resolve_k_line_density(
-        self, model_systems: List[ModelSystem], logger: BoundLogger
+        self,
+        model_systems: List[ModelSystem],
+        reciprocal_lattice_vectors: pint.Quantity,
+        logger: BoundLogger,
     ) -> Optional[pint.Quantity]:
         """
         Resolves the `k_line_density` of the `KMesh` from the the list of `ModelSystem`.
@@ -372,6 +316,10 @@ class KMesh(Mesh):
         Returns:
             (Optional[pint.Quantity]): The resolved `k_line_density` of the `KMesh`.
         """
+        # Initial check
+        if self._check_reciprocal_lattice_vectors(reciprocal_lattice_vectors, logger):
+            return None
+
         for model_system in model_systems:
             # General checks to proceed with normalization
             if is_not_representative(model_system, logger):
@@ -381,21 +329,9 @@ class KMesh(Mesh):
                 logger.warning('`ModelSystem.type` is not describing a bulk system.')
                 return None
 
-            atomic_cell = model_system.cell
-            if atomic_cell is None:
-                logger.warning('`ModelSystem.cell` was not found.')
-                return None
-
-            # Set the `reciprocal_lattice_vectors` using ASE
-            ase_atoms = atomic_cell[0].to_ase_atoms(logger)
-            if self.reciprocal_lattice_vectors is None:
-                self.reciprocal_lattice_vectors = (
-                    2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
-                )
-
             # Resolve `k_line_density`
             if k_line_density := self.get_k_line_density(
-                self.reciprocal_lattice_vectors, logger
+                reciprocal_lattice_vectors, logger
             ):
                 return k_line_density * ureg('m')
         return None
@@ -413,32 +349,238 @@ class KMesh(Mesh):
             self.points, self.offset = self.resolve_points_and_offset(logger)
 
         # Calculate k_line_density for data quality measures
-        model_systems = self.m_xpath('m_parent.m_parent.model_system', dict=False)
+        model_systems = self.m_xpath(
+            'm_parent.m_parent.m_parent.model_system', dict=False
+        )
+        reciprocal_lattice_vectors = self.m_xpath(
+            'm_parent.reciprocal_lattice_vectors', dict=False
+        )
         if self.k_line_density is None:
-            self.k_line_density = self.resolve_k_line_density(model_systems, logger)
+            self.k_line_density = self.resolve_k_line_density(
+                model_systems, reciprocal_lattice_vectors, logger
+            )
 
 
-class QuasiparticlesFrequencyMesh(Mesh):
+class KLinePath(ArchiveSection):
     """
-    A base section used to specify the settings of a sampling mesh in the frequency real or imaginary space for quasiparticle calculations.
+    A base section used to define the settings of a k-line path within a multidimensional mesh.
     """
 
-    points = Quantity(
-        type=np.complex128,
-        shape=['n_points', 'dimensionality'],
-        unit='joule',
+    high_symmetry_path = Quantity(
+        type=JSON,
         description="""
-        List of all the points in the mesh in joules.
+        Dictionary containing the high-symmetry points (in units of the `reciprocal_lattice_vectors`) followed in
+        the k-line path. E.g., in a cubic lattice:
+            high_symmetry_path = {
+                'Gamma': [0, 0, 0],
+                'X': [0.5, 0, 0],
+                'Y': [0, 0.5, 0],
+            }
         """,
     )
+
+    n_line_points = Quantity(
+        type=np.int32,
+        description="""
+        Number of points in the k-line path.
+        """,
+    )
+
+    points = Quantity(
+        type=np.float64,
+        shape=['n_line_points', 3],
+        description="""
+        List of all the points in the k-line path in units of the `reciprocal_lattice_vectors`.
+        """,
+    )
+
+    def get_high_symmetry_points_norm(
+        self,
+        reciprocal_lattice_vectors: Optional[pint.Quantity],
+    ) -> Optional[dict]:
+        """
+        Get the high symmetry points norms from the dictionary of vectors in units of the `reciprocal_lattice_vectors`. This
+        function is useful when matching lists of points passed as norms to the high symmetry points in order to resolve
+        `KLinePath.points`
+
+        Args:
+            reciprocal_lattice_vectors (Optional[np.ndarray]): The reciprocal lattice vectors of the atomic cell.
+
+        Returns:
+            (Optional[dict]): The high symmetry points norms.
+        """
+        # Checking if `reciprocal_lattice_vectors` is defined and taking its magnitude to operate
+        if reciprocal_lattice_vectors is None:
+            return None
+        rlv = reciprocal_lattice_vectors.magnitude
+
+        # initializing the norms dictionary
+        high_symmetry_points_norms = {
+            key: 0.0 * reciprocal_lattice_vectors.u
+            for key in self.high_symmetry_path.keys()
+        }
+        # initializing the first point
+        prev_value_norm = 0.0 * reciprocal_lattice_vectors.u
+        prev_value_rlv = np.array([0, 0, 0])
+        for i, (key, value) in enumerate(self.high_symmetry_path.items()):
+            if i == 0:
+                continue
+            value_rlv = value @ rlv
+            value_tot_rlv = value_rlv - prev_value_rlv
+            value_norm = (
+                np.linalg.norm(value_tot_rlv) * reciprocal_lattice_vectors.u
+                + prev_value_norm
+            )
+            high_symmetry_points_norms[key] = value_norm
+
+            # accumulate value vector and norm
+            prev_value_rlv = value_rlv
+            prev_value_norm = value_norm
+        return high_symmetry_points_norms
+
+    def resolve_points(
+        self,
+        points_norm: Union[np.ndarray, List[float]],
+        reciprocal_lattice_vectors: Optional[np.ndarray],
+        logger: BoundLogger,
+    ) -> None:
+        """
+        Resolves the `points` of the `KLinePath` from the `points_norm` and the `reciprocal_lattice_vectors`. This is useful
+        when a list of points norms and the dictionary of high symmetry points are passed to resolve the `KLinePath.points`.
+
+        Args:
+            points_norm (List[float]): List of points norms in the k-line path.
+            reciprocal_lattice_vectors (Optional[np.ndarray]): The reciprocal lattice vectors of the atomic cell.
+            logger (BoundLogger): The logger to log messages.
+        """
+        # General checks for quantities
+        if self.high_symmetry_path is None:
+            logger.warning('Could not resolve `KLinePath.high_symmetry_path`.')
+            return None
+        if reciprocal_lattice_vectors is None:
+            logger.warning(
+                'The `reciprocal_lattice_vectors` are not passed as an input.'
+            )
+            return None
+        # Check if `points_norm` is a list and convert it to a numpy array
+        if isinstance(points_norm, list):
+            points_norm = np.array(points_norm)
+
+        # Define `n_line_points`
+        if self.n_line_points is not None and len(points_norm) != self.n_line_points:
+            logger.info(
+                'The length of the `points` and the stored `n_line_points` do not coincide. We will overwrite `n_line_points` with the new length of `points`.'
+            )
+        self.n_line_points = len(points_norm)
+
+        # Calculate the total norm of the path in order to find the closest indices in the list of `points_norm`
+        high_symmetry_points_norms = self.get_high_symmetry_points_norm(
+            reciprocal_lattice_vectors
+        )
+        closest_indices = {}
+        for key, norm in high_symmetry_points_norms.items():
+            closest_idx = (np.abs(points_norm - norm.magnitude)).argmin()
+            closest_indices[key] = closest_idx
+
+        # Append the data in the new `points` in units of the `reciprocal_lattice_vectors`
+        points = []
+        for i, (key, value) in enumerate(self.high_symmetry_path.items()):
+            if i == 0:
+                prev_value = value
+                prev_index = closest_indices[key]
+                continue
+            elif i == len(self.high_symmetry_path) - 1:
+                points.append(
+                    np.linspace(
+                        prev_value, value, num=closest_indices[key] - prev_index + 1
+                    )
+                )
+            else:
+                # pop the last element as it appears repeated in the next segment
+                points.append(
+                    np.linspace(
+                        prev_value, value, num=closest_indices[key] - prev_index + 1
+                    )[:-1]
+                )
+            prev_value = value
+            prev_index = closest_indices[key]
+        new_points = list(itertools.chain(*points))
+        # And store this information in the `points` quantity
+        if self.points is not None:
+            logger.info('Overwriting `KLinePath.points` with the resolved points.')
+        self.points = new_points
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class KSpace(NumericalSettings):
+    """
+    A base section used to specify the settings of the k-space. This section contains two main sub-sections,
+    depending on the k-space sampling: `k_mesh` or `k_line_path`.
+    """
+
+    reciprocal_lattice_vectors = Quantity(
+        type=np.float64,
+        shape=[3, 3],
+        unit='1/meter',
+        description="""
+        Reciprocal lattice vectors of the simulated cell, in Cartesian coordinates and
+        including the $2 pi$ pre-factor. The first index runs over each lattice vector. The
+        second index runs over the $x, y, z$ Cartesian coordinates.
+        """,
+    )
+
+    k_mesh = SubSection(sub_section=KMesh.m_def, repeats=True)
+
+    k_line_path = SubSection(sub_section=KLinePath.m_def)
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
+    def resolve_reciprocal_lattice_vectors(
+        self, model_systems: List[ModelSystem], logger: BoundLogger
+    ) -> Optional[pint.Quantity]:
+        """
+        Resolve the `reciprocal_lattice_vectors` of the `KSpace` from the representative `ModelSystem` section.
+
+        Args:
+            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[pint.Quantity]): The resolved `reciprocal_lattice_vectors` of the `KSpace`.
+        """
+        for model_system in model_systems:
+            # General checks to proceed with normalization
+            if is_not_representative(model_system, logger):
+                return None
+            # TODO extend this for other dimensions (@ndaelman-hu)
+            if model_system.type != 'bulk':
+                logger.warning('`ModelSystem.type` is not describing a bulk system.')
+                return None
+
+            atomic_cell = model_system.cell
+            if atomic_cell is None:
+                logger.warning('`ModelSystem.cell` was not found.')
+                return None
+
+            # Set the `reciprocal_lattice_vectors` using ASE
+            ase_atoms = atomic_cell[0].to_ase_atoms(logger)
+            return 2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
+        return None
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # Resolve `reciprocal_lattice_vectors` from the `ModelSystem` ASE object
+        model_systems = self.m_xpath('m_parent.m_parent.model_system', dict=False)
+        if self.reciprocal_lattice_vectors is None:
+            self.reciprocal_lattice_vectors = self.resolve_reciprocal_lattice_vectors(
+                model_systems, logger
+            )
 
 
 class SelfConsistency(NumericalSettings):
