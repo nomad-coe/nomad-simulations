@@ -235,7 +235,7 @@ def generate_k_line_path(
 def generate_k_space_simulation(
     system_type: str = 'bulk',
     is_representative: bool = True,
-    reciprocal_lattice_vectors: Optional[List[List[int]]] = [
+    reciprocal_lattice_vectors: Optional[List[List[float]]] = [
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
