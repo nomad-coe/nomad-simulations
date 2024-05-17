@@ -650,8 +650,7 @@ class AtomicCell(Cell):
         """,
     )
 
-
-def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
+    def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
         section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
@@ -693,7 +692,6 @@ def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
             return None
 
         return ase_atoms
-
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
@@ -933,13 +931,13 @@ class Symmetry(ArchiveSection):
         symmetry['hall_symbol'] = symmetry_analyzer.get_hall_symbol()
         symmetry['point_group_symbol'] = symmetry_analyzer.get_point_group()
         symmetry['space_group_number'] = symmetry_analyzer.get_space_group_number()
-        symmetry['space_group_symbol'] = (
-            symmetry_analyzer.get_space_group_international_short()
-        )
+        symmetry[
+            'space_group_symbol'
+        ] = symmetry_analyzer.get_space_group_international_short()
         symmetry['origin_shift'] = symmetry_analyzer._get_spglib_origin_shift()
-        symmetry['transformation_matrix'] = (
-            symmetry_analyzer._get_spglib_transformation_matrix()
-        )
+        symmetry[
+            'transformation_matrix'
+        ] = symmetry_analyzer._get_spglib_transformation_matrix()
 
         # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
         original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()
