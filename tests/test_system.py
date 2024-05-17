@@ -26,7 +26,6 @@ from . import logger
 from nomad.units import ureg
 from nomad_simulations.model_system import (
     AtomicCell,
-    AtomsState,
     Distribution,
     DistributionHistogram,
     DistributionFactory,
@@ -146,7 +145,7 @@ def test_distribution(
         [ethane, ['C', 'C'], np.array([]), {}],  # empty bins
         [ethane, ['C', 'C'], np.arange(0, 2, 0.01), {1.53: 1}],
         [ethane, ['C', 'H'], np.arange(0, 2, 0.01), {0.96: 2, 1.09: 1}],
-        [ethane, ['C', 'C', 'H'], np.arange(0, 180, 1), {111: 1, 113: 2}],
+        [ethane, ['C', 'H', 'C'], np.arange(0, 180, 1), {111: 1, 113: 2}],
         # [ethane, ['C', 'H', 'H'], np.arange(0, 180, 1), {120: 1}],
     ],  # note that the exact bin is hard to pin down: may deviate by 1 index
 )
@@ -180,4 +179,40 @@ def test_distribution_histogram(
         assert dh.frequency[np.where(dh.bins.magnitude == bin)] == count
 
 
-# ! add normalization test for `GeometryDistribution`, i.e. `dh.produce_nomad_distribution().normalize(None, None)`
+@pytest.mark.parametrize(
+    'elements',
+    [['C', 'C'], ['C', 'H'], ['C', 'H', 'C'], ['C', 'H', 'H']],
+)
+def test_nomad_distribution(elements):
+    """
+    Check the instantiation of `GeometryDistribution`. via `DistributionHistogram`.
+    Specifically, check sub-typing, value storage, and reporting of the structure.
+    """
+    # define variables
+    gd = 'GeometryDistribution'
+    if len(elements) == 2:
+        subtype = 'Distance'
+        bins = np.arange(0, 2, 0.01)
+        units = ureg.angstrom
+    else:
+        subtype = 'Angle'
+        bins = np.arange(0, 180, 0.001)
+        units = ureg.degrees
+
+    # instantiate objects
+    dh = DistributionHistogram(
+        elements,
+        subtype.lower() + 's',
+        np.random.rand(len(bins)) * units,
+        bins,
+    )
+    nomad_dh = dh.produce_nomad_distribution().normalize(None, None)
+
+    # test
+    assert nomad_dh.__class__.__name__ == subtype + gd
+    assert np.all(dh.frequency == nomad_dh.frequency)
+    assert np.allclose(dh.bins, nomad_dh.bins.to(units), atol=0.01)
+
+    assert nomad_dh.extremity_atom_labels == [elements[0], elements[-1]]
+    if subtype == 'Angle':
+        assert nomad_dh.central_atom_labels == [elements[1]]
