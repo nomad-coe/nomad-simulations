@@ -248,7 +248,7 @@ class Cell(GeometricSpace):
         """,
     )
 
-    n_cell_points = Quantity(
+    n_objects = Quantity(
         type=np.int32,
         description="""
         Number of cell points.
@@ -263,8 +263,7 @@ class Cell(GeometricSpace):
         description="""
         Positions of all the atoms in absolute, Cartesian coordinates.
         """,
-    )  # ? @JosePizarro: The description is already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
-    # ! @JosePizarro: the `positions` here has a different meaning than in `AtomicCell`
+    )
 
     velocities = Quantity(
         type=np.float64,
@@ -274,7 +273,7 @@ class Cell(GeometricSpace):
         Velocities of the atoms defined with respect to absolute, Cartesian coordinate frame
         centered at the respective atom position.
         """,
-    )  # ? @JosePizarro: The description already referencing to atoms: shouldn't it part of `AtomicCell` then? Or maybe we use the term "building block"?
+    )
 
     # box
     lattice_vectors = Quantity(
@@ -600,23 +599,10 @@ class AtomicCell(Cell):
         repeats=True,
     )
 
-    n_atoms = Quantity(
-        type=np.int32,
-        description="""
-        Number of atoms in the atomic cell.
-        """,
-    )
-
-    positions = Cell.positions.m_copy()
-    positions.shape = ['n_atoms', 3]  # check the appropriate shape
-
-    velocities = Cell.velocities.m_copy()
-    velocities.shape = ['n_atoms', 3]  # check the appropriate shape
-
     # symmetry
     equivalent_atoms = Quantity(
         type=np.int32,
-        shape=['n_atoms'],
+        shape=['n_objects'],
         description="""
         List of equivalent atoms as defined in `atoms`. If no equivalent atoms are found,
         then the list is simply the index of each element, e.g.:
@@ -628,7 +614,7 @@ class AtomicCell(Cell):
     # ! improve description and clarify whether this belongs to `Symmetry` with @lauri-codes
     wyckoff_letters = Quantity(
         type=str,
-        shape=['n_atoms'],
+        shape=['n_objects'],
         description="""
         Wyckoff letters associated with each atom.
         """,
