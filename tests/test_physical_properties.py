@@ -19,10 +19,11 @@
 import numpy as np
 import pytest
 
-from . import logger
-
 from nomad.units import ureg
+from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
+
+from . import logger
 
 from nomad_simulations.variables import Variables
 from nomad_simulations.physical_property import PhysicalProperty
@@ -124,6 +125,22 @@ class TestPhysicalProperty:
             == f'The shape of the stored `value` {wrong_shape} does not match the full shape {physical_property.full_shape} extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
         )
 
+    def test_setattr_none(self):
+        """
+        Test the `__setattr__` method when setting the `value` to `None`.
+        """
+        physical_property = PhysicalProperty(
+            source='simulation',
+            rank=[],
+            variables=[],
+        )
+        with pytest.raises(ValueError) as exc_info:
+            physical_property.value = None
+        assert (
+            str(exc_info.value)
+            == f'The value of the physical property {physical_property.name} is None. Please provide a finite valid value.'
+        )
+
     def test_is_derived(self):
         """
         Test the `normalize` and `_is_derived` methods.
@@ -131,7 +148,7 @@ class TestPhysicalProperty:
         # Testing a directly parsed physical property
         not_derived_physical_property = PhysicalProperty(source='simulation')
         assert not_derived_physical_property._is_derived() is False
-        not_derived_physical_property.normalize(None, logger)
+        not_derived_physical_property.normalize(EntryArchive(), logger)
         assert not_derived_physical_property.is_derived is False
         # Testing a derived physical property
         derived_physical_property = PhysicalProperty(
@@ -139,5 +156,5 @@ class TestPhysicalProperty:
             physical_property_ref=not_derived_physical_property,
         )
         assert derived_physical_property._is_derived() is True
-        derived_physical_property.normalize(None, logger)
+        derived_physical_property.normalize(EntryArchive(), logger)
         assert derived_physical_property.is_derived is True

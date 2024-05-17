@@ -55,38 +55,35 @@ class Variables(ArchiveSection):
 
     # grid_points_error = Quantity()
 
-    def get_n_grid_points(
-        self, grid_points: Optional[list], logger: BoundLogger
-    ) -> Optional[int]:
+    def get_n_grid_points(self, logger: BoundLogger) -> Optional[int]:
         """
         Get the number of grid points from the `grid_points` list. If `n_grid_points` is previously defined
         and does not coincide with the length of `grid_points`, a warning is issued and this function re-assigns `n_grid_points`
         as the length of `grid_points`.
 
         Args:
-            grid_points (Optional[list]): The grid points in which the variable is discretized.
             logger (BoundLogger): The logger to log messages.
 
         Returns:
             (Optional[int]): The number of grid points.
         """
-        if grid_points is not None and len(grid_points) > 0:
+        if self.grid_points is not None and len(self.grid_points) > 0:
             if (
-                self.n_grid_points != len(grid_points)
+                self.n_grid_points != len(self.grid_points)
                 and self.n_grid_points is not None
             ):
                 logger.warning(
                     f'The stored `n_grid_points`, {self.n_grid_points}, does not coincide with the length of `grid_points`, '
-                    f'{len(grid_points)}. We will re-assign `n_grid_points` as the length of `grid_points`.'
+                    f'{len(self.grid_points)}. We will re-assign `n_grid_points` as the length of `grid_points`.'
                 )
-            return len(grid_points)
+            return len(self.grid_points)
         return self.n_grid_points
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # Setting `n_grid_points` if these are not defined
-        self.n_grid_points = self.get_n_grid_points(self.grid_points, logger)
+        self.n_grid_points = self.get_n_grid_points(logger)
 
 
 class Temperature(Variables):
@@ -101,7 +98,9 @@ class Temperature(Variables):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
@@ -109,7 +108,8 @@ class Temperature(Variables):
         super().normalize(archive, logger)
 
 
-class Energy(Variables):
+# ! This needs to be fixed as it gives errors when running normalizers with conflicting names (ask Area D)
+class Energy2(Variables):
     """ """
 
     grid_points = Quantity(
@@ -121,7 +121,33 @@ class Energy(Variables):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class WignerSeitz(Variables):
+    """
+    Wigner-Seitz points in which the real space is discretized. This variable is used to define `HoppingMatrix(PhysicalProperty)` and
+    other inter-cell properties. See, e.g., https://en.wikipedia.org/wiki/Wigner–Seitz_cell.
+    """
+
+    grid_points = Quantity(
+        type=np.float64,
+        shape=['n_grid_points', 3],
+        description="""
+        Wigner-Seitz points with respect to the origin cell, (0, 0, 0). These are 3D arrays stored in fractional coordinates.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 

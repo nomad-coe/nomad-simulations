@@ -16,47 +16,25 @@
 # limitations under the License.
 #
 
-import numpy as np
 from structlog.stdlib import BoundLogger
 from typing import Optional
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
+from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from .model_system import ModelSystem
 from .physical_property import PhysicalProperty
 from .numerical_settings import SelfConsistency
-
-
-class ElectronicBandGap(PhysicalProperty):
-    """ """
-
-    rank = []
-
-    type = Quantity(
-        type=MEnum('direct', 'indirect'),
-        description="""
-        Type categorization of the electronic band gap. The electronic band gap can be `'direct'` or `'indirect'`.
-        """,
-    )
-
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The value of the electronic band gap.
-        """,
-    )
-
-    # TODO add more functionalities here
-
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
-        self.name = self.m_def.name
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
+from .properties import (
+    FermiLevel,
+    ChemicalPotential,
+    CrystalFieldSplitting,
+    HoppingMatrix,
+    ElectronicBandGap,
+    ElectronicDensityOfStates,
+    XASSpectra,
+)
 
 
 class Outputs(ArchiveSection):
@@ -81,24 +59,71 @@ class Outputs(ArchiveSection):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    custom_physical_property = SubSection(
-        sub_section=PhysicalProperty.m_def,
-        repeats=True,
-        description="""
-        A custom physical property used to store properties not yet covered by the NOMAD schema.
-        """,
-    )
-
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # List of properties
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+    fermi_level = SubSection(sub_section=FermiLevel.m_def, repeats=True)
+
+    chemical_potential = SubSection(sub_section=ChemicalPotential.m_def, repeats=True)
+
+    crystal_field_splitting = SubSection(
+        sub_section=CrystalFieldSplitting.m_def, repeats=True
+    )
+
+    hopping_matrix = SubSection(sub_section=HoppingMatrix.m_def, repeats=True)
+
     electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
+
+    electronic_dos = SubSection(
+        sub_section=ElectronicDensityOfStates.m_def, repeats=True
+    )
+
+    xas_spectra = SubSection(sub_section=XASSpectra.m_def, repeats=True)
+
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+    # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+    def extract_spin_polarized_property(self, property_name: str) -> list:
+        """
+        Extracts the spin-polarized properties if present from the property name and returns them as a list of two elements in
+        which each element refers to each `spin_channel`. If the return list is empty, it means that the simulation is not
+        spin-polarized (i.e., `spin_channel` is not defined).
+
+        Args:
+            property_name (str): The name of the property to be extracted.
+
+        Returns:
+            (list): The list of spin-polarized properties.
+        """
+        spin_polarized_properties = []
+        properties = getattr(self, property_name)
+        for prop in properties:
+            if prop.spin_channel is None:
+                continue
+            spin_polarized_properties.append(prop)
+        return spin_polarized_properties
+
+    def set_model_system_ref(self) -> Optional[ModelSystem]:
+        """
+        Set the reference to the last ModelSystem if this is not set in the output. This is only
+        valid if there is only one ModelSystem in the parent section.
+
+        Returns:
+            (Optional[ModelSystem]): The reference to the last ModelSystem.
+        """
+        if self.m_parent is not None:
+            model_systems = self.m_parent.model_system
+            if model_systems is not None and len(model_systems) == 1:
+                return model_systems[-1]
+        return None
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Resolve if the output property `is_derived` or not.
-        # self.is_derived = self.resolve_is_derived(self.outputs_ref)
+        # Set ref to the last ModelSystem if this is not set in the output
+        if self.model_system_ref is None:
+            self.model_system_ref = self.set_model_system_ref()
 
 
 class SCFOutputs(Outputs):
