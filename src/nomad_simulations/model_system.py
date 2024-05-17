@@ -453,8 +453,8 @@ class DistributionHistogram:
         self.combo = combo
         self.type = type
 
-        counts, self.bins = np.histogram(distribution_values.magnitude, bins=bins)
-        self.bins *= distribution_values.u
+        counts, _bins = np.histogram(distribution_values.magnitude, bins=bins)
+        self.bins = _bins * distribution_values.u
         # normalize so the minimum is 1
         if len(nonzero_counts := counts[np.where(counts > 0)]):
             self.frequency = counts / np.min(nonzero_counts)
