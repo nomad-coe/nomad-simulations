@@ -652,47 +652,24 @@ class AtomicCell(Cell):
         """,
     )
 
-    def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
+    @check_attributes(
+        attributes=[
+            'atoms_state',
+            'lattice_vectors',
+            'positions',
+            'periodic_boundary_conditions',
+        ],
+    )
+    def to_ase_atoms(self):
         """
-        Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
-        section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[ase.Atoms]): The ASE Atoms object with the basic information from the `AtomicCell`.
+        Generate an `ase.Atoms` object from `AtomicCell`.
         """
-        # Initialize ase.Atoms object with labels
-        atoms_labels = [atom_state.chemical_symbol for atom_state in self.atoms_state]
-        ase_atoms = ase.Atoms(symbols=atoms_labels)
-
-        # PBC
-        if self.periodic_boundary_conditions is None:
-            logger.info(
-                'Could not find `AtomicCell.periodic_boundary_conditions`. They will be set to [False, False, False].'
-            )
-            self.periodic_boundary_conditions = [False, False, False]
-        ase_atoms.set_pbc(self.periodic_boundary_conditions)
-
-        # Lattice vectors
-        if self.lattice_vectors is not None:
-            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
-        else:
-            logger.info('Could not find `AtomicCell.lattice_vectors`.')
-
-        # Positions
-        if self.positions is not None:
-            if len(self.positions) != len(self.atoms_state):
-                logger.error(
-                    'Length of `AtomicCell.positions` does not coincide with the length of the `AtomicCell.atoms_state`.'
-                )
-                return None
-            ase_atoms.set_positions(self.positions.to('angstrom').magnitude)
-        else:
-            logger.warning('Could not find `AtomicCell.positions`.')
-            return None
-
+        ase_atoms = ase.Atoms(
+            symbols=[atom_state.chemical_symbol for atom_state in self.atoms_state],
+            pbc=self.periodic_boundary_conditions,
+            positions=self.positions.to('angstrom').magnitude,
+            cell=self.lattice_vectors.to('angstrom').magnitude,
+        )
         return ase_atoms
 
     def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
