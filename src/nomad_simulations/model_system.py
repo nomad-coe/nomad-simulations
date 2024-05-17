@@ -255,14 +255,6 @@ class Cell(GeometricSpace):
         """,
     )
 
-    # topology
-    bond_list = Quantity(
-        type=np.int32,
-        description="""
-        List of index pairs corresponding to (covalent) bonds, e.g., as defined by a force field.
-        """,
-    )  # ? @JosephRudzinski: move position?
-
     # geometry and analysis
     positions = Quantity(
         type=np.float64,
@@ -602,6 +594,7 @@ class AtomicCell(Cell):
         repeats=True,
     )
 
+    # geometry
     geometry_distributions = SubSection(
         sub_section=GeometryDistribution.m_def,
         repeats=True,
@@ -620,6 +613,7 @@ class AtomicCell(Cell):
     velocities = Cell.velocities.m_copy()
     velocities.shape = ['n_atoms', 3]  # check the appropriate shape
 
+    # symmetry
     equivalent_atoms = Quantity(
         type=np.int32,
         shape=['n_atoms'],
@@ -647,6 +641,14 @@ class AtomicCell(Cell):
         description="""
         Cutoff radius within which atomic geometries are analyzed.
         Defaults to 3x the covalent radius denoted by the [`ase` package](https://wiki.fysik.dtu.dk/ase/ase/neighborlist.html).
+        """,
+    )
+
+    # topology
+    bond_list = Quantity(
+        type=np.int32,
+        description="""
+        List of index pairs corresponding to (covalent) bonds, e.g., as defined by a force field.
         """,
     )
 
