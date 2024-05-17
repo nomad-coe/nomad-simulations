@@ -68,17 +68,17 @@ def setup_neighbor_list(atomic_cell: ase.Atoms):
         [
             ethane,
             [
-                ('C', 'C'),
-                ('C', 'H'),
-                ('H', 'H'),
+                ['C', 'C'],
+                ['C', 'H'],
+                ['H', 'H'],
             ],
             [
-                ('C', 'C', 'C'),
-                ('C', 'C', 'H'),
-                ('C', 'H', 'H'),
-                ('H', 'C', 'C'),
-                ('H', 'C', 'H'),
-                ('H', 'H', 'H'),
+                ['C', 'C', 'C'],
+                ['C', 'C', 'H'],
+                ['H', 'C', 'H'],
+                ['C', 'H', 'C'],
+                ['C', 'H', 'H'],
+                ['H', 'H', 'H'],
             ],
         ]
     ],
@@ -145,8 +145,8 @@ def test_distribution(
         [ethane, ['C', 'C'], np.array([]), {}],  # empty bins
         [ethane, ['C', 'C'], np.arange(0, 2, 0.01), {1.53: 1}],
         [ethane, ['C', 'H'], np.arange(0, 2, 0.01), {0.96: 2, 1.09: 1}],
-        [ethane, ['C', 'H', 'C'], np.arange(0, 180, 1), {111: 1, 113: 2}],
-        # [ethane, ['C', 'H', 'H'], np.arange(0, 180, 1), {120: 1}],
+        [ethane, ['C', 'C', 'H'], np.arange(0, 180, 1), {111: 1, 113: 2}],
+        [ethane, ['H', 'C', 'H'], np.arange(0, 180, 1), {131: 1}],  # why 131?
     ],  # note that the exact bin is hard to pin down: may deviate by 1 index
 )
 def test_distribution_histogram(
@@ -181,7 +181,7 @@ def test_distribution_histogram(
 
 @pytest.mark.parametrize(
     'elements',
-    [['C', 'C'], ['C', 'H'], ['C', 'H', 'C'], ['C', 'H', 'H']],
+    [['C', 'C'], ['C', 'H'], ['C', 'C', 'H'], ['C', 'H', 'H']],
 )
 def test_nomad_distribution(elements):
     """
