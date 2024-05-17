@@ -394,7 +394,7 @@ class AngleGeometryDistribution(GeometryDistribution):
     )
 
     bins = GeometryDistribution.bins.m_copy()
-    bins.unit = 'degrees'
+    bins.unit = 'radian'
 
     def normalize(self, archive, logger: BoundLogger):
         super().normalize(archive, logger)
@@ -424,7 +424,7 @@ class DihedralGeometryDistribution(GeometryDistribution):
     )  # ? should we enforce this algorithmically. this also has implications for the distribution
 
     bins = GeometryDistribution.bins.m_copy()
-    bins.unit = 'degrees'
+    bins.unit = 'radian'
 
     def normalize(self, archive, logger: BoundLogger):
         super().normalize(archive, logger)
