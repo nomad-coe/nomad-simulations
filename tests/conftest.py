@@ -246,17 +246,24 @@ def generate_k_space_simulation(
         'Y': [0, 0.5, 0],
         'Gamma2': [0, 0, 0],
     },
+    grid=[6, 6, 6],
 ) -> Simulation:
     model_system = generate_model_system(
         system_type=system_type, is_representative=is_representative
     )
     k_space = KSpace()
+    # adding `reciprocal_lattice_vectors`
     if reciprocal_lattice_vectors is not None:
         k_space.reciprocal_lattice_vectors = (
             2 * np.pi * np.array(reciprocal_lattice_vectors) / ureg.angstrom
         )
+    # adding `KMeshSettings
+    k_mesh = KMeshSettings(grid=grid)
+    k_space.k_mesh.append(k_mesh)
+    # adding `KLinePathSettings`
     k_line_path = KLinePathSettings(high_symmetry_path=high_symmetry_path)
     k_space.k_line_path = k_line_path
+    # appending `KSpace` to `ModelMethod.numerical_settings`
     model_method = ModelMethod()
     model_method.numerical_settings.append(k_space)
     return generate_simulation(model_method=model_method, model_system=model_system)

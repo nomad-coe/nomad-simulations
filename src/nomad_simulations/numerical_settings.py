@@ -237,7 +237,12 @@ class KMesh(Mesh):
             (bool): True if the `reciprocal_lattice_vectors` exist and have the same dimensionality as `grid`, False otherwise.
         """
         if reciprocal_lattice_vectors is None:
-            logger.warning('Could not find `reciprocal_lattice_vectors`.')
+            logger.warning(
+                'Could not find `reciprocal_lattice_vectors` from parent `KSpace`.'
+            )
+            return False
+        if self.grid is None:
+            logger.warning('Could not find `KMesh.grid`.')
             return False
         if len(reciprocal_lattice_vectors) != 3 or len(self.grid) != 3:
             logger.warning(
@@ -258,6 +263,10 @@ class KMesh(Mesh):
         Returns:
             (Optional[List[pint.Quantity, pint.Quantity]]): The resolved `points` and `offset` of the `KMesh`.
         """
+        if self.grid is None:
+            logger.warning('Could not find `KMesh.grid`.')
+            return None, None
+
         points = None
         offset = None
         if self.center == 'Gamma-centered':
@@ -272,7 +281,8 @@ class KMesh(Mesh):
                 logger.warning(
                     'Could not resolve `KMesh.points` and `KMesh.offset` from `KMesh.grid`. ASE `monkhorst_pack` failed.'
                 )
-                return None  # this is a quick workaround: k_mesh.grid should be symmetry reduced
+                # this is a quick workaround: k_mesh.grid should be symmetry reduced
+                return None, None
         return points, offset
 
     def get_k_line_density(
@@ -289,16 +299,19 @@ class KMesh(Mesh):
             (np.float64): The k-line density of the `KMesh`.
         """
         # Initial check
-        if self._check_reciprocal_lattice_vectors(reciprocal_lattice_vectors, logger):
+        if not self._check_reciprocal_lattice_vectors(
+            reciprocal_lattice_vectors, logger
+        ):
             return None
 
-        reciprocal_lattice_vectors = reciprocal_lattice_vectors.magnitude
-        return min(
+        rlv = reciprocal_lattice_vectors.magnitude
+        k_line_density = min(
             [
                 k_point / (np.linalg.norm(k_vector))
-                for k_vector, k_point in zip(reciprocal_lattice_vectors, self.grid)
+                for k_vector, k_point in zip(rlv, self.grid)
             ]
         )
+        return k_line_density / reciprocal_lattice_vectors.u
 
     def resolve_k_line_density(
         self,
@@ -317,7 +330,9 @@ class KMesh(Mesh):
             (Optional[pint.Quantity]): The resolved `k_line_density` of the `KMesh`.
         """
         # Initial check
-        if self._check_reciprocal_lattice_vectors(reciprocal_lattice_vectors, logger):
+        if not self._check_reciprocal_lattice_vectors(
+            reciprocal_lattice_vectors, logger
+        ):
             return None
 
         for model_system in model_systems:
@@ -333,7 +348,7 @@ class KMesh(Mesh):
             if k_line_density := self.get_k_line_density(
                 reciprocal_lattice_vectors, logger
             ):
-                return k_line_density * ureg('m')
+                return k_line_density
         return None
 
     def normalize(self, archive, logger) -> None:

@@ -23,7 +23,7 @@ from typing import Optional, List
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.numerical_settings import KSpace, KMesh, KLinePath
+from nomad_simulations.numerical_settings import KMesh, KLinePath
 
 from . import logger
 from .conftest import generate_k_space_simulation
@@ -76,6 +76,160 @@ class TestKSpace:
 
 
 # TODO add testing for KMesh
+class TestKMesh:
+    """
+    Test the `KMesh` class defined in `numerical_settings.py`.
+    """
+
+    @pytest.mark.parametrize(
+        'center, grid, result_points, result_offset',
+        [
+            # No `center` and `grid`
+            (None, None, None, None),
+            # No `grid`
+            ('Gamma-centered', None, None, None),
+            ('Monkhorst-Pack', None, None, None),
+            # `center` is `'Gamma-centered'`
+            (
+                'Gamma-centered',
+                [2, 2, 2],
+                [[0.0, 1.0, 0.0, 1.0, 0.0, 1.0]],  # ! this result is weird @ndaelman-hu
+                [0.0, 0.0, 0.0],
+            ),
+            # `center` is `'Monkhorst-Pack'`
+            (
+                'Monkhorst-Pack',
+                [2, 2, 2],
+                [
+                    [-0.25, -0.25, -0.25],
+                    [-0.25, -0.25, 0.25],
+                    [-0.25, 0.25, -0.25],
+                    [-0.25, 0.25, 0.25],
+                    [0.25, -0.25, -0.25],
+                    [0.25, -0.25, 0.25],
+                    [0.25, 0.25, -0.25],
+                    [0.25, 0.25, 0.25],
+                ],
+                [0.0, 0.0, 0.0],
+            ),
+            # Invalid `grid`
+            ('Monkhorst-Pack', [-2, 2, 2], None, None),
+        ],
+    )
+    def test_resolve_points_and_offset(
+        self, center, grid, result_points, result_offset
+    ):
+        """
+        Test the `resolve_points_and_offset` method.
+        """
+        k_mesh = KMesh(center=center)
+        if grid is not None:
+            k_mesh.grid = grid
+        points, offset = k_mesh.resolve_points_and_offset(logger)
+        if points is not None:
+            assert np.allclose(points, result_points)
+        else:
+            assert points == result_points
+        if offset is not None:
+            assert np.allclose(offset, result_offset)
+        else:
+            assert offset == result_offset
+
+    @pytest.mark.parametrize(
+        'system_type, is_representative, grid, reciprocal_lattice_vectors, result_check, result_get_k_line_density, result_k_line_density',
+        [
+            # No `grid` and `reciprocal_lattice_vectors`
+            ('bulk', False, None, None, False, None, None),
+            # No `reciprocal_lattice_vectors`
+            ('bulk', False, [6, 6, 6], None, False, None, None),
+            # No `grid`
+            ('bulk', False, None, [[1, 0, 0], [0, 1, 0], [0, 0, 1]], False, None, None),
+            # `is_representative` set to False
+            (
+                'bulk',
+                False,
+                [6, 6, 6],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                True,
+                0.954929658,
+                None,
+            ),
+            # `system_type` is not 'bulk'
+            (
+                'atom',
+                True,
+                [6, 6, 6],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                True,
+                0.954929658,
+                None,
+            ),
+            # All parameters are set
+            (
+                'bulk',
+                True,
+                [6, 6, 6],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                True,
+                0.954929658,
+                0.954929658,
+            ),
+        ],
+    )
+    def test_resolve_k_line_density(
+        self,
+        system_type: Optional[str],
+        is_representative: bool,
+        grid: Optional[List[int]],
+        reciprocal_lattice_vectors: Optional[List[List[float]]],
+        result_check: bool,
+        result_get_k_line_density: Optional[float],
+        result_k_line_density: Optional[float],
+    ):
+        """
+        Test the `resolve_k_line_density` and `get_k_line_density` methods, as well as the `_check_reciprocal_lattice_vectors`
+        private method.
+        """
+        simulation = generate_k_space_simulation(
+            system_type=system_type,
+            is_representative=is_representative,
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+            grid=grid,
+        )
+        k_space = simulation.model_method[0].numerical_settings[0]
+        reciprocal_lattice_vectors = k_space.reciprocal_lattice_vectors
+        k_mesh = k_space.k_mesh[0]
+        model_systems = simulation.model_system
+        # Checking the reciprocal lattice vectors
+        assert (
+            k_mesh._check_reciprocal_lattice_vectors(
+                reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
+            )
+            == result_check
+        )
+        # Applying method `get_k_line_density`
+        get_k_line_density_value = k_mesh.get_k_line_density(
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
+        )
+        if get_k_line_density_value is not None:
+            assert np.isclose(
+                get_k_line_density_value.to('angstrom').magnitude,
+                result_get_k_line_density,
+            )
+        else:
+            assert get_k_line_density_value == result_get_k_line_density
+        # Applying method `resolve_k_line_density`
+        k_line_density = k_mesh.resolve_k_line_density(
+            model_systems=model_systems,
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+            logger=logger,
+        )
+        if k_line_density is not None:
+            assert np.isclose(
+                k_line_density.to('angstrom').magnitude, result_k_line_density
+            )
+        else:
+            assert k_line_density == result_k_line_density
 
 
 class TestKLinePath:
