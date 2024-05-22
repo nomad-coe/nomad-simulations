@@ -4,17 +4,16 @@ NOMAD is an open source project that warmly welcomes community projects, contrib
 
 You can reach us by different channels. You can send as directly an email to the main contributors list:
 
-!!! info "Main contributors"
-    | Name | E-mail     | Topics |
-    |------|------------|--------|
-    | Dr. Nathan Daelman                    | [nathan.daelman@physik.hu-berlin.de](mailto:nathan.daelman@physik.hu-berlin.de)       | DFT, parsers, normalizers  |
-    | Dr. Alvin Noe Ladines                 | [alvin.noe.ladines@physik.hu-berlin.de](mailto:alvin.noe.ladines@physik.hu-berlin.de) | Parsers, workflows           |
-    | Dr. José M. Pizarro                   | [jose.pizarro@physik.hu-berlin.de](mailto:jose.pizarro@physik.hu-berlin.de)                 | GW, DMFT, BSE, parsers, workflows, normalizers        |
-    | Dr. Joseph F. Rudzinski (**Coordinator**) | [joseph.rudzinski@physik.hu-berlin.de](mailto:joseph.rudzinski@physik.hu-berlin.de)   | MD, parsers, workflows, normalizers                          |
+| Name | E-mail     | Topics | Github profiles |
+|------|------------|--------|-----------------|
+| Dr. Nathan Daelman | [nathan.daelman@physik.hu-berlin.de](mailto:nathan.daelman@physik.hu-berlin.de) | DFT, Precision | [@ndaelman-hu](https://github.com/ndaelman-hu) |
+| Dr. Bernadette Mohr | [mohrbern@physik.hu-berlin.de](mailto:mohrbern@physik.hu-berlin.de) | MD, FF | [@Bernadette-Mohr](https://github.com/Bernadette-Mohr) |
+| Dr. José M. Pizarro | [jose.pizarro@physik.hu-berlin.de](mailto:jose.pizarro@physik.hu-berlin.de) | GW, DMFT, BSE | [@JosePizarro3](https://github.com/JosePizarro3) |
+| Dr. Joseph F. Rudzinski (**Coordinator**) | [joseph.rudzinski@physik.hu-berlin.de](mailto:joseph.rudzinski@physik.hu-berlin.de) | General | [@JFRudzinski](https://github.com/JFRudzinski) |
 
 
 Alternatively, you can also:
 
-- Open an issue in the [general NOMAD Github project](https://github.com/nomad-coe/nomad), or in one of the [sub-projects](https://github.com/nomad-coe/nomad/tree/develop/dependencies/parsers) related with specific parsers. Our Github profile tags are [@ndaelman-hu](https://github.com/ndaelman-hu), [@ladinesa](https://github.com/ladinesa), [@JosePizarro3](https://github.com/JosePizarro3), and [@JFRudzinski](https://github.com/JFRudzinski).
-- Write us in the [NOMAD MatSci forum](https://matsci.org/c/nomad/32). Our tags there are @NateD, @ladinesa, @JosePizarro, and @JFRudzinski.
-- Send an email to [support@nomad-lab.eu](mailto:support@nomad-lab.eu). Please, add in the subject "ATTN - Area C".
+- Open an [**issue**](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/issues) in the [Github project](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/), and tag any of us.
+- Join the [Discord channel](https://discord.gg/Gyzx3ukUw8) and ask us there directly.
+- If you are included as a contributor in the Github project, you can open new [**discussions**](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/discussions) regarding a new data schema or modelling you want to see covered.

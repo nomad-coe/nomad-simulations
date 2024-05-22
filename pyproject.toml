@@ -13,12 +13,13 @@ readme = "README.md"
 authors = [
     { name = "Jose M. Pizarro", email = "jose.pizarro@physik.hu-berlin.de" },
     { name = "Nathan Daelman", email = "ndaelman@physik.hu-berlin.de" },
+    { name = "Bernadette Mohr", email = "mohrbern@physik.hu-berlin.de" },
     { name = "Joseph F. Rudzinski", email = "joseph.rudzinski@physik.hu-berlin.de" }
 ]
 license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
 dependencies = [
-    "nomad-lab>=1.2.0",
+    "nomad-lab>=1.2.2dev578",
     "matid>=2.0.0.dev2",
 ]
 
@@ -33,7 +34,7 @@ dev = [
     'pytest==3.10.0',
     'pytest-timeout==1.4.2',
     'pytest-cov==2.7.1',
-    'ruff==0.1.8',
+    'ruff',
     "structlog==22.3.0",
     "lxml_html_clean>=0.1.0",
 ]

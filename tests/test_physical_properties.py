@@ -19,10 +19,11 @@
 import numpy as np
 import pytest
 
-from . import logger
-
 from nomad.units import ureg
+from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
+
+from . import logger
 
 from nomad_simulations.variables import Variables
 from nomad_simulations.physical_property import PhysicalProperty
@@ -49,24 +50,24 @@ class TestPhysicalProperty:
             ([], [], [], []),
             ([3], [], [], [3]),
             ([3, 3], [], [], [3, 3]),
-            ([], [Variables(n_grid_points=4)], [4], [4]),
-            ([3], [Variables(n_grid_points=4)], [4], [4, 3]),
-            ([3, 3], [Variables(n_grid_points=4)], [4], [4, 3, 3]),
+            ([], [Variables(n_points=4)], [4], [4]),
+            ([3], [Variables(n_points=4)], [4], [4, 3]),
+            ([3, 3], [Variables(n_points=4)], [4], [4, 3, 3]),
             (
                 [],
-                [Variables(n_grid_points=4), Variables(n_grid_points=10)],
+                [Variables(n_points=4), Variables(n_points=10)],
                 [4, 10],
                 [4, 10],
             ),
             (
                 [3],
-                [Variables(n_grid_points=4), Variables(n_grid_points=10)],
+                [Variables(n_points=4), Variables(n_points=10)],
                 [4, 10],
                 [4, 10, 3],
             ),
             (
                 [3, 3],
-                [Variables(n_grid_points=4), Variables(n_grid_points=10)],
+                [Variables(n_points=4), Variables(n_points=10)],
                 [4, 10],
                 [4, 10, 3, 3],
             ),
@@ -97,7 +98,7 @@ class TestPhysicalProperty:
         physical_property = DummyPhysicalProperty(
             source='simulation',
             rank=[3, 3],
-            variables=[Variables(n_grid_points=4), Variables(n_grid_points=10)],
+            variables=[Variables(n_points=4), Variables(n_points=10)],
         )
         # `physical_property.value` must have full_shape=[4, 10, 3, 3]
         value = np.ones((4, 10, 3, 3)) * ureg.eV
@@ -121,7 +122,7 @@ class TestPhysicalProperty:
             physical_property.value = value
         assert (
             str(exc_info.value)
-            == f'The shape of the stored `value` {wrong_shape} does not match the full shape {physical_property.full_shape} extracted from the variables `n_grid_points` and the `shape` defined in `PhysicalProperty`.'
+            == f'The shape of the stored `value` {wrong_shape} does not match the full shape {physical_property.full_shape} extracted from the variables `n_points` and the `shape` defined in `PhysicalProperty`.'
         )
 
     def test_setattr_none(self):
@@ -147,7 +148,7 @@ class TestPhysicalProperty:
         # Testing a directly parsed physical property
         not_derived_physical_property = PhysicalProperty(source='simulation')
         assert not_derived_physical_property._is_derived() is False
-        not_derived_physical_property.normalize(None, logger)
+        not_derived_physical_property.normalize(EntryArchive(), logger)
         assert not_derived_physical_property.is_derived is False
         # Testing a derived physical property
         derived_physical_property = PhysicalProperty(
@@ -155,5 +156,5 @@ class TestPhysicalProperty:
             physical_property_ref=not_derived_physical_property,
         )
         assert derived_physical_property._is_derived() is True
-        derived_physical_property.normalize(None, logger)
+        derived_physical_property.normalize(EntryArchive(), logger)
         assert derived_physical_property.is_derived is True

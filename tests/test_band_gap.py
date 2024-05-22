@@ -20,9 +20,11 @@ import pytest
 import numpy as np
 from typing import Optional, List, Union
 
+from nomad.units import ureg
+from nomad.datamodel import EntryArchive
+
 from . import logger
 
-from nomad.units import ureg
 from nomad_simulations.properties import ElectronicBandGap
 from nomad_simulations.variables import Temperature
 
@@ -58,16 +60,16 @@ class TestElectronicBandGap:
         self, value: Union[List[float], float], result: float
     ):
         """
-        Test the `check_negative_values` method.
+        Test the `_check_negative_values` method.
         """
         if isinstance(value, list):
             electronic_band_gap = ElectronicBandGap(
-                variables=[Temperature(grid_points=[1, 2, 3] * ureg.kelvin)]
+                variables=[Temperature(points=[1, 2, 3] * ureg.kelvin)]
             )
         else:
             electronic_band_gap = ElectronicBandGap()
         electronic_band_gap.value = value * ureg.joule
-        checked_value = electronic_band_gap.check_negative_values(logger)
+        checked_value = electronic_band_gap._check_negative_values(logger)
         if checked_value is not None:
             assert np.isclose(checked_value.magnitude, result)
         else:
@@ -113,16 +115,16 @@ class TestElectronicBandGap:
         """
         scalar_band_gap = ElectronicBandGap(variables=[], type='direct')
         scalar_band_gap.value = 1.0 * ureg.joule
-        scalar_band_gap.normalize(None, logger)
+        scalar_band_gap.normalize(EntryArchive(), logger)
         assert scalar_band_gap.type == 'direct'
         assert np.isclose(scalar_band_gap.value.magnitude, 1.0)
 
         t_dependent_band_gap = ElectronicBandGap(
-            variables=[Temperature(grid_points=[0, 10, 20, 30] * ureg.kelvin)],
+            variables=[Temperature(points=[0, 10, 20, 30] * ureg.kelvin)],
             type='direct',
         )
         t_dependent_band_gap.value = [1.0, 2.0, 3.0, 4.0] * ureg.joule
-        t_dependent_band_gap.normalize(None, logger)
+        t_dependent_band_gap.normalize(EntryArchive(), logger)
         assert t_dependent_band_gap.type == 'direct'
         assert (
             np.isclose(t_dependent_band_gap.value.magnitude, [1.0, 2.0, 3.0, 4.0])

@@ -345,7 +345,13 @@ class AtomicCell(Cell):
             self.periodic_boundary_conditions = [False, False, False]
         ase_atoms.set_pbc(self.periodic_boundary_conditions)
 
-        # Positions (ensure they are parsed)
+        # Lattice vectors
+        if self.lattice_vectors is not None:
+            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
+        else:
+            logger.info('Could not find `AtomicCell.lattice_vectors`.')
+
+        # Positions
         if self.positions is not None:
             if len(self.positions) != len(self.atoms_state):
                 logger.error(
@@ -354,14 +360,8 @@ class AtomicCell(Cell):
                 return None
             ase_atoms.set_positions(self.positions.to('angstrom').magnitude)
         else:
-            logger.error('Could not find `AtomicCell.positions`.')
+            logger.warning('Could not find `AtomicCell.positions`.')
             return None
-
-        # Lattice vectors
-        if self.lattice_vectors is not None:
-            ase_atoms.set_cell(self.lattice_vectors.to('angstrom').magnitude)
-        else:
-            logger.info('Could not find `AtomicCell.lattice_vectors`.')
 
         return ase_atoms
 
@@ -563,13 +563,13 @@ class Symmetry(ArchiveSection):
         symmetry['hall_symbol'] = symmetry_analyzer.get_hall_symbol()
         symmetry['point_group_symbol'] = symmetry_analyzer.get_point_group()
         symmetry['space_group_number'] = symmetry_analyzer.get_space_group_number()
-        symmetry[
-            'space_group_symbol'
-        ] = symmetry_analyzer.get_space_group_international_short()
+        symmetry['space_group_symbol'] = (
+            symmetry_analyzer.get_space_group_international_short()
+        )
         symmetry['origin_shift'] = symmetry_analyzer._get_spglib_origin_shift()
-        symmetry[
-            'transformation_matrix'
-        ] = symmetry_analyzer._get_spglib_transformation_matrix()
+        symmetry['transformation_matrix'] = (
+            symmetry_analyzer._get_spglib_transformation_matrix()
+        )
 
         # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
         original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()
@@ -606,18 +606,19 @@ class Symmetry(ArchiveSection):
             aflow_prototype = search_aflow_prototype(
                 symmetry.get('space_group_number'), norm_wyckoff
             )
-            strukturbericht = aflow_prototype.get('Strukturbericht Designation')
-            strukturbericht = (
-                re.sub('[$_{}]', '', strukturbericht)
-                if strukturbericht != 'None'
-                else None
-            )
-            prototype_aflow_id = aflow_prototype.get('aflow_prototype_id')
-            prototype_formula = aflow_prototype.get('Prototype')
-            # Adding these to the symmetry dictionary for later assignement
-            symmetry['strukturbericht_designation'] = strukturbericht
-            symmetry['prototype_aflow_id'] = prototype_aflow_id
-            symmetry['prototype_formula'] = prototype_formula
+            if aflow_prototype:
+                strukturbericht = aflow_prototype.get('Strukturbericht Designation')
+                strukturbericht = (
+                    re.sub('[$_{}]', '', strukturbericht)
+                    if strukturbericht != 'None'
+                    else None
+                )
+                prototype_aflow_id = aflow_prototype.get('aflow_prototype_id')
+                prototype_formula = aflow_prototype.get('Prototype')
+                # Adding these to the symmetry dictionary for later assignement
+                symmetry['strukturbericht_designation'] = strukturbericht
+                symmetry['prototype_aflow_id'] = prototype_aflow_id
+                symmetry['prototype_formula'] = prototype_formula
 
         # Populating Symmetry section
         for key, val in self.m_def.all_quantities.items():
@@ -626,6 +627,8 @@ class Symmetry(ArchiveSection):
         return primitive_atomic_cell, conventional_atomic_cell
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name='cell', logger=logger
         )
@@ -711,9 +714,14 @@ class ChemicalFormula(ArchiveSection):
         self.anonymous = formula.format('anonymous')
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
         atomic_cell = get_sibling_section(
             section=self, sibling_section_name='cell', logger=logger
         )
+        if atomic_cell is None:
+            logger.warning('Could not resolve the sibling `AtomicCell` section.')
+            return
         ase_atoms = atomic_cell.to_ase_atoms(logger)
         formula = None
         try:
@@ -960,8 +968,8 @@ class ModelSystem(System):
             return
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
-        if self.cell is None:
-            self.logger.warning(
+        if self.cell is None or len(self.cell) == 0:
+            logger.warning(
                 'Could not find the originally parsed atomic system. `Symmetry` and `ChemicalFormula` extraction is thus not run.'
             )
             return
