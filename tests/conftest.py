@@ -224,14 +224,18 @@ def generate_simulation_electronic_dos(
 
 
 def generate_k_line_path(
-    high_symmetry_path: List[Dict[str, List[float]]] = [
-        {'Gamma': [0, 0, 0]},
-        {'X': [0.5, 0, 0]},
-        {'Y': [0, 0.5, 0]},
-        {'Gamma': [0, 0, 0]},
+    high_symmetry_path_names: List[str] = ['Gamma', 'X', 'Y', 'Gamma'],
+    high_symmetry_path_values: List[List[float]] = [
+        [0, 0, 0],
+        [0.5, 0, 0],
+        [0, 0.5, 0],
+        [0, 0, 0],
     ],
 ) -> KLinePathSettings:
-    return KLinePathSettings(high_symmetry_path=high_symmetry_path)
+    return KLinePathSettings(
+        high_symmetry_path_names=high_symmetry_path_names,
+        high_symmetry_path_values=high_symmetry_path_values,
+    )
 
 
 def generate_k_space_simulation(

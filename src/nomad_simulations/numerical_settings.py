@@ -262,7 +262,7 @@ class KMesh(Mesh):
 
         points = None
         offset = None
-        if self.center == 'Gamma-centered':
+        if self.center == 'Gamma-centered':  # ! fix this (@ndaelman-hu)
             grid_space = [np.linspace(0, 1, n) for n in self.grid]
             points = np.meshgrid(grid_space)
             offset = np.array([0, 0, 0])
@@ -475,18 +475,36 @@ class KLinePath(ArchiveSection):
     value, one should multiply them by the reciprocal lattice vectors (`points_cartesian = points @ reciprocal_lattice_vectors`).
     """
 
-    high_symmetry_path = Quantity(
-        type=JSON,
+    # high_symmetry_path = Quantity(
+    #     type=JSON,
+    #     shape=['*'],
+    #     description="""
+    #     List of dictionaries containing the high-symmetry path (in units of the `reciprocal_lattice_vectors`) followed in
+    #     the k-line path. E.g., in a cubic lattice:
+    #         high_symmetry_path = [
+    #             {'Gamma': [0, 0, 0]},
+    #             {'X': [0.5, 0, 0]},
+    #             {'Y': [0, 0.5, 0]},
+    #             {'Gamma': [0, 0, 0]},
+    #         ]
+    #     """,
+    # )
+
+    high_symmetry_path_names = Quantity(
+        type=str,
         shape=['*'],
         description="""
-        List of dictionaries containing the high-symmetry path (in units of the `reciprocal_lattice_vectors`) followed in
-        the k-line path. E.g., in a cubic lattice:
-            high_symmetry_path = [
-                {'Gamma': [0, 0, 0]},
-                {'X': [0.5, 0, 0]},
-                {'Y': [0, 0.5, 0]},
-                {'Gamma': [0, 0, 0]},
-            ]
+        List of the high-symmetry path names followed in the k-line path. This quantity is directly coupled with `high_symmetry_path_value`.
+        E.g., in a cubic lattice: `high_symmetry_path_names = ['Gamma', 'X', 'Y', 'Gamma']`.
+        """,
+    )
+
+    high_symmetry_path_values = Quantity(
+        type=np.float64,
+        shape=['*', 3],
+        description="""
+        List of the high-symmetry path values in units of the `reciprocal_lattice_vectors` in the k-line path. This quantity is directly
+        coupled with `high_symmetry_path_names`. E.g., in a cubic lattice: `high_symmetry_path_value = [[0, 0, 0], [0.5, 0, 0], [0, 0.5, 0], [0, 0, 0]]`.
         """,
     )
 
@@ -505,10 +523,36 @@ class KLinePath(ArchiveSection):
         """,
     )
 
-    def get_high_symmetry_path_norm(
+    def _check_high_symmetry_path(self, logger: BoundLogger) -> bool:
+        """
+        Check if the `high_symmetry_path_names` and `high_symmetry_path_values` are defined and have the same length.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (bool): True if the `high_symmetry_path_names` and `high_symmetry_path_values` are defined and have the same length, False otherwise.
+        """
+        if (
+            self.high_symmetry_path_names is None
+            or self.high_symmetry_path_values is None
+        ):
+            logger.warning(
+                'Could not find `KLinePath.high_symmetry_path_names` or `KLinePath.high_symmetry_path_values`.'
+            )
+            return False
+        if len(self.high_symmetry_path_names) != len(self.high_symmetry_path_values):
+            logger.warning(
+                'The length of `KLinePath.high_symmetry_path_names` and `KLinePath.high_symmetry_path_values` should coincide.'
+            )
+            return False
+        return True
+
+    def get_high_symmetry_path_norms(
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
-    ) -> Optional[List[Dict[str, pint.Quantity]]]:
+        logger: BoundLogger,
+    ) -> Optional[List[pint.Quantity]]:
         """
         Get the high symmetry path points norms from the list of dictionaries of vectors in units of the `reciprocal_lattice_vectors`.
         The norms are accummulated, such that the first high symmetry point in the path list has a norm of 0, while the others sum the
@@ -517,34 +561,28 @@ class KLinePath(ArchiveSection):
 
         Args:
             reciprocal_lattice_vectors (Optional[np.ndarray]): The reciprocal lattice vectors of the atomic cell.
+            logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[List[Dict[str, pint.Quantity]]]): The high symmetry points norms list of dictionaries, e.g. in a cubic lattice:
-                high_symmetry_path = [
-                    {'Gamma': 0},
-                    {'X': 0.5},
-                    {'Y': 0.5 + 1 / np.sqrt(2)},
-                    {'Gamma': 1 + 1 / np.sqrt(2)},
-                ]
+            (Optional[List[pint.Quantity]]): The high symmetry points norms list, e.g. in a cubic lattice:
+                `high_symmetry_path_value_norms = [0, 0.5, 0.5 + 1 / np.sqrt(2), 1 + 1 / np.sqrt(2)]`
         """
+        # Checking the high symmetry path quantities
+        if not self._check_high_symmetry_path(logger):
+            return None
         # Checking if `reciprocal_lattice_vectors` is defined and taking its magnitude to operate
         if reciprocal_lattice_vectors is None:
             return None
         rlv = reciprocal_lattice_vectors.magnitude
 
-        # initializing the norms dictionary
-        high_symmetry_path_norms = [
-            {key: 0.0 * reciprocal_lattice_vectors.u}
-            for point in self.high_symmetry_path
-            for key in point.keys()
-        ]
+        # initializing the norms list (the first point has a norm of 0)
+        high_symmetry_path_value_norms = [0.0 * reciprocal_lattice_vectors.u]
         # initializing the first point
         prev_value_norm = 0.0 * reciprocal_lattice_vectors.u
         prev_value_rlv = np.array([0, 0, 0])
-        for i, point in enumerate(self.high_symmetry_path):
+        for i, value in enumerate(self.high_symmetry_path_values):
             if i == 0:
                 continue
-            [(key, value)] = point.items()
             value_rlv = value @ rlv
             value_tot_rlv = value_rlv - prev_value_rlv
             value_norm = (
@@ -553,12 +591,12 @@ class KLinePath(ArchiveSection):
             )
 
             # store in new path norms variable
-            high_symmetry_path_norms[i][key] = value_norm
+            high_symmetry_path_value_norms.append(value_norm)
 
             # accumulate value vector and norm
             prev_value_rlv = value_rlv
             prev_value_norm = value_norm
-        return high_symmetry_path_norms
+        return high_symmetry_path_value_norms
 
     def resolve_points(
         self,
@@ -576,8 +614,7 @@ class KLinePath(ArchiveSection):
             logger (BoundLogger): The logger to log messages.
         """
         # General checks for quantities
-        if self.high_symmetry_path is None:
-            logger.warning('Could not resolve `KLinePath.high_symmetry_path`.')
+        if not self._check_high_symmetry_path(logger):
             return None
         if reciprocal_lattice_vectors is None:
             logger.warning(
@@ -596,24 +633,22 @@ class KLinePath(ArchiveSection):
         self.n_line_points = len(points_norm)
 
         # Calculate the total norm of the path in order to find the closest indices in the list of `points_norm`
-        high_symmetry_path_norms = self.get_high_symmetry_path_norm(
-            reciprocal_lattice_vectors
+        high_symmetry_path_value_norms = self.get_high_symmetry_path_norms(
+            reciprocal_lattice_vectors, logger
         )
         closest_indices = []
-        for i, point in enumerate(high_symmetry_path_norms):
-            [norm] = point.values()
+        for i, norm in enumerate(high_symmetry_path_value_norms):
             closest_idx = (np.abs(points_norm - norm.magnitude)).argmin()
             closest_indices.append(closest_idx)
 
         # Append the data in the new `points` in units of the `reciprocal_lattice_vectors`
         points = []
-        for i, point in enumerate(self.high_symmetry_path):
-            [value] = point.values()
+        for i, value in enumerate(self.high_symmetry_path_values):
             if i == 0:
                 prev_value = value
                 prev_index = closest_indices[i]
                 continue
-            elif i == len(self.high_symmetry_path) - 1:
+            elif i == len(self.high_symmetry_path_values) - 1:
                 points.append(
                     np.linspace(
                         prev_value, value, num=closest_indices[i] - prev_index + 1
@@ -636,6 +671,10 @@ class KLinePath(ArchiveSection):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
+        # If `high_symmetry_path` is not defined, we do not normalize the KLinePath
+        if not self._check_high_symmetry_path(logger):
+            return
 
 
 class KSpace(NumericalSettings):

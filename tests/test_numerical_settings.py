@@ -264,18 +264,12 @@ class TestKLinePath:
         Test the `get_high_symmetry_path_norm` method.
         """
         rlv = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]) * ureg('1/meter')
-        high_symmetry_path_norms = k_line_path.get_high_symmetry_path_norm(
-            reciprocal_lattice_vectors=rlv
+        high_symmetry_path_norms = k_line_path.get_high_symmetry_path_norms(
+            reciprocal_lattice_vectors=rlv, logger=logger
         )
-        hs_points: List[Dict[str, float]] = [
-            {'Gamma': 0},
-            {'X': 0.5},
-            {'Y': 0.5 + 1 / np.sqrt(2)},
-            {'Gamma': 1 + 1 / np.sqrt(2)},
-        ]
-        for i, point in enumerate(hs_points):
-            [(key, val)] = point.items()
-            assert np.isclose(high_symmetry_path_norms[i][key].magnitude, val)
+        hs_points = [0, 0.5, 0.5 + 1 / np.sqrt(2), 1 + 1 / np.sqrt(2)]
+        for i, val in enumerate(hs_points):
+            assert np.isclose(high_symmetry_path_norms[i].magnitude, val)
 
     def test_resolve_points(self, k_line_path: KLinePath):
         """
