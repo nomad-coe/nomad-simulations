@@ -26,7 +26,7 @@ from nomad.datamodel import EntryArchive
 from nomad_simulations.numerical_settings import KMesh, KLinePath
 
 from . import logger
-from .conftest import generate_k_space_simulation
+from .conftest import generate_k_line_path, generate_k_space_simulation
 
 
 class TestKSpace:
@@ -258,6 +258,31 @@ class TestKLinePath:
     """
     Test the `KLinePath` class defined in `numerical_settings.py`.
     """
+
+    @pytest.mark.parametrize(
+        'high_symmetry_path_names, high_symmetry_path_values, result',
+        [
+            (None, None, False),
+            ([], [], False),
+            (['Gamma', 'X', 'Y'], None, False),
+            ([], [[0, 0, 0], [0.5, 0, 0], [0, 0.5, 0]], False),
+            (['Gamma', 'X', 'Y'], [[0, 0, 0], [0.5, 0, 0], [0, 0.5, 0]], True),
+        ],
+    )
+    def test_check_high_symmetry_path(
+        self,
+        high_symmetry_path_names: List[str],
+        high_symmetry_path_values: List[List[float]],
+        result: bool,
+    ):
+        """
+        Test the `_check_high_symmetry_path` private method.
+        """
+        k_line_path = generate_k_line_path(
+            high_symmetry_path_names=high_symmetry_path_names,
+            high_symmetry_path_values=high_symmetry_path_values,
+        )
+        assert k_line_path._check_high_symmetry_path(logger) == result
 
     def test_get_high_symmetry_path_norm(self, k_line_path: KLinePath):
         """
