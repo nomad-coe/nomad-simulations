@@ -575,28 +575,54 @@ class KLinePath(ArchiveSection):
             return None
         rlv = reciprocal_lattice_vectors.magnitude
 
-        # initializing the norms list (the first point has a norm of 0)
-        high_symmetry_path_value_norms = [0.0 * reciprocal_lattice_vectors.u]
-        # initializing the first point
-        prev_value_norm = 0.0 * reciprocal_lattice_vectors.u
-        prev_value_rlv = np.array([0, 0, 0])
-        for i, value in enumerate(self.high_symmetry_path_values):
-            if i == 0:
-                continue
-            value_rlv = value @ rlv
+        def calc_norms(value_rlv, prev_value_rlv):
             value_tot_rlv = value_rlv - prev_value_rlv
-            value_norm = (
-                np.linalg.norm(value_tot_rlv) * reciprocal_lattice_vectors.u
-                + prev_value_norm
-            )
+            return np.linalg.norm(value_tot_rlv) * reciprocal_lattice_vectors.u
 
-            # store in new path norms variable
-            high_symmetry_path_value_norms.append(value_norm)
+        from itertools import accumulate, tee
 
-            # accumulate value vector and norm
-            prev_value_rlv = value_rlv
-            prev_value_norm = value_norm
-        return high_symmetry_path_value_norms
+        # Compute `rlv` projections
+        rlv_projections = list(
+            map(lambda value: value @ rlv, self.high_symmetry_path_values)
+        )
+
+        # Create two iterators for the projections
+        rlv_projections_1, rlv_projections_2 = tee(rlv_projections)
+
+        # Initialize the previous value iterators and skip the first element in the second iterator
+        prev_value_rlv = np.array([0, 0, 0])
+        next(rlv_projections_2, None)
+
+        # Calculate the norms using accumulate
+        norms = accumulate(
+            zip(rlv_projections_2, rlv_projections_1),
+            lambda acc, value_pair: calc_norms(value_pair[0], value_pair[1]) + acc,
+            initial=0.0 * reciprocal_lattice_vectors.u,
+        )
+        return list(norms)
+
+        # # initializing the norms list (the first point has a norm of 0)
+        # high_symmetry_path_value_norms = [0.0 * reciprocal_lattice_vectors.u]
+        # # initializing the first point
+        # prev_value_norm = 0.0 * reciprocal_lattice_vectors.u
+        # prev_value_rlv = np.array([0, 0, 0])
+        # for i, value in enumerate(self.high_symmetry_path_values):
+        #     if i == 0:
+        #         continue
+        #     value_rlv = value @ rlv
+        #     value_tot_rlv = value_rlv - prev_value_rlv
+        #     value_norm = (
+        #         np.linalg.norm(value_tot_rlv) * reciprocal_lattice_vectors.u
+        #         + prev_value_norm
+        #     )
+
+        #     # store in new path norms variable
+        #     high_symmetry_path_value_norms.append(value_norm)
+
+        #     # accumulate value vector and norm
+        #     prev_value_rlv = value_rlv
+        #     prev_value_norm = value_norm
+        # return high_symmetry_path_value_norms
 
     def resolve_points(
         self,

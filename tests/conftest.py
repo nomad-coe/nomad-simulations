@@ -251,11 +251,12 @@ def generate_k_space_simulation(
         [0, 1, 0],
         [0, 0, 1],
     ],
-    high_symmetry_path: List[Dict[str, List[float]]] = [
-        {'Gamma': [0, 0, 0]},
-        {'X': [0.5, 0, 0]},
-        {'Y': [0, 0.5, 0]},
-        {'Gamma': [0, 0, 0]},
+    high_symmetry_path_names: List[str] = ['Gamma', 'X', 'Y', 'Gamma'],
+    high_symmetry_path_values: List[List[float]] = [
+        [0, 0, 0],
+        [0.5, 0, 0],
+        [0, 0.5, 0],
+        [0, 0, 0],
     ],
     grid=[6, 6, 6],
 ) -> Simulation:
@@ -278,7 +279,10 @@ def generate_k_space_simulation(
     k_mesh = KMeshSettings(grid=grid)
     k_space.k_mesh.append(k_mesh)
     # adding `KLinePathSettings`
-    k_line_path = KLinePathSettings(high_symmetry_path=high_symmetry_path)
+    k_line_path = KLinePathSettings(
+        high_symmetry_path_names=high_symmetry_path_names,
+        high_symmetry_path_values=high_symmetry_path_values,
+    )
     k_space.k_line_path = k_line_path
     # appending `KSpace` to `ModelMethod.numerical_settings`
     model_method = ModelMethod()
