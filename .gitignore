@@ -161,3 +161,10 @@ cython_debug/
 
 # VSCode settings
 .vscode/launch.json
+
+# comments scripts
+comments.py
+todos*
+questions*
+warnings*
+important*
