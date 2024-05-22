@@ -19,7 +19,7 @@
 import os
 import numpy as np
 import pytest
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
@@ -83,6 +83,7 @@ def generate_model_system(
     chemical_symbols: List[str] = ['Ga', 'As'],
     orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
     is_representative: bool = True,
+    pbc: List[bool] = [False, False, False],
 ) -> Optional[ModelSystem]:
     """
     Generate a `ModelSystem` section with the given parameters.
@@ -95,6 +96,7 @@ def generate_model_system(
         type=type,
         positions=positions * ureg.angstrom,
         lattice_vectors=lattice_vectors * ureg.angstrom,
+        periodic_boundary_conditions=pbc,
     )
     model_system.cell.append(atomic_cell)
 
@@ -222,12 +224,12 @@ def generate_simulation_electronic_dos(
 
 
 def generate_k_line_path(
-    high_symmetry_path: dict = {
-        'Gamma1': [0, 0, 0],
-        'X': [0.5, 0, 0],
-        'Y': [0, 0.5, 0],
-        'Gamma2': [0, 0, 0],
-    },  # ! fix the patch on naming 'Gamma1' and 'Gamma2'
+    high_symmetry_path: List[Dict[str, List[float]]] = [
+        {'Gamma': [0, 0, 0]},
+        {'X': [0.5, 0, 0]},
+        {'Y': [0, 0.5, 0]},
+        {'Gamma': [0, 0, 0]},
+    ],
 ) -> KLinePathSettings:
     return KLinePathSettings(high_symmetry_path=high_symmetry_path)
 
@@ -235,21 +237,32 @@ def generate_k_line_path(
 def generate_k_space_simulation(
     system_type: str = 'bulk',
     is_representative: bool = True,
+    positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
+    lattice_vectors: List[List[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    chemical_symbols: List[str] = ['Ga', 'As'],
+    orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
+    pbc: List[bool] = [False, False, False],
     reciprocal_lattice_vectors: Optional[List[List[float]]] = [
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
     ],
-    high_symmetry_path: dict = {
-        'Gamma1': [0, 0, 0],
-        'X': [0.5, 0, 0],
-        'Y': [0, 0.5, 0],
-        'Gamma2': [0, 0, 0],
-    },
+    high_symmetry_path: List[Dict[str, List[float]]] = [
+        {'Gamma': [0, 0, 0]},
+        {'X': [0.5, 0, 0]},
+        {'Y': [0, 0.5, 0]},
+        {'Gamma': [0, 0, 0]},
+    ],
     grid=[6, 6, 6],
 ) -> Simulation:
     model_system = generate_model_system(
-        system_type=system_type, is_representative=is_representative
+        system_type=system_type,
+        is_representative=is_representative,
+        positions=positions,
+        lattice_vectors=lattice_vectors,
+        chemical_symbols=chemical_symbols,
+        orbitals_symbols=orbitals_symbols,
+        pbc=pbc,
     )
     k_space = KSpace()
     # adding `reciprocal_lattice_vectors`

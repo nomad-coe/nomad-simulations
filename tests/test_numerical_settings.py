@@ -18,7 +18,7 @@
 
 import pytest
 import numpy as np
-from typing import Optional, List
+from typing import Optional, List, Dict
 
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
@@ -231,44 +231,62 @@ class TestKMesh:
         else:
             assert k_line_density == result_k_line_density
 
+    def test_resolve_high_symmetry_points(self):
+        """
+        Test the `resolve_high_symmetry_points` method. Only testing the valid situation in which the `ModelSystem` normalization worked.
+        """
+        # `ModelSystem.normalize()` need to extract `bulk` as a type.
+        simulation = generate_k_space_simulation(
+            pbc=[True, True, True],
+        )
+        model_system = simulation.model_system[0]
+        model_system.normalize(EntryArchive(), logger)  # normalize to extract symmetry
+        k_mesh = simulation.model_method[0].numerical_settings[0].k_mesh[0]
+        high_symmetry_points = k_mesh.resolve_high_symmetry_points(
+            simulation.model_system, logger
+        )
+        assert len(high_symmetry_points) == 4
+        assert high_symmetry_points == {
+            'Gamma': [0, 0, 0],
+            'M': [0.5, 0.5, 0],
+            'R': [0.5, 0.5, 0.5],
+            'X': [0, 0.5, 0],
+        }
+
 
 class TestKLinePath:
     """
     Test the `KLinePath` class defined in `numerical_settings.py`.
     """
 
-    def test_get_high_symmetry_points_norm(self, k_line_path: KLinePath):
+    def test_get_high_symmetry_path_norm(self, k_line_path: KLinePath):
         """
-        Test the `get_high_symmetry_points_norm` method.
+        Test the `get_high_symmetry_path_norm` method.
         """
         rlv = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]) * ureg('1/meter')
-        high_symmetry_points_norms = k_line_path.get_high_symmetry_points_norm(
+        high_symmetry_path_norms = k_line_path.get_high_symmetry_path_norm(
             reciprocal_lattice_vectors=rlv
         )
-        hs_points = {
-            'Gamma1': 0,
-            'X': 0.5,
-            'Y': 0.5 + 1 / np.sqrt(2),
-            'Gamma2': 1 + 1 / np.sqrt(2),
-        }
-        for key, val in hs_points.items():
-            assert np.isclose(high_symmetry_points_norms[key].magnitude, val)
+        hs_points: List[Dict[str, float]] = [
+            {'Gamma': 0},
+            {'X': 0.5},
+            {'Y': 0.5 + 1 / np.sqrt(2)},
+            {'Gamma': 1 + 1 / np.sqrt(2)},
+        ]
+        for i, point in enumerate(hs_points):
+            [(key, val)] = point.items()
+            assert np.isclose(high_symmetry_path_norms[i][key].magnitude, val)
 
     def test_resolve_points(self, k_line_path: KLinePath):
         """
         Test the `resolve_points` method.
         """
         rlv = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]]) * ureg('1/meter')
-        hs_points = {
-            'Gamma1': 0,
-            'X': 0.5,
-            'Y': 0.5 + 1 / np.sqrt(2),
-            'Gamma2': 1 + 1 / np.sqrt(2),
-        }
+        hs_points = [0, 0.5, 0.5 + 1 / np.sqrt(2), 1 + 1 / np.sqrt(2)]
         # Define paths
-        gamma_x = np.linspace(hs_points['Gamma1'], hs_points['X'], num=5)
-        x_y = np.linspace(hs_points['X'], hs_points['Y'], num=5)
-        y_gamma = np.linspace(hs_points['Y'], hs_points['Gamma2'], num=5)
+        gamma_x = np.linspace(hs_points[0], hs_points[1], num=5)
+        x_y = np.linspace(hs_points[1], hs_points[2], num=5)
+        y_gamma = np.linspace(hs_points[2], hs_points[3], num=5)
         points_norm = np.concatenate((gamma_x, x_y, y_gamma))
         k_line_path.resolve_points(
             points_norm=points_norm, reciprocal_lattice_vectors=rlv, logger=logger

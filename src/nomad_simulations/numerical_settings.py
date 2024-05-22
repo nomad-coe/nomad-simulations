@@ -20,19 +20,12 @@ import numpy as np
 import pint
 import itertools
 from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Dict
 from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
 from nomad.units import ureg
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import (
-    Quantity,
-    SubSection,
-    MEnum,
-    Section,
-    Context,
-    JSON,
-)
+from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context, JSON
 
 from nomad_simulations.model_system import ModelSystem
 from nomad_simulations.utils import is_not_representative
@@ -169,7 +162,9 @@ class Mesh(ArchiveSection):
 
 class KMesh(Mesh):
     """
-    A base section used to specify the settings of a sampling mesh in reciprocal space.
+    A base section used to specify the settings of a sampling mesh in reciprocal space. The `points` and other
+    k-space quantities are defined in units of the reciprocal lattice vectors, so that to obtain their Cartesian coordinates
+    value, one should multiply them by the reciprocal lattice vectors (`points_cartesian = points @ reciprocal_lattice_vectors`).
     """
 
     label = Quantity(
@@ -193,21 +188,23 @@ class KMesh(Mesh):
         type=np.float64,
         shape=['*', 3],
         description="""
-        Full list of the mesh points without any symmetry operations. In the presence of symmetry operations, this quantity is a
-        larger list than `points` (as it will contain all the points in the Brillouin zone).
+        Full list of the mesh points without any symmetry operations in units of the `reciprocal_lattice_vectors`. In the
+        presence of symmetry operations, this quantity is a larger list than `points` (as it will contain all the points
+        in the Brillouin zone).
         """,
     )
 
     high_symmetry_points = Quantity(
         type=JSON,
         description="""
-        Dictionary containing the high-symmetry points and their points in terms of `reciprocal_lattice_vectors`.
+        Dictionary containing the high-symmetry point labels and their values in units of `reciprocal_lattice_vectors`.
         E.g., in a cubic lattice:
-            high_symmetry_points = {
-                'Gamma1': [0, 0, 0],
+            high_symmetry_points ={
+                'Gamma': [0, 0, 0],
                 'X': [0.5, 0, 0],
+                'Y': [0, 0.5, 0],
                 ...
-            }
+            ]
         """,
     )
 
@@ -215,8 +212,7 @@ class KMesh(Mesh):
         type=np.float64,
         unit='m',
         description="""
-        Amount of sampled k-points per unit reciprocal length along each axis.
-        Contains the least precise density out of all axes.
+        Amount of sampled k-points per unit reciprocal length along each axis. Contains the least precise density out of all axes.
         Should only be compared between calulations of similar dimensionality.
         """,
     )
@@ -236,13 +232,10 @@ class KMesh(Mesh):
         Returns:
             (bool): True if the `reciprocal_lattice_vectors` exist and have the same dimensionality as `grid`, False otherwise.
         """
-        if reciprocal_lattice_vectors is None:
+        if reciprocal_lattice_vectors is None or self.grid is None:
             logger.warning(
-                'Could not find `reciprocal_lattice_vectors` from parent `KSpace`.'
+                'Could not find `reciprocal_lattice_vectors` from parent `KSpace` or could not find `KMesh.grid`.'
             )
-            return False
-        if self.grid is None:
-            logger.warning('Could not find `KMesh.grid`.')
             return False
         if len(reciprocal_lattice_vectors) != 3 or len(self.grid) != 3:
             logger.warning(
@@ -338,11 +331,11 @@ class KMesh(Mesh):
         for model_system in model_systems:
             # General checks to proceed with normalization
             if is_not_representative(model_system, logger):
-                return None
+                continue
             # TODO extend this for other dimensions (@ndaelman-hu)
             if model_system.type != 'bulk':
                 logger.warning('`ModelSystem.type` is not describing a bulk system.')
-                return None
+                continue
 
             # Resolve `k_line_density`
             if k_line_density := self.get_k_line_density(
@@ -350,6 +343,99 @@ class KMesh(Mesh):
             ):
                 return k_line_density
         return None
+
+    def resolve_high_symmetry_points(
+        self,
+        model_systems: List[ModelSystem],
+        logger: BoundLogger,
+        eps: float = 3e-3,
+    ) -> Optional[dict]:
+        """
+        Resolves the `high_symmetry_points` of the `KMesh` from the list of `ModelSystem`. This method
+        relies on using the `ModelSystem` information in the sub-sections `Symmetry` and `AtomicCell`, and uses
+        the ASE package to extract the special (high symmetry) points information.
+
+        Args:
+            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            logger (BoundLogger): The logger to log messages.
+            eps (float, optional): Tolerance factor to define the `lattice` ASE object. Defaults to 3e-3.
+
+        Returns:
+            (Optional[dict]): The resolved `high_symmetry_points` of the `KMesh`.
+        """
+        # Extracting `bravais_lattice` from `ModelSystem.symmetry` section and `ASE.cell` from `ModelSystem.cell`
+        lattice = None
+        for model_system in model_systems:
+            # General checks to proceed with normalization
+            if is_not_representative(model_system, logger):
+                continue
+            if model_system.symmetry is None:
+                logger.warning('Could not find `ModelSystem.symmetry`.')
+                continue
+            bravais_lattice = [symm.bravais_lattice for symm in model_system.symmetry]
+            if len(bravais_lattice) != 1:
+                logger.warning(
+                    'Could not uniquely determine `bravais_lattice` from `ModelSystem.symmetry`.'
+                )
+                continue
+            bravais_lattice = bravais_lattice[0]
+
+            if model_system.cell is None:
+                logger.warning('Could not find `ModelSystem.cell`.')
+                continue
+            prim_atomic_cell = None
+            for atomic_cell in model_system.cell:
+                if atomic_cell.type == 'primitive':
+                    prim_atomic_cell = atomic_cell
+                    break
+            if prim_atomic_cell is None:
+                logger.warning(
+                    'Could not find the primitive `AtomicCell` under `ModelSystem.cell`.'
+                )
+                continue
+            # function defined in AtomicCell
+            atoms = prim_atomic_cell.to_ase_atoms(logger)
+            cell = atoms.get_cell()
+            lattice = cell.get_bravais_lattice(eps)
+            break  # only cover the first representative `ModelSystem`
+
+        # Checking if `bravais_lattice` and `lattice` are defined
+        if lattice is None:
+            logger.warning(
+                'Could not resolve `bravais_lattice` and `lattice` ASE object from the `ModelSystem`.'
+            )
+            return None
+
+        # Non-conventional ordering testing for certain lattices:
+        if bravais_lattice in ['oP', 'oF', 'oI', 'oS']:
+            a, b, c = lattice.a, lattice.b, lattice.c
+            assert a < b
+            if bravais_lattice != 'oS':
+                assert b < c
+        elif bravais_lattice in ['mP', 'mS']:
+            a, b, c = lattice.a, lattice.b, lattice.c
+            alpha = lattice.alpha * np.pi / 180
+            assert a <= c and b <= c  # ordering of the conventional lattice
+            assert alpha < np.pi / 2
+
+        # Extracting the `high_symmetry_points` from the `lattice` object
+        special_points = lattice.get_special_points()
+        if special_points is None:
+            logger.warning(
+                'Could not find `lattice.get_special_points()` from the ASE package.'
+            )
+            return None
+        high_symmetry_points = {}
+        for key, value in lattice.get_special_points().items():
+            if key == 'G':
+                key = 'Gamma'
+            if bravais_lattice == 'tI':
+                if key == 'S':
+                    key = 'Sigma'
+                elif key == 'S1':
+                    key = 'Sigma1'
+            high_symmetry_points[key] = list(value)
+        return high_symmetry_points
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -375,22 +461,32 @@ class KMesh(Mesh):
                 model_systems, reciprocal_lattice_vectors, logger
             )
 
+        # Resolve `high_symmetry_points`
+        if self.high_symmetry_points is None:
+            self.high_symmetry_points = self.resolve_high_symmetry_points(
+                model_systems, logger
+            )
+
 
 class KLinePath(ArchiveSection):
     """
-    A base section used to define the settings of a k-line path within a multidimensional mesh.
+    A base section used to define the settings of a k-line path within a multidimensional mesh. The `points` and other
+    k-space quantities are defined in units of the reciprocal lattice vectors, so that to obtain their Cartesian coordinates
+    value, one should multiply them by the reciprocal lattice vectors (`points_cartesian = points @ reciprocal_lattice_vectors`).
     """
 
     high_symmetry_path = Quantity(
         type=JSON,
+        shape=['*'],
         description="""
-        Dictionary containing the high-symmetry points (in units of the `reciprocal_lattice_vectors`) followed in
+        List of dictionaries containing the high-symmetry path (in units of the `reciprocal_lattice_vectors`) followed in
         the k-line path. E.g., in a cubic lattice:
-            high_symmetry_path = {
-                'Gamma': [0, 0, 0],
-                'X': [0.5, 0, 0],
-                'Y': [0, 0.5, 0],
-            }
+            high_symmetry_path = [
+                {'Gamma': [0, 0, 0]},
+                {'X': [0.5, 0, 0]},
+                {'Y': [0, 0.5, 0]},
+                {'Gamma': [0, 0, 0]},
+            ]
         """,
     )
 
@@ -409,20 +505,27 @@ class KLinePath(ArchiveSection):
         """,
     )
 
-    def get_high_symmetry_points_norm(
+    def get_high_symmetry_path_norm(
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
-    ) -> Optional[dict]:
+    ) -> Optional[List[Dict[str, pint.Quantity]]]:
         """
-        Get the high symmetry points norms from the dictionary of vectors in units of the `reciprocal_lattice_vectors`. This
-        function is useful when matching lists of points passed as norms to the high symmetry points in order to resolve
-        `KLinePath.points`
+        Get the high symmetry path points norms from the list of dictionaries of vectors in units of the `reciprocal_lattice_vectors`.
+        The norms are accummulated, such that the first high symmetry point in the path list has a norm of 0, while the others sum the
+        previous norm. This function is useful when matching lists of points passed as norms to the high symmetry path in order to
+        resolve `KLinePath.points`.
 
         Args:
             reciprocal_lattice_vectors (Optional[np.ndarray]): The reciprocal lattice vectors of the atomic cell.
 
         Returns:
-            (Optional[dict]): The high symmetry points norms.
+            (Optional[List[Dict[str, pint.Quantity]]]): The high symmetry points norms list of dictionaries, e.g. in a cubic lattice:
+                high_symmetry_path = [
+                    {'Gamma': 0},
+                    {'X': 0.5},
+                    {'Y': 0.5 + 1 / np.sqrt(2)},
+                    {'Gamma': 1 + 1 / np.sqrt(2)},
+                ]
         """
         # Checking if `reciprocal_lattice_vectors` is defined and taking its magnitude to operate
         if reciprocal_lattice_vectors is None:
@@ -430,28 +533,32 @@ class KLinePath(ArchiveSection):
         rlv = reciprocal_lattice_vectors.magnitude
 
         # initializing the norms dictionary
-        high_symmetry_points_norms = {
-            key: 0.0 * reciprocal_lattice_vectors.u
-            for key in self.high_symmetry_path.keys()
-        }
+        high_symmetry_path_norms = [
+            {key: 0.0 * reciprocal_lattice_vectors.u}
+            for point in self.high_symmetry_path
+            for key in point.keys()
+        ]
         # initializing the first point
         prev_value_norm = 0.0 * reciprocal_lattice_vectors.u
         prev_value_rlv = np.array([0, 0, 0])
-        for i, (key, value) in enumerate(self.high_symmetry_path.items()):
+        for i, point in enumerate(self.high_symmetry_path):
             if i == 0:
                 continue
+            [(key, value)] = point.items()
             value_rlv = value @ rlv
             value_tot_rlv = value_rlv - prev_value_rlv
             value_norm = (
                 np.linalg.norm(value_tot_rlv) * reciprocal_lattice_vectors.u
                 + prev_value_norm
             )
-            high_symmetry_points_norms[key] = value_norm
+
+            # store in new path norms variable
+            high_symmetry_path_norms[i][key] = value_norm
 
             # accumulate value vector and norm
             prev_value_rlv = value_rlv
             prev_value_norm = value_norm
-        return high_symmetry_points_norms
+        return high_symmetry_path_norms
 
     def resolve_points(
         self,
@@ -461,7 +568,7 @@ class KLinePath(ArchiveSection):
     ) -> None:
         """
         Resolves the `points` of the `KLinePath` from the `points_norm` and the `reciprocal_lattice_vectors`. This is useful
-        when a list of points norms and the dictionary of high symmetry points are passed to resolve the `KLinePath.points`.
+        when a list of points norms and the list of dictionaries of the high symmetry path are passed to resolve the `KLinePath.points`.
 
         Args:
             points_norm (List[float]): List of points norms in the k-line path.
@@ -489,36 +596,38 @@ class KLinePath(ArchiveSection):
         self.n_line_points = len(points_norm)
 
         # Calculate the total norm of the path in order to find the closest indices in the list of `points_norm`
-        high_symmetry_points_norms = self.get_high_symmetry_points_norm(
+        high_symmetry_path_norms = self.get_high_symmetry_path_norm(
             reciprocal_lattice_vectors
         )
-        closest_indices = {}
-        for key, norm in high_symmetry_points_norms.items():
+        closest_indices = []
+        for i, point in enumerate(high_symmetry_path_norms):
+            [norm] = point.values()
             closest_idx = (np.abs(points_norm - norm.magnitude)).argmin()
-            closest_indices[key] = closest_idx
+            closest_indices.append(closest_idx)
 
         # Append the data in the new `points` in units of the `reciprocal_lattice_vectors`
         points = []
-        for i, (key, value) in enumerate(self.high_symmetry_path.items()):
+        for i, point in enumerate(self.high_symmetry_path):
+            [value] = point.values()
             if i == 0:
                 prev_value = value
-                prev_index = closest_indices[key]
+                prev_index = closest_indices[i]
                 continue
             elif i == len(self.high_symmetry_path) - 1:
                 points.append(
                     np.linspace(
-                        prev_value, value, num=closest_indices[key] - prev_index + 1
+                        prev_value, value, num=closest_indices[i] - prev_index + 1
                     )
                 )
             else:
                 # pop the last element as it appears repeated in the next segment
                 points.append(
                     np.linspace(
-                        prev_value, value, num=closest_indices[key] - prev_index + 1
+                        prev_value, value, num=closest_indices[i] - prev_index + 1
                     )[:-1]
                 )
             prev_value = value
-            prev_index = closest_indices[key]
+            prev_index = closest_indices[i]
         new_points = list(itertools.chain(*points))
         # And store this information in the `points` quantity
         if self.points is not None:
@@ -571,16 +680,16 @@ class KSpace(NumericalSettings):
         for model_system in model_systems:
             # General checks to proceed with normalization
             if is_not_representative(model_system, logger):
-                return None
+                continue
             # TODO extend this for other dimensions (@ndaelman-hu)
             if model_system.type != 'bulk':
                 logger.warning('`ModelSystem.type` is not describing a bulk system.')
-                return None
+                continue
 
             atomic_cell = model_system.cell
             if atomic_cell is None:
                 logger.warning('`ModelSystem.cell` was not found.')
-                return None
+                continue
 
             # Set the `reciprocal_lattice_vectors` using ASE
             ase_atoms = atomic_cell[0].to_ase_atoms(logger)
