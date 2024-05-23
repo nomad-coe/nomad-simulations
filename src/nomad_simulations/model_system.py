@@ -210,11 +210,11 @@ class GeometricSpace(Entity):
             cell.lengths() * ureg.angstrom
         )
         self.angle_vectors_b_c, self.angle_vectors_a_c, self.angle_vectors_a_b = (
-            cell.angles() * ureg.degree
+            cell.angles() * ureg.radians
         )
         self.volume = cell.volume * ureg.angstrom**3
 
-    def normalize(self, archive, logger: BoundLogger) -> None:
+    def normalize(self, archive: ArchiveSection, logger: BoundLogger) -> None:
         # Skip normalization for `Entity`
         try:
             self.get_geometric_space_for_atomic_cell(logger)
@@ -340,6 +340,31 @@ class GeometryDistribution(ArchiveSection):
         """,
     )  # ? should we enforce this algorithmically. this also has implications for the distribution
 
+    n_cutoff_specifications = Quantity(
+        type=np.int32,
+        description="""
+        Number of cutoff specifications used to analyze the geometry.
+        """,
+    )
+
+    element_cutoff_selection = Quantity(
+        type=str,
+        shape=['n_cutoff_specifications'],
+        description="""
+        Elements for which cutoffs are defined. The order of the elements corresponds to those in `distance_cutoffs`.
+        """,
+    )
+
+    distance_cutoffs = Quantity(
+        type=np.float64,
+        unit='meter',
+        shape=['n_cutoff_specifications'],
+        description="""
+        Cutoff radii within which atomic geometries are analyzed. This incidentally defines the upper-bound for distances.
+        Defaults to 3x the covalent radius denoted by the [`ase` package](https://wiki.fysik.dtu.dk/ase/ase/neighborlist.html).
+        """,
+    )
+
     bins = Quantity(
         type=np.float64,
         shape=['n_bins'],
@@ -362,6 +387,23 @@ class GeometryDistribution(ArchiveSection):
         Frequency count of the histogram.
         """,
     )
+
+    def get_bins(self) -> np.ndarray:
+        """Return the distribution bins in their SI units.
+        Fall back to a default value if none are present."""
+        return self.bins
+
+    def sort_cutoffs(self, sort_key: Callable = lambda x: ase.Atom(x).number) -> None:
+        """Sort the cutoffs and the elements accordingly.
+        Args:
+            sort_key (Callable): A function to sort the elements. Defaults to the atomic number.
+        Returns:
+            GeometryDistribution: The sorted geometry distribution object itself.
+        """
+        sorted_indices = np.argsort(self.element_cutoff_selection, key=sort_key)
+        self.distance_cutoffs = self.distance_cutoffs[sorted_indices]
+        self.element_cutoff_selection = self.element_cutoff_selection[sorted_indices]
+        return self
 
     def normalize(self, archive, logger: BoundLogger):
         super().normalize(archive, logger)
@@ -394,7 +436,14 @@ class AngleGeometryDistribution(GeometryDistribution):
     )
 
     bins = GeometryDistribution.bins.m_copy()
-    bins.unit = 'radian'
+    bins.unit = 'radians'
+
+    def get_bins(self) -> np.ndarray:
+        """Return the distribution bins in their SI units, i.e. radians.
+        Fall back to a default value, i.e. [0 ... 0.01 ... 180] degrees, if none are present."""
+        if not self.bins:
+            return (np.arange(0, 180, 0.01) * ureg.degrees).to('radians')
+        return self.bins
 
     def normalize(self, archive, logger: BoundLogger):
         super().normalize(archive, logger)
@@ -408,7 +457,9 @@ class AngleGeometryDistribution(GeometryDistribution):
 
 
 class DihedralGeometryDistribution(GeometryDistribution):
-    name = GeometryDistribution.name.m_copy()
+    name = (
+        GeometryDistribution.name.m_copy()
+    )  # ? forego storage of constant values for @property
     name.description += """
     The central axis is placed in the middle, with the same ordering.
     """
@@ -424,7 +475,14 @@ class DihedralGeometryDistribution(GeometryDistribution):
     )  # ? should we enforce this algorithmically. this also has implications for the distribution
 
     bins = GeometryDistribution.bins.m_copy()
-    bins.unit = 'radian'
+    bins.unit = 'radians'
+
+    def get_bins(self) -> np.ndarray:
+        """Return the distribution bins in their SI units, i.e. radians.
+        Fall back to a default value, i.e. [0 ... 0.01 ... 180] degrees, if none are present."""
+        if not self.bins:
+            return (np.arange(0, 180, 0.01) * ureg.degrees).to('radians')
+        return self.bins
 
     def normalize(self, archive, logger: BoundLogger):
         super().normalize(archive, logger)
@@ -449,34 +507,46 @@ class DistributionHistogram:
         type: str,  # ? replace for automated check?
         distribution_values: pint.Quantity,
         bins: np.ndarray,
+        neighbor_list: pint.Quantity,
     ) -> None:
         self.combo = combo
         self.type = type
+        self.neighbor_list = neighbor_list
 
+        # normalize so the minimum is 1
         counts, _bins = np.histogram(distribution_values.magnitude, bins=bins)
         self.bins = _bins * distribution_values.u
-        # normalize so the minimum is 1
         if len(nonzero_counts := counts[np.where(counts > 0)]):
             self.frequency = counts / np.min(nonzero_counts)
         else:
             self.frequency = counts
 
     def produce_nomad_distribution(self) -> GeometryDistribution:
+        # select the constructor based on the type
         if self.type == 'distances':
             constructor = DistanceGeometryDistribution
         elif self.type == 'angles':
             constructor = AngleGeometryDistribution
         elif self.type == 'dihedrals':
             constructor = DihedralGeometryDistribution
+        elif self.type == 'generic':
+            constructor = GeometryDistribution
         else:
             raise ValueError('Type not recognized.')
 
+        # instantiate the NOMAD distribution
         geom_dist = constructor(
             extremity_atom_labels=[self.combo[0], self.combo[-1]],
-            n_bins=len(self.bins),
             frequency=self.frequency,
-            bins=self.bins,
+            n_cutoff_specifications=len(self.neighbor_list),
+            element_cutoff_selection=self.combo,  # ! check if this is correct
+            distance_cutoffs=self.neighbor_list,
         )
+        if self.type == 'distances':
+            geom_dist.n_bins = len(self.bins)
+            geom_dist.bins = self.bins
+
+        # add the central atom labels if they exist
         if len(self.combo) > 2:
             geom_dist.central_atom_labels = self.combo[1:-1]
         return geom_dist
@@ -484,8 +554,8 @@ class DistributionHistogram:
 
 class Distribution:
     """
-    A helper class to compute the distribution of a given geometry type, i.e., distances or angles.
-    It can also generate a histogram class via `produce_histogram`.
+    A helper class to compute the distribution of a given geometry type, i.e., distances or (dihedral) angles.
+    Also generates a histogram class via `produce_histogram`.
     """
 
     def __init__(
@@ -493,13 +563,14 @@ class Distribution:
         combo: list[str],
         type: str,
         ase_atoms: ase.Atoms,
-        neighbor_list: ase_nl.NeighborList,
+        neighbor_list: pint.Quantity,
     ) -> None:
         self.combo = combo
         self.type = type
+        self.neighbor_list = neighbor_list
 
         geom_analysis = ase_as.Analysis(
-            ase_atoms, neighbor_list
+            ase_atoms, neighbor_list.to('angstrom').magnitude
         )  # slightly less optimal
         if self.type == 'distances':
             if len((matches := geom_analysis.get_bonds(*combo, unique=True))[0]):
@@ -511,16 +582,18 @@ class Distribution:
             if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]):
                 self.values = np.array(geom_analysis.get_values(matches))
                 self.values = np.abs(
-                    np.where(self.values > 180, 360 - self.values, self.values)
-                )  # restrict to [0, 180]
+                    np.where(self.values > np.pi, 2 * np.pi - self.values, self.values)
+                )  # restrict to [0, pi]
             else:
                 self.values = np.array([])
-            self.values *= ureg.degree
+            self.values *= ureg.radians
         else:
             raise ValueError('Type not recognized.')
 
     def produce_histogram(self, bins: np.ndarray) -> DistributionHistogram:
-        return DistributionHistogram(self.combo, self.type, self.values, bins)
+        return DistributionHistogram(
+            self.combo, self.type, self.values, bins, self.neighbor_list
+        )
 
 
 class DistributionFactory:
@@ -529,9 +602,7 @@ class DistributionFactory:
     for all element paris or triples. It will produce a list of `Distribution` objects via `produce_distributions`.
     """
 
-    def __init__(
-        self, ase_atoms: ase.Atoms, neighbor_list: ase_nl.NeighborList
-    ) -> None:
+    def __init__(self, ase_atoms: ase.Atoms, neighbor_list: pint.Quantity) -> None:
         self.ase_atoms = ase_atoms
         self.neighbor_list = neighbor_list
         self._elements = sorted(list(set(self.ase_atoms.get_chemical_symbols())))
@@ -593,7 +664,19 @@ class AtomicCell(Cell):
         repeats=True,
     )
 
-    # geometry
+    # geometry distributions
+    ## I separated the distributions into different categories
+    ## to facilitate indexing when copied over to `results` section
+    distance_distributions = SubSection(
+        sub_section=DistanceGeometryDistribution.m_def,
+        repeats=True,
+    )
+
+    angle_distributions = SubSection(
+        sub_section=AngleGeometryDistribution.m_def,
+        repeats=True,
+    )
+
     geometry_distributions = SubSection(
         sub_section=GeometryDistribution.m_def,
         repeats=True,
@@ -617,16 +700,6 @@ class AtomicCell(Cell):
         shape=['n_objects'],
         description="""
         Wyckoff letters associated with each atom.
-        """,
-    )
-
-    geometry_analysis_cutoffs = Quantity(
-        type=np.float64,
-        unit='meter',
-        shape=['*'],
-        description="""
-        Cutoff radius within which atomic geometries are analyzed.
-        Defaults to 3x the covalent radius denoted by the [`ase` package](https://wiki.fysik.dtu.dk/ase/ase/neighborlist.html).
         """,
     )
 
@@ -672,35 +745,32 @@ class AtomicCell(Cell):
         self.name = self.m_def.name if self.name is None else self.name
 
         if self.analyze_geometry:
-            # set up neighbor list
-            if not self.geometry_analysis_cutoffs:
-                self.geometry_analysis_cutoffs = (
-                    ase_nl.natural_cutoffs(self.ase_atoms, mult=3.0) * ureg.angstrom
-                )
-            self.neighbor_list = ase_nl.build_neighbor_list(
-                self.ase_atoms,
-                self.geometry_analysis_cutoffs.to('angstrom').magnitude,
-                self_interaction=False,
-            )
-
             # set up distributions
+            cutoffs = ase_nl.natural_cutoffs(self.ase_atoms, mult=3.0) * ureg.angstrom
             self.simple_distributions = DistributionFactory(
                 self.ase_atoms,
-                self.neighbor_list,
+                ase_nl.build_neighbor_list(
+                    self.ase_atoms,
+                    cutoffs.magnitude,  # ase works in angstrom
+                    self_interaction=False,
+                ),
             ).produce_distributions()
 
+            # write distributions to the archive
             self.histogram_distributions, self.distributions = [], []
             for distribution in self.simple_distributions:
+                # set binning
                 if distribution.type == 'distances':
-                    bins = np.arange(0, max(self.geometry_analysis_cutoffs), 0.001)
-                elif distribution.type == 'angles' or distribution.type == 'dihedrals':
+                    bins = np.arange(0, max(cutoffs), 0.001)  # so binning may deviate
+                elif distribution.type in ['angles', 'dihedrals']:
                     bins = np.arange(0, 180, 0.01)
+
                 self.histogram_distributions.append(
                     distribution.produce_histogram(bins)
-                )
+                )  # temporary histogram for manipulation
                 self.distributions.append(
                     self.histogram_distributions[-1].produce_nomad_distribution()
-                )
+                )  # stored distributions
         return self
 
 
@@ -896,13 +966,13 @@ class Symmetry(ArchiveSection):
         symmetry['hall_symbol'] = symmetry_analyzer.get_hall_symbol()
         symmetry['point_group_symbol'] = symmetry_analyzer.get_point_group()
         symmetry['space_group_number'] = symmetry_analyzer.get_space_group_number()
-        symmetry[
-            'space_group_symbol'
-        ] = symmetry_analyzer.get_space_group_international_short()
+        symmetry['space_group_symbol'] = (
+            symmetry_analyzer.get_space_group_international_short()
+        )
         symmetry['origin_shift'] = symmetry_analyzer._get_spglib_origin_shift()
-        symmetry[
-            'transformation_matrix'
-        ] = symmetry_analyzer._get_spglib_transformation_matrix()
+        symmetry['transformation_matrix'] = (
+            symmetry_analyzer._get_spglib_transformation_matrix()
+        )
 
         # Populating the originally parsed AtomicCell wyckoff_letters and equivalent_atoms information
         original_wyckoff = symmetry_analyzer.get_wyckoff_letters_original()

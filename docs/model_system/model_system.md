@@ -6,8 +6,9 @@
 ## Distributions of geometric properties
 
 ### Schema structure
-These distributions are stored in `AtomicCell.geometry_distributions`, which is a list of repeating `GeometryDistribution` subsections.
-Information on the bins and their setup parameters (e.g. neighbor cutoff distances), are meanwhile stored under `AtomicCell` directly.
+These distributions are stored under `AtomicCell`, with different specializations as repeating subsections of `GeometryDistribution` or its child classes.
+This separation simplifies filtering to the `results` section and helps with indexing, as bin distributions tend to follow the default.
+Other information, such as cutoff distances used to construct the neighbor list, are also stored here.
 
 `GeometryDistribution` objects are effectively histograms that specialize further in sections for elemental pairs / triples / quadruples.
 This is a choice to facilitate searches and visualizations over the distribution themselves, which are normalized to reproduce the same frequency for primitive cells as supercells.
@@ -18,7 +19,7 @@ It is, however, not suitable for extracting the exacting distances / angles / di
     Triples / quadruples are defined around a specific geometric primitive, i.e. a point / arrow vector.
     The elements making up these primitives are stored under `central_atom_labels`.
 
-### Obejct initialization
+### Object initialization
 To keep state within `AtomicCell` simple and exert control over the stages in calculation, we use pure Python helper classes.
 Each class tackles a specific stage, in line with the _Single Responsibility Principle_:
 
