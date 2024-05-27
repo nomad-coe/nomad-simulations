@@ -169,7 +169,7 @@ class KSpaceFunctionalities:
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
         logger: BoundLogger,
-        check_grid: bool = False,
+        check_grid: Optional[bool] = False,
         grid: Optional[List[int]] = [],
     ) -> bool:
         """
@@ -404,7 +404,7 @@ class KMesh(Mesh):
             (np.float64): The k-line density of the `KMesh`.
         """
         # Initial check
-        if not KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+        if not KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             logger=logger,
             check_grid=True,
@@ -438,7 +438,7 @@ class KMesh(Mesh):
             (Optional[pint.Quantity]): The resolved `k_line_density` of the `KMesh`.
         """
         # Initial check
-        if not KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+        if not KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             logger=logger,
             check_grid=True,
@@ -489,7 +489,7 @@ class KMesh(Mesh):
         # Resolve `high_symmetry_points`
         if self.high_symmetry_points is None:
             self.high_symmetry_points = (
-                KSpaceFunctionalities.resolve_high_symmetry_points(
+                KSpaceFunctionalities().resolve_high_symmetry_points(
                     model_systems=model_systems, logger=logger
                 )
             )
@@ -553,13 +553,13 @@ class KLinePath(ArchiveSection):
             (Optional[List[float]]): The resolved `high_symmetry_path_values`.
         """
         # Initial check on the `reciprocal_lattice_vectors`
-        if not KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+        if not KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
         ):
             return []
 
         # Resolving the dictionary containing the `high_symmetry_points` for the given ModelSystem symmetry
-        high_symmetry_points = KSpaceFunctionalities.resolve_high_symmetry_points(
+        high_symmetry_points = KSpaceFunctionalities().resolve_high_symmetry_points(
             model_systems=model_systems, logger=logger
         )
         if high_symmetry_points is None:

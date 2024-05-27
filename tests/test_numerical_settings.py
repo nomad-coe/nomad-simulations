@@ -100,10 +100,10 @@ class TestKSpaceFunctionalities:
         """
         Test the `_check_reciprocal_lattice_vectors` private method.
         """
-        check = KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+        check = KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             logger=logger,
-            check_grd=check_grid,
+            check_grid=check_grid,
             grid=grid,
         )
         assert check == result
@@ -121,11 +121,11 @@ class TestKSpaceFunctionalities:
         simulation.model_system[0].normalize(EntryArchive(), logger)
 
         # Testing the functionality method
-        high_symmetry_points = KSpaceFunctionalities.resolve_high_symmetry_points(
+        high_symmetry_points = KSpaceFunctionalities().resolve_high_symmetry_points(
             model_systems=model_systems, logger=logger
         )
         assert len(high_symmetry_points) == 4
-         assert high_symmetry_points == {
+        assert high_symmetry_points == {
             'Gamma': [0, 0, 0],
             'M': [0.5, 0.5, 0],
             'R': [0.5, 0.5, 0.5],
