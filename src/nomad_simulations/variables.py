@@ -172,10 +172,9 @@ class KMesh(Variables):
     )
 
     points = Quantity(
-        type=np.float64,
-        shape=['n_points', 'dimensionality'],
+        type=KMeshSettings.points,
         description="""
-        K-point mesh over which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
+        Reference to the `KMesh.points` over which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
         """,
     )
 
@@ -185,25 +184,13 @@ class KMesh(Variables):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def extract_points(self, logger: BoundLogger) -> Optional[list]:
-        """
-        Extract the `points` list from the `k_mesh_settings_ref` pointing to the `KMesh` section.
-        Args:
-            logger (BoundLogger): The logger to log messages.
-        Returns:
-            (Optional[list]): The `points` list.
-        """
-        if self.k_mesh_settings_ref is not None:
-            if self.k_mesh_settings_ref.points is not None:
-                return self.k_mesh_settings_ref.points
-            points, _ = self.k_mesh_settings_ref.resolve_points_and_offset(logger)
-            return points
-        logger.error('`k_mesh_settings_ref` is not defined.')
-        return None
-
     def normalize(self, archive, logger) -> None:
         # Extracting `points` from the `k_mesh_settings_ref` BEFORE doing `super().normalize()`
         self.points = self.extract_points(logger)
+        if self.k_mesh_settings_ref is None:
+            logger.error('`k_mesh_settings_ref` is not defined.')
+            return
+        self.points = self.k_mesh_settings_ref  # ref to `points`
 
         super().normalize(archive, logger)
 
@@ -220,10 +207,9 @@ class KLinePath(Variables):
     )
 
     points = Quantity(
-        type=np.float64,
-        shape=['n_points', 3],
+        type=KLinePathSettings.points,
         description="""
-        Points along the k-line path in which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
+        Reference to the `KLinePath.points` in which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
         """,
     )
 
@@ -233,21 +219,11 @@ class KLinePath(Variables):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def extract_points(self, logger: BoundLogger) -> Optional[list]:
-        """
-        Extract the `points` list from the `k_line_path_settings_ref` pointing to the `KLinePath` section.
-        Args:
-            logger (BoundLogger): The logger to log messages.
-        Returns:
-            (Optional[list]): The `points` list.
-        """
-        if self.k_line_path_settings_ref is not None:
-            return self.k_line_path_settings_ref.points
-        logger.error('`k_line_path_settings_ref` is not defined.')
-        return None
-
     def normalize(self, archive, logger) -> None:
         # Extracting `points` from the `k_line_path_settings_ref` BEFORE doing `super().normalize()`
-        self.points = self.extract_points(logger)
+        if self.k_line_path_settings_ref is None:
+            logger.error('`k_line_path_settings_ref` is not defined.')
+            return
+        self.points = self.k_line_path_settings_ref  # ref to `points`
 
         super().normalize(archive, logger)
