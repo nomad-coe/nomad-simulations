@@ -50,26 +50,6 @@ from .atoms_state import AtomsState
 from .utils import get_sibling_section, is_not_representative
 
 
-def check_attributes(attributes: list[str]) -> Optional[Callable]:
-    """
-    Check if the specified attributes are not None.
-    """
-
-    def decorator(func: Callable) -> Callable:
-        def wrapper(self, *args, **kwargs) -> Optional[Callable]:
-            for attr in attributes:
-                if attr not in self.all_quantities:  # ! verify
-                    self.logger.error(
-                        f'Missing attribute: {attr}.'
-                    )  # require the class to provide a logger
-                    return None
-            return func(self, *args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
 class GeometricSpace(Entity):
     """
     A base section used to define geometrical spaces and their entities.
@@ -289,7 +269,7 @@ class Cell(GeometricSpace):
     periodic_boundary_conditions = Quantity(
         type=bool,
         shape=[3],
-        default=[False, False, False],
+        default=[False, False, False],  # when is the default value set?
         description="""
         If periodic boundary conditions are applied to each direction of the crystal axes.
         """,
@@ -711,23 +691,31 @@ class AtomicCell(Cell):
         """,
     )
 
-    @check_attributes(
-        attributes=[
-            'atoms_state',
-            'lattice_vectors',
-            'positions',
-            'periodic_boundary_conditions',
-        ],
-    )
-    def to_ase_atoms(self):
+    def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
         """
         Generate an `ase.Atoms` object from `AtomicCell`.
         """
+        # check all prerequisites
+        attributes = ('atoms_states', 'lattice_vectors', 'positions')
+        for attribute in attributes:
+            if getattr(self, attribute) is None:
+                logger.warning(f'Attribute {attribute} not found in AtomicCell.')
+                return None
+
+        if len(self.atoms_states) != len(positions := self.positions):
+            logger.warning(
+                'Number of atoms states and positions do not match.',
+                atoms_states=len(self.atoms_states),
+                positions=len(positions),
+            )
+            return None
+
+        # if all is well, generate the `ase.Atoms` object
         ase_atoms = ase.Atoms(
-            symbols=[atom_state.chemical_symbol for atom_state in self.atoms_state],
-            pbc=self.periodic_boundary_conditions,
+            symbols=[atom_state.chemical_symbol for atom_state in self.atoms_states],
             positions=self.positions.to('angstrom').magnitude,
             cell=self.lattice_vectors.to('angstrom').magnitude,
+            pbc=self.periodic_boundary_conditions,
         )
         return ase_atoms
 
