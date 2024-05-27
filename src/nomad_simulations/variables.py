@@ -23,6 +23,11 @@ from structlog.stdlib import BoundLogger
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, Section, Context
 
+from nomad_simulations.numerical_settings import (
+    KMesh as KMeshSettings,
+    KLinePath as KLinePathSettings,
+)
+
 
 class Variables(ArchiveSection):
     """
@@ -149,4 +154,75 @@ class WignerSeitz(Variables):
         self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class KMesh(Variables):
+    """
+    K-point mesh over which the physical property is calculated. This is used to define `ElectronicEigenvalues(PhysicalProperty)` and
+    other k-space properties. The `points` are obtained from a refernece to the `NumericalSettings` section, `KMesh(NumericalSettings)`.
+    """
+
+    k_mesh_settings_ref = Quantity(
+        type=KMeshSettings,
+        description="""
+        Reference to the `KMesh(NumericalSettings)` section in the `ModelMethod` section. This reference is useful
+        to extract `points` and, then, obtain the shape of `value` of the `PhysicalProperty`.
+        """,
+    )
+
+    points = Quantity(
+        type=KMeshSettings.points,
+        description="""
+        Reference to the `KMesh.points` over which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        # Extracting `points` from the `k_mesh_settings_ref` BEFORE doing `super().normalize()`
+        if self.k_mesh_settings_ref is None:
+            logger.error('`k_mesh_settings_ref` is not defined.')
+            return
+        self.points = self.k_mesh_settings_ref  # ref to `points`
+
+        super().normalize(archive, logger)
+
+
+class KLinePath(Variables):
+    """ """
+
+    k_line_path_settings_ref = Quantity(
+        type=KLinePathSettings,
+        description="""
+        Reference to the `KLinePath(NumericalSettings)` section in the `ModelMethod.KMesh` section. This reference is useful
+        to extract `points` and, then, obtain the shape of `value` of the `PhysicalProperty`.
+        """,
+    )
+
+    points = Quantity(
+        type=KLinePathSettings.points,
+        description="""
+        Reference to the `KLinePath.points` in which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        # Extracting `points` from the `k_line_path_settings_ref` BEFORE doing `super().normalize()`
+        if self.k_line_path_settings_ref is None:
+            logger.error('`k_line_path_settings_ref` is not defined.')
+            return
+        self.points = self.k_line_path_settings_ref  # ref to `points`
+
         super().normalize(archive, logger)

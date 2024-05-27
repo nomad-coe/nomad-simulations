@@ -31,7 +31,7 @@ from nomad.metainfo import (
     Context,
 )
 
-from .numerical_settings import NumericalSettings, KMesh
+from .numerical_settings import NumericalSettings
 from .model_system import ModelSystem
 from .atoms_state import OrbitalsState, CoreHole
 from .utils import is_not_representative
@@ -839,8 +839,6 @@ class ExcitedStateMethodology(ModelMethodElectronic):
         """,
         a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
-
-    q_mesh = SubSection(sub_section=KMesh.m_def)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
