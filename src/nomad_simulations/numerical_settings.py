@@ -160,14 +160,17 @@ class Mesh(ArchiveSection):
         super().normalize(archive, logger)
 
 
-class KMeshBase(Mesh):
+class KSpaceFunctionalities:
     """
-    A base section used for abstraction for `KMesh` and `KLinePath` sections. It contains the methods
-    `_check_reciprocal_lattice_vectors` and `resolve_high_symmetry_points` that are used in both sections.
+    A functionality class useful for defining methods shared between `KSpace`, `KMesh`, and `KLinePath`.
     """
 
     def _check_reciprocal_lattice_vectors(
-        self, reciprocal_lattice_vectors: Optional[pint.Quantity], logger: BoundLogger
+        self,
+        reciprocal_lattice_vectors: Optional[pint.Quantity],
+        logger: BoundLogger,
+        check_grid: bool = False,
+        grid: Optional[List[int]] = [],
     ) -> bool:
         """
         Check if the `reciprocal_lattice_vectors` exist and if they have the same dimensionality as `grid`.
@@ -175,16 +178,25 @@ class KMeshBase(Mesh):
         Args:
             reciprocal_lattice_vectors (Optional[pint.Quantity]): The reciprocal lattice vectors of the atomic cell.
             logger (BoundLogger): The logger to log messages.
+            check_grid (bool, optional): Flag to check the `grid` is set to True. Defaults to False.
+            grid (Optional[List[int]], optional): The grid of the `KMesh`. Defaults to [].
 
         Returns:
-            (bool): True if the `reciprocal_lattice_vectors` exist and have the same dimensionality as `grid`, False otherwise.
+            (bool): True if the `reciprocal_lattice_vectors` exist. If `check_grid_too` is set to True, it also checks if the
+            `reciprocal_lattice_vectors` and the `grid` have the same dimensionality. False otherwise.
         """
-        if reciprocal_lattice_vectors is None or self.grid is None:
-            logger.warning(
-                'Could not find `reciprocal_lattice_vectors` from parent `KSpace` or could not find `KMesh.grid`.'
-            )
+        if reciprocal_lattice_vectors is None:
+            logger.warning('Could not find `reciprocal_lattice_vectors`.')
             return False
-        if len(reciprocal_lattice_vectors) != 3 or len(self.grid) != 3:
+        # Only checking the `reciprocal_lattice_vectors`
+        if not check_grid:
+            return True
+
+        # Checking the `grid` too
+        if grid is None:
+            logger.warning('Could not find `grid`.')
+            return False
+        if len(reciprocal_lattice_vectors) != 3 or len(grid) != 3:
             logger.warning(
                 'The `reciprocal_lattice_vectors` and the `grid` should have the same dimensionality.'
             )
@@ -283,9 +295,6 @@ class KMeshBase(Mesh):
                     key = 'Sigma1'
             high_symmetry_points[key] = list(value)
         return high_symmetry_points
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
 
 
 class KMesh(Mesh):
@@ -395,8 +404,11 @@ class KMesh(Mesh):
             (np.float64): The k-line density of the `KMesh`.
         """
         # Initial check
-        if not self._check_reciprocal_lattice_vectors(
-            reciprocal_lattice_vectors, logger
+        if not KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+            logger=logger,
+            check_grid=True,
+            grid=self.grid,
         ):
             return None
 
@@ -426,8 +438,11 @@ class KMesh(Mesh):
             (Optional[pint.Quantity]): The resolved `k_line_density` of the `KMesh`.
         """
         # Initial check
-        if not self._check_reciprocal_lattice_vectors(
-            reciprocal_lattice_vectors, logger
+        if not KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+            logger=logger,
+            check_grid=True,
+            grid=self.grid,
         ):
             return None
 
@@ -473,8 +488,10 @@ class KMesh(Mesh):
 
         # Resolve `high_symmetry_points`
         if self.high_symmetry_points is None:
-            self.high_symmetry_points = self.resolve_high_symmetry_points(
-                model_systems, logger
+            self.high_symmetry_points = (
+                KSpaceFunctionalities.resolve_high_symmetry_points(
+                    model_systems=model_systems, logger=logger
+                )
             )
 
 
@@ -484,21 +501,6 @@ class KLinePath(ArchiveSection):
     k-space quantities are defined in units of the reciprocal lattice vectors, so that to obtain their Cartesian coordinates
     value, one should multiply them by the reciprocal lattice vectors (`points_cartesian = points @ reciprocal_lattice_vectors`).
     """
-
-    # high_symmetry_path = Quantity(
-    #     type=JSON,
-    #     shape=['*'],
-    #     description="""
-    #     List of dictionaries containing the high-symmetry path (in units of the `reciprocal_lattice_vectors`) followed in
-    #     the k-line path. E.g., in a cubic lattice:
-    #         high_symmetry_path = [
-    #             {'Gamma': [0, 0, 0]},
-    #             {'X': [0.5, 0, 0]},
-    #             {'Y': [0, 0.5, 0]},
-    #             {'Gamma': [0, 0, 0]},
-    #         ]
-    #     """,
-    # )
 
     high_symmetry_path_names = Quantity(
         type=str,
@@ -533,6 +535,45 @@ class KLinePath(ArchiveSection):
         """,
     )
 
+    def resolve_high_symmetry_path_values(
+        self,
+        model_systems: List[ModelSystem],
+        reciprocal_lattice_vectors: pint.Quantity,
+        logger: BoundLogger,
+    ) -> Optional[List[float]]:
+        """
+        Resolves the `high_symmetry_path_values` of the `KLinePath` from the `high_symmetry_path_names`.
+
+        Args:
+            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            reciprocal_lattice_vectors (pint.Quantity): The reciprocal lattice vectors of the atomic cell.
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            (Optional[List[float]]): The resolved `high_symmetry_path_values`.
+        """
+        # Initial check on the `reciprocal_lattice_vectors`
+        if not KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
+        ):
+            return []
+
+        # Resolving the dictionary containing the `high_symmetry_points` for the given ModelSystem symmetry
+        high_symmetry_points = KSpaceFunctionalities.resolve_high_symmetry_points(
+            model_systems=model_systems, logger=logger
+        )
+        if high_symmetry_points is None:
+            return []
+
+        # Appending into a list which is stored in the `high_symmetry_path_values`. There is a check in the `normalize()`
+        # function to ensure that the length of the `high_symmetry_path_names` and `high_symmetry_path_values` coincide.
+        high_symmetry_path_values = [
+            high_symmetry_points[name]
+            for name in self.high_symmetry_path_names
+            if name in high_symmetry_points.keys()
+        ]
+        return high_symmetry_path_values
+
     def _check_high_symmetry_path(self, logger: BoundLogger) -> bool:
         """
         Check if the `high_symmetry_path_names` and `high_symmetry_path_values` are defined and have the same length.
@@ -560,43 +601,6 @@ class KLinePath(ArchiveSection):
             )
             return False
         return True
-
-    def resolve_high_symmetry_path_values(
-        self,
-        model_systems: List[ModelSystem],
-        reciprocal_lattice_vectors: pint.Quantity,
-        logger: BoundLogger,
-    ) -> Optional[List[float]]:
-        """
-        Resolves the `high_symmetry_path_values` of the `KLinePath` from the `high_symmetry_path_names`.
-
-        Args:
-            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
-            reciprocal_lattice_vectors (pint.Quantity): The reciprocal lattice vectors of the atomic cell.
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[List[float]]): The resolved `high_symmetry_path_values`.
-        """
-        # Initial check on the `reciprocal_lattice_vectors`
-        if not self._check_reciprocal_lattice_vectors(
-            reciprocal_lattice_vectors, logger
-        ):
-            return []
-
-        # Resolving the dictionary containing the `high_symmetry_points` for the given ModelSystem symmetry
-        high_symmetry_points = self.resolve_high_symmetry_points(model_systems, logger)
-        if high_symmetry_points is None:
-            return []
-
-        # Appending into a list which is stored in the `high_symmetry_path_values`. There is a check in the `normalize()`
-        # function to ensure that the length of the `high_symmetry_path_names` and `high_symmetry_path_values` coincide.
-        high_symmetry_path_values = [
-            high_symmetry_points[name]
-            for name in self.high_symmetry_path_names
-            if name in high_symmetry_points.keys()
-        ]
-        return high_symmetry_path_values
 
     def get_high_symmetry_path_norms(
         self,
@@ -759,6 +763,7 @@ class KSpace(NumericalSettings):
     depending on the k-space sampling: `k_mesh` or `k_line_path`.
     """
 
+    # ! This needs to be normalized first in order to extract the `reciprocal_lattice_vectors` from the `ModelSystem.cell` information
     reciprocal_lattice_vectors = Quantity(
         type=np.float64,
         shape=[3, 3],

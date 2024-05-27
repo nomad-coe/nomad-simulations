@@ -18,12 +18,12 @@
 
 import pytest
 import numpy as np
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.numerical_settings import KMesh, KLinePath
+from nomad_simulations.numerical_settings import KMesh, KLinePath, KSpaceFunctionalities
 
 from . import logger
 from .conftest import generate_k_line_path, generate_k_space_simulation
@@ -75,7 +75,64 @@ class TestKSpace:
             assert k_space.reciprocal_lattice_vectors == result
 
 
-# TODO add testing for KMesh
+class TestKSpaceFunctionalities:
+    """
+    Test the `KSpaceFunctionalities` class defined in `numerical_settings.py`.
+    """
+
+    @pytest.mark.parametrize(
+        'reciprocal_lattice_vectors, check_grid, grid, result',
+        [
+            (None, None, None, False),
+            ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], False, None, True),
+            ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], True, None, False),
+            ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], True, [6, 6, 6, 4], False),
+            ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], True, [6, 6, 6], True),
+        ],
+    )
+    def test_check_reciprocal_lattice_vectors(
+        self,
+        reciprocal_lattice_vectors: Optional[List[List[float]]],
+        check_grid: bool,
+        grid: Optional[List[int]],
+        result: bool,
+    ):
+        """
+        Test the `_check_reciprocal_lattice_vectors` private method.
+        """
+        check = KSpaceFunctionalities._check_reciprocal_lattice_vectors(
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+            logger=logger,
+            check_grd=check_grid,
+            grid=grid,
+        )
+        assert check == result
+
+    def test_resolve_high_symmetry_points(self):
+        """
+        Test the `resolve_high_symmetry_points` method. Only testing the valid situation in which the `ModelSystem` normalization worked.
+        """
+        # `ModelSystem.normalize()` need to extract `bulk` as a type.
+        simulation = generate_k_space_simulation(
+            pbc=[True, True, True],
+        )
+        model_systems = simulation.model_system
+        # normalize to extract symmetry
+        simulation.model_system[0].normalize(EntryArchive(), logger)
+
+        # Testing the functionality method
+        high_symmetry_points = KSpaceFunctionalities.resolve_high_symmetry_points(
+            model_systems=model_systems, logger=logger
+        )
+        assert len(high_symmetry_points) == 4
+         assert high_symmetry_points == {
+            'Gamma': [0, 0, 0],
+            'M': [0.5, 0.5, 0],
+            'R': [0.5, 0.5, 0.5],
+            'X': [0, 0.5, 0],
+        }
+
+
 class TestKMesh:
     """
     Test the `KMesh` class defined in `numerical_settings.py`.
@@ -231,28 +288,6 @@ class TestKMesh:
         else:
             assert k_line_density == result_k_line_density
 
-    def test_resolve_high_symmetry_points(self):
-        """
-        Test the `resolve_high_symmetry_points` method. Only testing the valid situation in which the `ModelSystem` normalization worked.
-        """
-        # `ModelSystem.normalize()` need to extract `bulk` as a type.
-        simulation = generate_k_space_simulation(
-            pbc=[True, True, True],
-        )
-        model_system = simulation.model_system[0]
-        model_system.normalize(EntryArchive(), logger)  # normalize to extract symmetry
-        k_mesh = simulation.model_method[0].numerical_settings[0].k_mesh[0]
-        high_symmetry_points = k_mesh.resolve_high_symmetry_points(
-            simulation.model_system, logger
-        )
-        assert len(high_symmetry_points) == 4
-        assert high_symmetry_points == {
-            'Gamma': [0, 0, 0],
-            'M': [0.5, 0.5, 0],
-            'R': [0.5, 0.5, 0.5],
-            'X': [0, 0.5, 0],
-        }
-
 
 class TestKLinePath:
     """
@@ -283,6 +318,50 @@ class TestKLinePath:
             high_symmetry_path_values=high_symmetry_path_values,
         )
         assert k_line_path._check_high_symmetry_path(logger) == result
+
+    @pytest.mark.parametrize(
+        'high_symmetry_path_names, result',
+        [
+            (['Gamma', 'X', 'R'], [[0, 0, 0], [0, 0.5, 0], [0.5, 0.5, 0.5]]),
+        ],
+    )
+    def test_resolve_high_symmetry_path_values(
+        self,
+        high_symmetry_path_names: List[str],
+        result: bool,
+    ):
+        """
+        Test the `resolve_high_symmetry_path_values` method. Only testing the valid situation in which the `ModelSystem` normalization worked.
+        """
+        # `ModelSystem.normalize()` need to extract `bulk` as a type.
+        simulation = generate_k_space_simulation(
+            pbc=[True, True, True],
+            high_symmetry_path_names=high_symmetry_path_names,
+            high_symmetry_path_values=None,
+        )
+        model_system = simulation.model_system[0]
+        model_system.normalize(EntryArchive(), logger)  # normalize to extract symmetry
+        # getting `reciprocal_lattice_vectors`
+        reciprocal_lattice_vectors = (
+            simulation.model_method[0].numerical_settings[0].reciprocal_lattice_vectors
+        )
+
+        # `KLinePath` can be understood as a `KMeshBase` section
+        k_line_path = simulation.model_method[0].numerical_settings[0].k_line_path
+        k_line_path.normalize(EntryArchive(), logger)
+        high_symmetry_points_values = k_line_path.resolve_high_symmetry_path_values(
+            simulation.model_system, reciprocal_lattice_vectors, logger
+        )
+        # high_symmetry_points = k_mesh_base.resolve_high_symmetry_points(
+        #     simulation.model_system, logger
+        # )
+        # assert len(high_symmetry_points) == 4
+        # assert high_symmetry_points == {
+        #     'Gamma': [0, 0, 0],
+        #     'M': [0.5, 0.5, 0],
+        #     'R': [0.5, 0.5, 0.5],
+        #     'X': [0, 0.5, 0],
+        # }
 
     def test_get_high_symmetry_path_norm(self, k_line_path: KLinePath):
         """
