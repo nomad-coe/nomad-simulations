@@ -186,7 +186,6 @@ class KMesh(Variables):
 
     def normalize(self, archive, logger) -> None:
         # Extracting `points` from the `k_mesh_settings_ref` BEFORE doing `super().normalize()`
-        self.points = self.extract_points(logger)
         if self.k_mesh_settings_ref is None:
             logger.error('`k_mesh_settings_ref` is not defined.')
             return
