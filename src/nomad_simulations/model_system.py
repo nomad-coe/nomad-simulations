@@ -484,33 +484,44 @@ class DistributionHistogram:
     def __init__(
         self,
         combo: list[str],
-        type: str,  # ? replace for automated check?
         distribution_values: pint.Quantity,
-        bins: np.ndarray,
+        bins: pint.Quantity,
         neighbor_list: pint.Quantity,
     ) -> None:
+        """The `combo` is a list of element symbols, `distribution_values` is a list of distances or angles,
+        `bins` is the binning of the histogram and sets the final units,
+        and `neighbor_list` is the cutoffs for the distribution (in the same order as combo)."""
         self.combo = combo
-        self.type = type
+        self.bins = bins
         self.neighbor_list = neighbor_list
+        self.compute_histogram(distribution_values)
+
+    def compute_histogram(self, distribution_values: pint.Quantity) -> None:
+        """Compute the histogram of the distribution values,
+        based on `self.bins` and `distribution_values`.
+        Results are stored under `self.counts`. Returns the object itself."""
+
+        # compute the histogram
+        self.counts, _ = np.histogram(
+            distribution_values.to(self.bins.u).magnitude, bins=self.bins.magnitude
+        )  # have the bins determine the units and range
 
         # normalize so the minimum is 1
-        counts, _bins = np.histogram(distribution_values.magnitude, bins=bins)
-        self.bins = _bins * distribution_values.u
-        if len(nonzero_counts := counts[np.where(counts > 0)]):
-            self.frequency = counts / np.min(nonzero_counts)
+        if len(nonzero_counts := self.counts[np.where(self.counts > 0)]) > 0:
+            self.frequency = self.counts / np.min(nonzero_counts)
         else:
-            self.frequency = counts
+            self.frequency = self.counts
 
     def produce_nomad_distribution(self) -> GeometryDistribution:
         # select the constructor based on the type
-        if self.type == 'distances':
-            constructor = DistanceGeometryDistribution
-        elif self.type == 'angles':
-            constructor = AngleGeometryDistribution
-        elif self.type == 'dihedrals':
-            constructor = DihedralGeometryDistribution
-        elif self.type == 'generic':
-            constructor = GeometryDistribution
+        constructor_mapping = {
+            'distances': DistanceGeometryDistribution,
+            'angles': AngleGeometryDistribution,
+            'dihedrals': DihedralGeometryDistribution,
+            'generic': GeometryDistribution,
+        }
+        if self.type in constructor_mapping:
+            constructor = constructor_mapping[self.type]
         else:
             raise ValueError('Type not recognized.')
 
@@ -519,9 +530,11 @@ class DistributionHistogram:
             extremity_atom_labels=[self.combo[0], self.combo[-1]],
             frequency=self.frequency,
             n_cutoff_specifications=len(self.neighbor_list),
-            element_cutoff_selection=self.combo,  # ! check if this is correct
+            element_cutoff_selection=self.combo,  # this is enforced by `DistributionFactory`
             distance_cutoffs=self.neighbor_list,
         )
+
+        # distances require explicit binning data
         if self.type == 'distances':
             geom_dist.n_bins = len(self.bins)
             geom_dist.bins = self.bins
@@ -541,39 +554,40 @@ class Distribution:
     def __init__(
         self,
         combo: list[str],
-        type: str,
         ase_atoms: ase.Atoms,
         neighbor_list: pint.Quantity,
     ) -> None:
+        # initialize object attributes
         self.combo = combo
-        self.type = type
         self.neighbor_list = neighbor_list
 
         geom_analysis = ase_as.Analysis(
             ase_atoms, neighbor_list.to('angstrom').magnitude
-        )  # slightly less optimal
-        if self.type == 'distances':
-            if len((matches := geom_analysis.get_bonds(*combo, unique=True))[0]):
+        )
+        if len(combo) == 2:
+            if len((matches := geom_analysis.get_bonds(*combo, unique=True))[0]) > 0:
                 self.values = geom_analysis.get_values(matches)
             else:
                 self.values = np.array([])
             self.values *= ureg.angstrom
-        elif self.type == 'angles' or self.type == 'dihedrals':
-            if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]):
-                self.values = np.array(geom_analysis.get_values(matches))
+        elif len(combo) in (3, 4):
+            if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]) > 0:
+                self.values = np.array(geom_analysis.get_values(matches)) * ureg.degrees
                 self.values = np.abs(
-                    np.where(self.values > np.pi, 2 * np.pi - self.values, self.values)
-                )  # restrict to [0, pi]
+                    np.where(
+                        self.values > 180 * ureg.degrees,
+                        360 * ureg.degrees - self.values,
+                        self.values,
+                    )
+                )  # restrict to [0, 180] degrees
             else:
                 self.values = np.array([])
-            self.values *= ureg.radians
+            self.values *= ureg.degrees
         else:
-            raise ValueError('Type not recognized.')
+            raise ValueError('Could not infer distribution type from `combo`.')
 
-    def produce_histogram(self, bins: np.ndarray) -> DistributionHistogram:
-        return DistributionHistogram(
-            self.combo, self.type, self.values, bins, self.neighbor_list
-        )
+    def produce_histogram(self, bins: pint.Quantity) -> DistributionHistogram:
+        return DistributionHistogram(self.combo, self.values, bins, self.neighbor_list)
 
 
 class DistributionFactory:
@@ -583,12 +597,18 @@ class DistributionFactory:
     """
 
     def __init__(self, ase_atoms: ase.Atoms, neighbor_list: pint.Quantity) -> None:
+        """The neighbor list should follow the same order as `ase_atoms`."""
+        if len(ase_atoms) != len(neighbor_list):
+            raise ValueError('Length of `ase_atoms` and `neighbor_list` do not match.')
+
         self.ase_atoms = ase_atoms
-        self.neighbor_list = neighbor_list
-        self._elements = sorted(list(set(self.ase_atoms.get_chemical_symbols())))
+        self.cutoff_mapping = dict(zip(ase_atoms.get_chemical_symbols(), neighbor_list))
+        self._elements = sorted(
+            list(set(self.ase_atoms.get_chemical_symbols())), key=ase.Atom(x).number
+        )  # sort by atomic number
 
     @property
-    def get_elemental_pairs(self) -> list[list[str]]:
+    def get_elemental_pairs(self) -> list[tuple[str, str]]:
         """Generate all possible pairs of element symbols.
         Permutations are not considered, i.e., (B, A) is converted into (A, B)."""
         return [
@@ -598,7 +618,7 @@ class DistributionFactory:
         ]
 
     @property
-    def get_elemental_triples_centered(self) -> list[list[str]]:
+    def get_elemental_triples_centered(self) -> list[tuple[str, str, str]]:
         """Generate all possible triples of element symbols with the center element first.
         Permutations between the outer elements are not considered, i.e., (A, C, B) is converted into (A, B, C).
         """
@@ -610,7 +630,7 @@ class DistributionFactory:
         ]  # matching the order of the `ase` package: https://wiki.fysik.dtu.dk/ase/_modules/ase/geometry/analysis.html#Analysis.get_angles
 
     @property
-    def get_elemental_quadruples_centered(self) -> list[list[str]]:
+    def get_elemental_quadruples_centered(self) -> list[tuple[str, str, str, str]]:
         """Generate all possible quadruples of element symbols with the center elements first.
         Permutations between the outer elements are not considered, i.e., (A, D, B, C) is converted into (A, B, C, D).
         """
@@ -626,11 +646,15 @@ class DistributionFactory:
         """Generate all possible distributions of distances and angles
         for all element pairs and triples, respectively."""
         return [
-            Distribution(combos, type_decl, self.ase_atoms, self.neighbor_list)
-            for type_decl, combos in zip(
-                ['distances', 'angles'],
-                [*self.get_elemental_pairs, *self.get_elemental_triples_centered],
+            Distribution(
+                list(combos),
+                self.ase_atoms,
+                [self.cutoff_mapping[atom] for atom in combos],
             )
+            for combos in [
+                *self.get_elemental_pairs,
+                *self.get_elemental_triples_centered,
+            ]
         ]
 
 
