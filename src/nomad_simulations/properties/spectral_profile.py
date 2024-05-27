@@ -204,9 +204,6 @@ class ElectronicDensityOfStates(DOSProfile):
         Returns:
             (Optional[pint.Quantity]): The resolved origin of reference for the energies.
         """
-        # ! We need schema for `ElectronicEigenvalues` to store `highest_occupied` and `lowest_occupied`
-        # TODO improve and check this normalization after implementing `ElectronicEigenvalues`
-
         # Check if the variables contain more than one variable (different than Energy)
         # ? Is this correct or should be use the index of energies to extract the proper shape element in `self.value` being used for `dos_values`?
         if len(self.variables) > 1:
@@ -215,7 +212,7 @@ class ElectronicDensityOfStates(DOSProfile):
             )
             return None
 
-        # Extract the `ElectronicEigenvalues` section to get the `highest_occupied` and `lowest_occupied` energies
+        # Extract the `ElectronicEigenvalues` section to get the `highest_occupied` and `lowest_unoccupied` energies
         # TODO implement once `ElectronicEigenvalues` is in the schema
         eigenvalues = get_sibling_section(
             section=self, sibling_section_name='electronic_eigenvalues', logger=logger
@@ -223,14 +220,14 @@ class ElectronicDensityOfStates(DOSProfile):
         highest_occupied_energy = (
             eigenvalues.highest_occupied if eigenvalues is not None else None
         )
-        lowest_occupied_energy = (
-            eigenvalues.lowest_occupied if eigenvalues is not None else None
+        lowest_unoccupied_energy = (
+            eigenvalues.lowest_unoccupied if eigenvalues is not None else None
         )
-        # and set defaults for `highest_occupied_energy` and `lowest_occupied_energy` in `m_cache`
+        # and set defaults for `highest_occupied_energy` and `lowest_unoccupied_energy` in `m_cache`
         if highest_occupied_energy is not None:
             self.m_cache['highest_occupied_energy'] = highest_occupied_energy
-        if lowest_occupied_energy is not None:
-            self.m_cache['lowest_occupied_energy'] = lowest_occupied_energy
+        if lowest_unoccupied_energy is not None:
+            self.m_cache['lowest_unoccupied_energy'] = lowest_unoccupied_energy
 
         # Set thresholds for the energies and values
         energy_threshold = config.normalize.band_structure_energy_tolerance
@@ -281,7 +278,7 @@ class ElectronicDensityOfStates(DOSProfile):
             # search needs to be performed.
             if idx_ascend != fermi_idx and idx_descend != fermi_idx:
                 self.m_cache['highest_occupied_energy'] = fermi_energy_closest
-                self.m_cache['lowest_occupied_energy'] = fermi_energy_closest
+                self.m_cache['lowest_unoccupied_energy'] = fermi_energy_closest
                 single_peak_fermi = True
 
             if not single_peak_fermi:
@@ -363,16 +360,16 @@ class ElectronicDensityOfStates(DOSProfile):
 
     def extract_band_gap(self) -> Optional[ElectronicBandGap]:
         """
-        Extract the electronic band gap from the `highest_occupied_energy` and `lowest_occupied_energy` stored
+        Extract the electronic band gap from the `highest_occupied_energy` and `lowest_unoccupied_energy` stored
         in `m_cache` from `resolve_energies_origin()`. If the difference of `highest_occupied_energy` and
-        `lowest_occupied_energy` is negative, the band gap `value` is set to 0.0.
+        `lowest_unoccupied_energy` is negative, the band gap `value` is set to 0.0.
 
         Returns:
             (Optional[ElectronicBandGap]): The extracted electronic band gap section to be stored in `Outputs`.
         """
         band_gap = None
         homo = self.m_cache.get('highest_occupied_energy')
-        lumo = self.m_cache.get('lowest_occupied_energy')
+        lumo = self.m_cache.get('lowest_unoccupied_energy')
         if homo and lumo:
             band_gap = ElectronicBandGap()
             band_gap.is_derived = True

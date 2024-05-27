@@ -37,11 +37,12 @@ from nomad_simulations.numerical_settings import (
     KLinePath as KLinePathSettings,
 )
 from nomad_simulations.outputs import Outputs, SCFOutputs
-from nomad_simulations.variables import Energy2 as Energy
+from nomad_simulations.variables import Energy2 as Energy, KMesh
 from nomad_simulations.properties import (
     ElectronicBandGap,
     DOSProfile,
     ElectronicDensityOfStates,
+    ElectronicEigenvalues,
 )
 
 if os.getenv('_PYTEST_RAISE', '0') != '0':

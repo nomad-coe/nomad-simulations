@@ -27,3 +27,5 @@ from .spectral_profile import (
 )
 from .hopping_matrix import HoppingMatrix, CrystalFieldSplitting
 from .permittivity import Permittivity
+from .fermi_surface import FermiSurface
+from .band_structure import ElectronicEigenvalues, ElectronicBandStructure

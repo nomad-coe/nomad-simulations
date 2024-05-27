@@ -221,10 +221,19 @@ class PhysicalProperty(ArchiveSection):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
+
+        # Checking if IRI is defined
         if self.iri is None:
             logger.warning(
                 'The used property is not defined in the FAIRmat taxonomy (https://fairmat-nfdi.github.io/fairmat-taxonomy/). You can contribute there if you want to extend the list of available materials properties.'
             )
+
+        # Checking if the quantities `n_` are defined, as this are used to calculate `rank`
+        for quantity, _ in self.m_def.all_quantities.items():
+            if quantity.startswith('n_') and getattr(self, quantity) is None:
+                raise ValueError(
+                    f'`{quantity}` is not defined during initialization of the class.'
+                )
 
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`

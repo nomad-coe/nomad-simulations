@@ -18,9 +18,9 @@
 
 import numpy as np
 import pint
-import itertools
+from itertools import accumulate, tee, chain
 from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple, Union
+from typing import Optional, List, Tuple, Union, Dict
 from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
 from nomad.units import ureg
@@ -339,6 +339,7 @@ class KMesh(Mesh):
             high_symmetry_points = {
                 'Gamma': [0, 0, 0],
                 'X': [0.5, 0, 0],
+                'Y': [0, 0.5, 0],
                 ...
             ]
         """,
@@ -678,6 +679,7 @@ class KLinePath(ArchiveSection):
                 'The `reciprocal_lattice_vectors` are not passed as an input.'
             )
             return None
+
         # Check if `points_norm` is a list and convert it to a numpy array
         if isinstance(points_norm, list):
             points_norm = np.array(points_norm)

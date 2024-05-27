@@ -58,7 +58,7 @@ class Variables(ArchiveSection):
         """,
     )
 
-    # points_error = Quantity()
+    # ? Do we need to add `points_error`?
 
     def get_n_points(self, logger: BoundLogger) -> Optional[int]:
         """
@@ -182,11 +182,11 @@ class Frequency(Variables):
 class KMesh(Variables):
     """
     K-point mesh over which the physical property is calculated. This is used to define `ElectronicEigenvalues(PhysicalProperty)` and
-    other k-space properties. The `points` are obtained from a refernece to the `NumericalSettings` section, `KMesh(NumericalSettings)`.
+    other k-space properties. The `points` are obtained from a reference to the `NumericalSettings` section, `KMesh(NumericalSettings)`.
     """
 
     points = Quantity(
-        type=KMeshSettings.points,
+        type=KMeshSettings.points,  # ! fix this (it is not working during parsing)
         description="""
         Reference to the `KMesh.points` over which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
         """,
@@ -206,7 +206,7 @@ class KLinePath(Variables):
     """ """
 
     points = Quantity(
-        type=KLinePathSettings.points,
+        type=KLinePathSettings.points,  # ! fix this (it is not working during parsing)
         description="""
         Reference to the `KLinePath.points` in which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
         """,
