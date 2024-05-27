@@ -33,7 +33,9 @@ from .properties import (
     HoppingMatrix,
     ElectronicBandGap,
     ElectronicDensityOfStates,
-    XASSpectra,
+    AbsorptionSpectrum,
+    XASSpectrum,
+    Permittivity,
 )
 
 
@@ -63,23 +65,27 @@ class Outputs(ArchiveSection):
     # List of properties
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    fermi_level = SubSection(sub_section=FermiLevel.m_def, repeats=True)
+    fermi_levels = SubSection(sub_section=FermiLevel.m_def, repeats=True)
 
-    chemical_potential = SubSection(sub_section=ChemicalPotential.m_def, repeats=True)
+    chemical_potentials = SubSection(sub_section=ChemicalPotential.m_def, repeats=True)
 
-    crystal_field_splitting = SubSection(
+    crystal_field_splittings = SubSection(
         sub_section=CrystalFieldSplitting.m_def, repeats=True
     )
 
-    hopping_matrix = SubSection(sub_section=HoppingMatrix.m_def, repeats=True)
+    hopping_matrices = SubSection(sub_section=HoppingMatrix.m_def, repeats=True)
 
-    electronic_band_gap = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
+    electronic_band_gaps = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 
     electronic_dos = SubSection(
         sub_section=ElectronicDensityOfStates.m_def, repeats=True
     )
 
-    xas_spectra = SubSection(sub_section=XASSpectra.m_def, repeats=True)
+    permittivities = SubSection(sub_section=Permittivity.m_def, repeats=True)
+
+    absorption_spectra = SubSection(sub_section=AbsorptionSpectrum.m_def, repeats=True)
+
+    xas_spectra = SubSection(sub_section=XASSpectrum.m_def, repeats=True)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

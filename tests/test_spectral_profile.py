@@ -32,9 +32,10 @@ from nomad_simulations.outputs import Outputs
 from nomad_simulations.properties import (
     SpectralProfile,
     ElectronicDensityOfStates,
-    XASSpectra,
+    AbsorptionSpectrum,
+    XASSpectrum,
 )
-from nomad_simulations.variables import Temperature, Energy2 as Energy
+from nomad_simulations.variables import Energy2 as Energy
 
 
 class TestSpectralProfile:
@@ -72,19 +73,6 @@ class TestElectronicDensityOfStates:
         )
         assert electronic_dos.name == 'ElectronicDensityOfStates'
         assert electronic_dos.rank == []
-
-    def test_get_energy_points(self):
-        """
-        Test the `_get_energy_points` private method. We test here that the function indeed returns the points from a `Energy` variable.
-        """
-        electronic_dos = ElectronicDensityOfStates()
-        electronic_dos.variables = [
-            Temperature(points=list(range(-3, 4)) * ureg.kelvin)
-        ]
-        assert electronic_dos._get_energy_points(logger) is None
-        electronic_dos.variables.append(Energy(points=list(range(-3, 4)) * ureg.joule))
-        energies = electronic_dos._get_energy_points(logger)
-        assert (energies.magnitude == np.array([-3, -2, -1, 0, 1, 2, 3])).all()
 
     def test_resolve_energies_origin(self):
         """
@@ -249,20 +237,36 @@ class TestElectronicDensityOfStates:
         pass
 
 
-class TestXASSpectra:
+class TestAbsorptionSpectrum:
     """
-    Test the `XASSpectra` class defined in `properties/spectral_profile.py`.
+    Test the `AbsorptionSpectrum` class defined in `properties/spectral_profile.py`.
     """
 
     # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
     def test_default_quantities(self):
         """
-        Test the default quantities assigned when creating an instance of the `XASSpectra` class.
+        Test the default quantities assigned when creating an instance of the `AbsorptionSpectrum` class.
         """
-        xas_spectra = XASSpectra()
-        assert xas_spectra.iri is None  # Add iri when available
-        assert xas_spectra.name == 'XASSpectra'
-        assert xas_spectra.rank == []
+        absorption_spectrum = AbsorptionSpectrum()
+        assert absorption_spectrum.iri is None  # Add iri when available
+        assert absorption_spectrum.name == 'AbsorptionSpectrum'
+        assert absorption_spectrum.rank == []
+
+
+class TestXASSpectrum:
+    """
+    Test the `XASSpectrum` class defined in `properties/spectral_profile.py`.
+    """
+
+    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
+    def test_default_quantities(self):
+        """
+        Test the default quantities assigned when creating an instance of the `XASSpectrum` class.
+        """
+        xas_spectrum = XASSpectrum()
+        assert xas_spectrum.iri is None  # Add iri when available
+        assert xas_spectrum.name == 'XASSpectrum'
+        assert xas_spectrum.rank == []
 
     @pytest.mark.parametrize(
         'xanes_energies, exafs_energies, xas_values',
@@ -284,19 +288,19 @@ class TestXASSpectra:
         """
         Test the `generate_from_contributions` method.
         """
-        xas_spectra = XASSpectra()
+        xas_spectrum = XASSpectrum()
         if xanes_energies is not None:
-            xanes_spectra = SpectralProfile()
-            xanes_spectra.variables = [Energy(points=xanes_energies * ureg.joule)]
-            xanes_spectra.value = [0.5, 0.1, 0.3]
-            xas_spectra.xanes_spectra = xanes_spectra
+            xanes_spectrum = AbsorptionSpectrum()
+            xanes_spectrum.variables = [Energy(points=xanes_energies * ureg.joule)]
+            xanes_spectrum.value = [0.5, 0.1, 0.3]
+            xas_spectrum.xanes_spectrum = xanes_spectrum
         if exafs_energies is not None:
-            exafs_spectra = SpectralProfile()
-            exafs_spectra.variables = [Energy(points=exafs_energies * ureg.joule)]
-            exafs_spectra.value = [0.2, 0.4, 0.6]
-            xas_spectra.exafs_spectra = exafs_spectra
-        xas_spectra.generate_from_contributions(logger)
-        if xas_spectra.value is not None:
-            assert (xas_spectra.value == xas_values).all()
+            exafs_spectrum = AbsorptionSpectrum()
+            exafs_spectrum.variables = [Energy(points=exafs_energies * ureg.joule)]
+            exafs_spectrum.value = [0.2, 0.4, 0.6]
+            xas_spectrum.exafs_spectrum = exafs_spectrum
+        xas_spectrum.generate_from_contributions(logger)
+        if xas_spectrum.value is not None:
+            assert (xas_spectrum.value == xas_values).all()
         else:
-            assert xas_spectra.value == xas_values
+            assert xas_spectrum.value == xas_values

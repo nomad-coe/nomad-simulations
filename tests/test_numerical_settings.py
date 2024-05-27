@@ -252,7 +252,6 @@ class TestKMesh:
         reciprocal_lattice_vectors = k_space.reciprocal_lattice_vectors
         k_mesh = k_space.k_mesh[0]
         model_systems = simulation.model_system
-
         # Applying method `get_k_line_density`
         get_k_line_density_value = k_mesh.get_k_line_density(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
@@ -264,7 +263,6 @@ class TestKMesh:
             )
         else:
             assert get_k_line_density_value == result_get_k_line_density
-
         # Applying method `resolve_k_line_density`
         k_line_density = k_mesh.resolve_k_line_density(
             model_systems=model_systems,

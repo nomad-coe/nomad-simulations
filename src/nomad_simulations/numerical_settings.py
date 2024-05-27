@@ -462,6 +462,99 @@ class KMesh(Mesh):
                 return k_line_density
         return None
 
+    def resolve_high_symmetry_points(
+        self,
+        model_systems: List[ModelSystem],
+        logger: BoundLogger,
+        eps: float = 3e-3,
+    ) -> Optional[dict]:
+        """
+        Resolves the `high_symmetry_points` of the `KMesh` from the list of `ModelSystem`. This method
+        relies on using the `ModelSystem` information in the sub-sections `Symmetry` and `AtomicCell`, and uses
+        the ASE package to extract the special (high symmetry) points information.
+
+        Args:
+            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            logger (BoundLogger): The logger to log messages.
+            eps (float, optional): Tolerance factor to define the `lattice` ASE object. Defaults to 3e-3.
+
+        Returns:
+            (Optional[dict]): The resolved `high_symmetry_points` of the `KMesh`.
+        """
+        # Extracting `bravais_lattice` from `ModelSystem.symmetry` section and `ASE.cell` from `ModelSystem.cell`
+        lattice = None
+        for model_system in model_systems:
+            # General checks to proceed with normalization
+            if is_not_representative(model_system, logger):
+                continue
+            if model_system.symmetry is None:
+                logger.warning('Could not find `ModelSystem.symmetry`.')
+                continue
+            bravais_lattice = [symm.bravais_lattice for symm in model_system.symmetry]
+            if len(bravais_lattice) != 1:
+                logger.warning(
+                    'Could not uniquely determine `bravais_lattice` from `ModelSystem.symmetry`.'
+                )
+                continue
+            bravais_lattice = bravais_lattice[0]
+
+            if model_system.cell is None:
+                logger.warning('Could not find `ModelSystem.cell`.')
+                continue
+            prim_atomic_cell = None
+            for atomic_cell in model_system.cell:
+                if atomic_cell.type == 'primitive':
+                    prim_atomic_cell = atomic_cell
+                    break
+            if prim_atomic_cell is None:
+                logger.warning(
+                    'Could not find the primitive `AtomicCell` under `ModelSystem.cell`.'
+                )
+                continue
+            # function defined in AtomicCell
+            atoms = prim_atomic_cell.to_ase_atoms(logger)
+            cell = atoms.get_cell()
+            lattice = cell.get_bravais_lattice(eps)
+            break  # only cover the first representative `ModelSystem`
+
+        # Checking if `bravais_lattice` and `lattice` are defined
+        if lattice is None:
+            logger.warning(
+                'Could not resolve `bravais_lattice` and `lattice` ASE object from the `ModelSystem`.'
+            )
+            return None
+
+        # Non-conventional ordering testing for certain lattices:
+        if bravais_lattice in ['oP', 'oF', 'oI', 'oS']:
+            a, b, c = lattice.a, lattice.b, lattice.c
+            assert a < b
+            if bravais_lattice != 'oS':
+                assert b < c
+        elif bravais_lattice in ['mP', 'mS']:
+            a, b, c = lattice.a, lattice.b, lattice.c
+            alpha = lattice.alpha * np.pi / 180
+            assert a <= c and b <= c  # ordering of the conventional lattice
+            assert alpha < np.pi / 2
+
+        # Extracting the `high_symmetry_points` from the `lattice` object
+        special_points = lattice.get_special_points()
+        if special_points is None:
+            logger.warning(
+                'Could not find `lattice.get_special_points()` from the ASE package.'
+            )
+            return None
+        high_symmetry_points = {}
+        for key, value in lattice.get_special_points().items():
+            if key == 'G':
+                key = 'Gamma'
+            if bravais_lattice == 'tI':
+                if key == 'S':
+                    key = 'Sigma'
+                elif key == 'S1':
+                    key = 'Sigma1'
+            high_symmetry_points[key] = list(value)
+        return high_symmetry_points
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
@@ -679,6 +772,7 @@ class KLinePath(ArchiveSection):
                 'The `reciprocal_lattice_vectors` are not passed as an input.'
             )
             return None
+
         # Check if `points_norm` is a list and convert it to a numpy array
         if isinstance(points_norm, list):
             points_norm = np.array(points_norm)

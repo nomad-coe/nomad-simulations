@@ -157,6 +157,28 @@ class WignerSeitz(Variables):
         super().normalize(archive, logger)
 
 
+class Frequency(Variables):
+    """ """
+
+    points = Quantity(
+        type=np.float64,
+        unit='joule',
+        shape=['n_points'],
+        description="""
+        Points in which the frequency is discretized in joules.
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
 class KMesh(Variables):
     """
     K-point mesh over which the physical property is calculated. This is used to define `ElectronicEigenvalues(PhysicalProperty)` and
