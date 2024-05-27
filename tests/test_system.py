@@ -128,7 +128,7 @@ def test_distribution(
     """
     values = np.sort(
         Distribution(
-            elements, analysis_type, atomic_cell, setup_neighbor_list(atomic_cell)
+            elements, atomic_cell, setup_neighbor_list(atomic_cell)
         ).values.magnitude
     )
 
@@ -165,9 +165,7 @@ def test_distribution_histogram(
     4. the actual count
     """
     to_type = 'distances' if len(elements) == 2 else 'angles'
-    dist = Distribution(
-        elements, to_type, atomic_cell, setup_neighbor_list(atomic_cell)
-    )
+    dist = Distribution(elements, atomic_cell, setup_neighbor_list(atomic_cell))
     dh = DistributionHistogram(elements, to_type, dist.values, bins)
 
     if len(bins) == 0:  # 1.

@@ -373,16 +373,20 @@ class GeometryDistribution(ArchiveSection):
         Fall back to a default value if none are present."""
         return self.bins
 
-    def sort_cutoffs(self, sort_key: Callable = lambda x: ase.Atom(x).number) -> None:
+    def sort_cutoffs(self, sort_key: Callable = lambda x: ase.Atom(x).number):
         """Sort the cutoffs and the elements accordingly.
         Args:
             sort_key (Callable): A function to sort the elements. Defaults to the atomic number.
         Returns:
             GeometryDistribution: The sorted geometry distribution object itself.
         """
-        sorted_indices = np.argsort(self.element_cutoff_selection, key=sort_key)
+        sorted_indices = np.argsort(
+            [sort_key(elem) for elem in self.element_cutoff_selection]
+        )  # get the indices of the atomic numbers
         self.distance_cutoffs = self.distance_cutoffs[sorted_indices]
-        self.element_cutoff_selection = self.element_cutoff_selection[sorted_indices]
+        self.element_cutoff_selection = [
+            self.element_cutoff_selection[i] for i in sorted_indices
+        ]
         return self
 
     def normalize(self, archive, logger: BoundLogger):
@@ -492,6 +496,7 @@ class DistributionHistogram:
         `bins` is the binning of the histogram and sets the final units,
         and `neighbor_list` is the cutoffs for the distribution (in the same order as combo)."""
         self.combo = combo
+        self.n_elem = len(combo)
         self.bins = bins
         self.neighbor_list = neighbor_list
         self.compute_histogram(distribution_values)
@@ -515,15 +520,14 @@ class DistributionHistogram:
     def produce_nomad_distribution(self) -> GeometryDistribution:
         # select the constructor based on the type
         constructor_mapping = {
-            'distances': DistanceGeometryDistribution,
-            'angles': AngleGeometryDistribution,
-            'dihedrals': DihedralGeometryDistribution,
-            'generic': GeometryDistribution,
+            2: DistanceGeometryDistribution,
+            3: AngleGeometryDistribution,
+            3: DihedralGeometryDistribution,
         }
-        if self.type in constructor_mapping:
-            constructor = constructor_mapping[self.type]
+        if self.n_elem in constructor_mapping:
+            constructor = constructor_mapping[self.n_elem]
         else:
-            raise ValueError('Type not recognized.')
+            raise ValueError('Cannot assign a constructor based on `self.combos`.')
 
         # instantiate the NOMAD distribution
         geom_dist = constructor(
@@ -535,12 +539,12 @@ class DistributionHistogram:
         )
 
         # distances require explicit binning data
-        if self.type == 'distances':
+        if self.n_elem == 2:
             geom_dist.n_bins = len(self.bins)
             geom_dist.bins = self.bins
 
         # add the central atom labels if they exist
-        if len(self.combo) > 2:
+        if self.n_elem > 2:
             geom_dist.central_atom_labels = self.combo[1:-1]
         return geom_dist
 
@@ -559,18 +563,19 @@ class Distribution:
     ) -> None:
         # initialize object attributes
         self.combo = combo
+        self.n_elem = len(combo)
         self.neighbor_list = neighbor_list
 
         geom_analysis = ase_as.Analysis(
             ase_atoms, neighbor_list.to('angstrom').magnitude
         )
-        if len(combo) == 2:
+        if self.n_elem == 2:  # distances
             if len((matches := geom_analysis.get_bonds(*combo, unique=True))[0]) > 0:
                 self.values = geom_analysis.get_values(matches)
             else:
                 self.values = np.array([])
             self.values *= ureg.angstrom
-        elif len(combo) in (3, 4):
+        elif self.n_elem in (3, 4):  # (dihedral) angles
             if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]) > 0:
                 self.values = np.array(geom_analysis.get_values(matches)) * ureg.degrees
                 self.values = np.abs(
@@ -604,7 +609,8 @@ class DistributionFactory:
         self.ase_atoms = ase_atoms
         self.cutoff_mapping = dict(zip(ase_atoms.get_chemical_symbols(), neighbor_list))
         self._elements = sorted(
-            list(set(self.ase_atoms.get_chemical_symbols())), key=ase.Atom(x).number
+            list(set(self.ase_atoms.get_chemical_symbols())),
+            key=lambda x: ase.Atom(x).number,
         )  # sort by atomic number
 
     @property
@@ -612,7 +618,7 @@ class DistributionFactory:
         """Generate all possible pairs of element symbols.
         Permutations are not considered, i.e., (B, A) is converted into (A, B)."""
         return [
-            [atom_1, atom_2]
+            (atom_1, atom_2)
             for i, atom_1 in enumerate(self._elements)
             for atom_2 in self._elements[i:]
         ]
@@ -623,7 +629,7 @@ class DistributionFactory:
         Permutations between the outer elements are not considered, i.e., (A, C, B) is converted into (A, B, C).
         """
         return [
-            [atom_1, atom_c, atom_2]
+            (atom_1, atom_c, atom_2)
             for atom_c in self._elements
             for i, atom_1 in enumerate(self._elements)
             for atom_2 in self._elements[i:]
@@ -635,7 +641,7 @@ class DistributionFactory:
         Permutations between the outer elements are not considered, i.e., (A, D, B, C) is converted into (A, B, C, D).
         """
         return [
-            [atom_1, atom_c, atom_d, atom_2]
+            (atom_1, atom_c, atom_d, atom_2)
             for atom_c in self._elements
             for atom_d in self._elements
             for i, atom_1 in enumerate(self._elements)
@@ -759,7 +765,7 @@ class AtomicCell(Cell):
         if self.analyze_geometry:
             # set up distributions
             cutoffs = ase_nl.natural_cutoffs(self.ase_atoms, mult=3.0) * ureg.angstrom
-            self.simple_distributions = DistributionFactory(
+            self.plain_distributions = DistributionFactory(
                 self.ase_atoms,
                 ase_nl.build_neighbor_list(
                     self.ase_atoms,
@@ -769,20 +775,26 @@ class AtomicCell(Cell):
             ).produce_distributions()
 
             # write distributions to the archive
-            self.histogram_distributions, self.distributions = [], []
-            for distribution in self.simple_distributions:
+            (
+                self.histogram_distributions,
+                self.distance_distributions,
+                self.angle_distributions,
+            ) = [], [], []
+            for distr in self.plain_distributions:
                 # set binning
-                if distribution.type == 'distances':
-                    bins = np.arange(0, max(cutoffs), 0.001)  # so binning may deviate
-                elif distribution.type in ['angles', 'dihedrals']:
-                    bins = np.arange(0, 180, 0.01)
-
-                self.histogram_distributions.append(
-                    distribution.produce_histogram(bins)
-                )  # temporary histogram for manipulation
-                self.distributions.append(
-                    self.histogram_distributions[-1].produce_nomad_distribution()
-                )  # stored distributions
+                if distr.n_elem == 2:
+                    bins = (
+                        np.arange(0, max(cutoffs), 0.001) * ureg.angstrom
+                    )  # so binning may deviate
+                    hist = distr.produce_histogram(bins)
+                    self.distance_distributions.append(
+                        hist.produce_nomad_distribution()
+                    )
+                elif distr.n_elem in (3, 4):
+                    bins = np.arange(0, 180, 0.01) * ureg.degrees
+                    hist = distr.produce_histogram(bins)
+                    self.angle_distributions.append(hist.produce_nomad_distribution())
+                self.histogram_distributions.append(hist)
         return self
 
 
