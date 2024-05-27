@@ -567,6 +567,8 @@ class KLinePath(ArchiveSection):
 
         # Appending into a list which is stored in the `high_symmetry_path_values`. There is a check in the `normalize()`
         # function to ensure that the length of the `high_symmetry_path_names` and `high_symmetry_path_values` coincide.
+        if self.high_symmetry_path_names is None:
+            return []
         high_symmetry_path_values = [
             high_symmetry_points[name]
             for name in self.high_symmetry_path_names

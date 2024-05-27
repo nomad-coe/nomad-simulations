@@ -193,21 +193,20 @@ class TestKMesh:
             assert offset == result_offset
 
     @pytest.mark.parametrize(
-        'system_type, is_representative, grid, reciprocal_lattice_vectors, result_check, result_get_k_line_density, result_k_line_density',
+        'system_type, is_representative, grid, reciprocal_lattice_vectors, result_get_k_line_density, result_k_line_density',
         [
             # No `grid` and `reciprocal_lattice_vectors`
-            ('bulk', False, None, None, False, None, None),
+            ('bulk', False, None, None, None, None),
             # No `reciprocal_lattice_vectors`
-            ('bulk', False, [6, 6, 6], None, False, None, None),
+            ('bulk', False, [6, 6, 6], None, None, None),
             # No `grid`
-            ('bulk', False, None, [[1, 0, 0], [0, 1, 0], [0, 0, 1]], False, None, None),
+            ('bulk', False, None, [[1, 0, 0], [0, 1, 0], [0, 0, 1]], None, None),
             # `is_representative` set to False
             (
                 'bulk',
                 False,
                 [6, 6, 6],
                 [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                True,
                 0.954929658,
                 None,
             ),
@@ -217,7 +216,6 @@ class TestKMesh:
                 True,
                 [6, 6, 6],
                 [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                True,
                 0.954929658,
                 None,
             ),
@@ -227,7 +225,6 @@ class TestKMesh:
                 True,
                 [6, 6, 6],
                 [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-                True,
                 0.954929658,
                 0.954929658,
             ),
@@ -239,13 +236,11 @@ class TestKMesh:
         is_representative: bool,
         grid: Optional[List[int]],
         reciprocal_lattice_vectors: Optional[List[List[float]]],
-        result_check: bool,
         result_get_k_line_density: Optional[float],
         result_k_line_density: Optional[float],
     ):
         """
-        Test the `resolve_k_line_density` and `get_k_line_density` methods, as well as the `_check_reciprocal_lattice_vectors`
-        private method.
+        Test the `resolve_k_line_density` and `get_k_line_density` methods
         """
         simulation = generate_k_space_simulation(
             system_type=system_type,
@@ -257,13 +252,7 @@ class TestKMesh:
         reciprocal_lattice_vectors = k_space.reciprocal_lattice_vectors
         k_mesh = k_space.k_mesh[0]
         model_systems = simulation.model_system
-        # Checking the reciprocal lattice vectors
-        assert (
-            k_mesh._check_reciprocal_lattice_vectors(
-                reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
-            )
-            == result_check
-        )
+
         # Applying method `get_k_line_density`
         get_k_line_density_value = k_mesh.get_k_line_density(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
@@ -275,6 +264,7 @@ class TestKMesh:
             )
         else:
             assert get_k_line_density_value == result_get_k_line_density
+
         # Applying method `resolve_k_line_density`
         k_line_density = k_mesh.resolve_k_line_density(
             model_systems=model_systems,
@@ -320,15 +310,22 @@ class TestKLinePath:
         assert k_line_path._check_high_symmetry_path(logger) == result
 
     @pytest.mark.parametrize(
-        'high_symmetry_path_names, result',
+        'reciprocal_lattice_vectors, high_symmetry_path_names, result',
         [
-            (['Gamma', 'X', 'R'], [[0, 0, 0], [0, 0.5, 0], [0.5, 0.5, 0.5]]),
+            (None, None, []),
+            ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], None, []),
+            (
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                ['Gamma', 'X', 'R'],
+                [[0, 0, 0], [0, 0.5, 0], [0.5, 0.5, 0.5]],
+            ),
         ],
     )
     def test_resolve_high_symmetry_path_values(
         self,
+        reciprocal_lattice_vectors: Optional[List[List[float]]],
         high_symmetry_path_names: List[str],
-        result: bool,
+        result: List[float],
     ):
         """
         Test the `resolve_high_symmetry_path_values` method. Only testing the valid situation in which the `ModelSystem` normalization worked.
@@ -336,32 +333,19 @@ class TestKLinePath:
         # `ModelSystem.normalize()` need to extract `bulk` as a type.
         simulation = generate_k_space_simulation(
             pbc=[True, True, True],
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             high_symmetry_path_names=high_symmetry_path_names,
             high_symmetry_path_values=None,
         )
         model_system = simulation.model_system[0]
         model_system.normalize(EntryArchive(), logger)  # normalize to extract symmetry
-        # getting `reciprocal_lattice_vectors`
-        reciprocal_lattice_vectors = (
-            simulation.model_method[0].numerical_settings[0].reciprocal_lattice_vectors
-        )
 
         # `KLinePath` can be understood as a `KMeshBase` section
         k_line_path = simulation.model_method[0].numerical_settings[0].k_line_path
-        k_line_path.normalize(EntryArchive(), logger)
         high_symmetry_points_values = k_line_path.resolve_high_symmetry_path_values(
             simulation.model_system, reciprocal_lattice_vectors, logger
         )
-        # high_symmetry_points = k_mesh_base.resolve_high_symmetry_points(
-        #     simulation.model_system, logger
-        # )
-        # assert len(high_symmetry_points) == 4
-        # assert high_symmetry_points == {
-        #     'Gamma': [0, 0, 0],
-        #     'M': [0.5, 0.5, 0],
-        #     'R': [0.5, 0.5, 0.5],
-        #     'X': [0, 0.5, 0],
-        # }
+        assert high_symmetry_points_values == result
 
     def test_get_high_symmetry_path_norm(self, k_line_path: KLinePath):
         """
