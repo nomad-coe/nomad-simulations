@@ -44,9 +44,9 @@ class TestOutputs:
             threshold_change=threshold_change
         )
         is_scf_converged = scf_outputs.resolve_is_scf_converged(
-            property_name='electronic_band_gap',
+            property_name='electronic_band_gaps',
             i_property=0,
-            phys_property=scf_outputs.electronic_band_gap[0],
+            phys_property=scf_outputs.electronic_band_gaps[0],
             logger=logger,
         )
         assert is_scf_converged == result
@@ -60,18 +60,18 @@ class TestOutputs:
         # No spin-polarized band gap
         band_gap_non_spin_polarized = ElectronicBandGap(variables=[])
         band_gap_non_spin_polarized.value = 2.0 * ureg.joule
-        outputs.electronic_band_gap.append(band_gap_non_spin_polarized)
-        band_gaps = outputs.extract_spin_polarized_property('electronic_band_gap')
+        outputs.electronic_band_gaps.append(band_gap_non_spin_polarized)
+        band_gaps = outputs.extract_spin_polarized_property('electronic_band_gaps')
         assert band_gaps == []
 
         # Spin-polarized band gaps
         band_gap_spin_1 = ElectronicBandGap(variables=[], spin_channel=0)
         band_gap_spin_1.value = 1.0 * ureg.joule
-        outputs.electronic_band_gap.append(band_gap_spin_1)
+        outputs.electronic_band_gaps.append(band_gap_spin_1)
         band_gap_spin_2 = ElectronicBandGap(variables=[], spin_channel=1)
         band_gap_spin_2.value = 1.5 * ureg.joule
-        outputs.electronic_band_gap.append(band_gap_spin_2)
-        band_gaps = outputs.extract_spin_polarized_property('electronic_band_gap')
+        outputs.electronic_band_gaps.append(band_gap_spin_2)
+        band_gaps = outputs.extract_spin_polarized_property('electronic_band_gaps')
         assert len(band_gaps) == 2
         assert band_gaps[0].value.magnitude == 1.0
         assert band_gaps[1].value.magnitude == 1.5
@@ -89,4 +89,4 @@ class TestOutputs:
         )
 
         scf_outputs.normalize(EntryArchive(), logger)
-        assert scf_outputs.electronic_band_gap[0].is_scf_converged == result
+        assert scf_outputs.electronic_band_gaps[0].is_scf_converged == result

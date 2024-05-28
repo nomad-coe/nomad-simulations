@@ -22,9 +22,9 @@ from typing import Optional, List, Dict
 import pint
 
 from nomad import config
-from nomad.metainfo import Quantity, SubSection, Section, Context
+from nomad.metainfo import Quantity, SubSection, Section, Context, MEnum
 
-from ..utils import get_sibling_section
+from ..utils import get_sibling_section, get_variables
 from ..physical_property import PhysicalProperty
 from ..variables import Energy2 as Energy
 from ..atoms_state import AtomsState, OrbitalsState
@@ -48,24 +48,6 @@ class SpectralProfile(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.rank = []
-
-    def _get_energy_points(self, logger: BoundLogger) -> Optional[pint.Quantity]:
-        """
-        Gets the `points` of the `Energy` variable if the required `Energy` variable is present in the `variables`.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (Optional[pint.Quantity]): The `points` of the `Energy` variable.
-        """
-        for var in self.variables:
-            if isinstance(var, Energy):
-                return var.points
-        logger.error(
-            'The required `Energy` variable is not present in the `variables`.'
-        )
-        return None
 
     def is_valid_spectral_profile(self) -> bool:
         """
@@ -450,6 +432,14 @@ class ElectronicDensityOfStates(DOSProfile):
         if self.projected_dos is None or len(self.projected_dos) == 0:
             return None
 
+        # Extract `Energy` variables
+        energies = get_variables(self.variables, Energy)
+        if len(energies) != 1:
+            logger.warning(
+                'The `ElectronicDensityOfStates` does not contain an `Energy` variable to extract the DOS.'
+            )
+            return None
+
         # We distinguish between orbital and atom `projected_dos`
         orbital_projected = self.extract_projected_dos('orbital', logger)
         atom_projected = self.extract_projected_dos('atom', logger)
@@ -468,7 +458,7 @@ class ElectronicDensityOfStates(DOSProfile):
                 atom_dos = DOSProfile(
                     name=f'atom {ref.chemical_symbol}',
                     entity_ref=ref,
-                    variables=data[0].variables,
+                    variables=energies,
                 )
                 orbital_values = [
                     dos.value.magnitude for dos in data
@@ -493,9 +483,10 @@ class ElectronicDensityOfStates(DOSProfile):
         super().normalize(archive, logger)
 
         # Initial check to see if `variables` contains the required `Energy` variable
-        energies = self._get_energy_points(logger)
-        if energies is None:
+        energies = get_variables(self.variables, Energy)
+        if len(energies) != 0:
             return
+        energies = energies[0].points
 
         # Resolve `fermi_level` from a sibling section with respect to `ElectronicDensityOfStates`
         fermi_level = get_sibling_section(
@@ -528,25 +519,49 @@ class ElectronicDensityOfStates(DOSProfile):
             self.value = value_from_pdos
 
 
-class XASSpectra(SpectralProfile):
+class AbsorptionSpectrum(SpectralProfile):
+    """ """
+
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
+
+    axis = Quantity(
+        type=MEnum('xx', 'yy', 'zz'),
+        description="""
+        Axis of the absorption spectrum. This is related with the polarization direction, and can be seen as the
+        principal term in the tensor `Permittivity.value` (see permittivity.py module).
+        """,
+    )
+
+    def __init__(
+        self, m_def: Section = None, m_context: Context = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        # Set the name of the section
+        self.name = self.m_def.name
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class XASSpectrum(AbsorptionSpectrum):
     """
-    X-ray Absorption Spectra (XAS).
+    X-ray Absorption Spectrum (XAS).
     """
 
     # ! implement `iri` and `rank` as part of `m_def = Section()`
 
-    xanes_spectra = SubSection(
-        sub_section=SpectralProfile.m_def,
+    xanes_spectrum = SubSection(
+        sub_section=AbsorptionSpectrum.m_def,
         description="""
-        X-ray Absorption Near Edge Structure (XANES) spectra.
+        X-ray Absorption Near Edge Structure (XANES) spectrum.
         """,
         repeats=False,
     )
 
-    exafs_spectra = SubSection(
-        sub_section=SpectralProfile.m_def,
+    exafs_spectrum = SubSection(
+        sub_section=AbsorptionSpectrum.m_def,
         description="""
-        Extended X-ray Absorption Fine Structure (EXAFS) spectra.
+        Extended X-ray Absorption Fine Structure (EXAFS) spectrum.
         """,
         repeats=False,
     )
@@ -560,22 +575,24 @@ class XASSpectra(SpectralProfile):
 
     def generate_from_contributions(self, logger: BoundLogger) -> None:
         """
-        Generate the `value` of the XAS spectra by concatenating the XANES and EXAFS contributions. It also concatenates
+        Generate the `value` of the XAS spectrum by concatenating the XANES and EXAFS contributions. It also concatenates
         the `Energy` grid points of the XANES and EXAFS parts.
 
         Args:
             logger (BoundLogger): The logger to log messages.
         """
         # TODO check if this method is general enough
-        if self.xanes_spectra is not None and self.exafs_spectra is not None:
+        if self.xanes_spectrum is not None and self.exafs_spectrum is not None:
             # Concatenate XANE and EXAFS `Energy` grid points
-            xanes_energies = self.xanes_spectra._get_energy_points(logger)
-            exafs_energies = self.exafs_spectra._get_energy_points(logger)
-            if xanes_energies is None or exafs_energies is None:
+            xanes_variables = get_variables(self.xanes_spectrum.variables, Energy)
+            exafs_variables = get_variables(self.exafs_spectrum.variables, Energy)
+            if len(xanes_variables) == 0 or len(exafs_variables) == 0:
                 logger.warning(
                     'Could not extract the `Energy` grid points from XANES or EXAFS.'
                 )
                 return
+            xanes_energies = xanes_variables[0].points
+            exafs_energies = exafs_variables[0].points
             if xanes_energies.max() > exafs_energies.min():
                 logger.warning(
                     'The XANES `Energy` grid points are not below the EXAFS `Energy` grid points.'
@@ -587,7 +604,7 @@ class XASSpectra(SpectralProfile):
             # Concatenate XANES and EXAFS `value` if they have the same shape ['n_energies']
             try:
                 self.value = np.concatenate(
-                    [self.xanes_spectra.value, self.exafs_spectra.value]
+                    [self.xanes_spectrum.value, self.exafs_spectrum.value]
                 )
             except ValueError:
                 logger.warning(
@@ -599,6 +616,6 @@ class XASSpectra(SpectralProfile):
 
         if self.value is None:
             logger.info(
-                'The `XASSpectra.value` is not stored. We will attempt to obtain it by combining the XANES and EXAFS parts if these are present.'
+                'The `XASSpectrum.value` is not stored. We will attempt to obtain it by combining the XANES and EXAFS parts if these are present.'
             )
             self.generate_from_contributions(logger)

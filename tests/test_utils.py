@@ -16,13 +16,20 @@
 # limitations under the License.
 #
 
-from . import logger
+import pytest
+import numpy as np
+
+from nomad.units import ureg
 
 from nomad_simulations.utils import (
     get_sibling_section,
     is_not_representative,
+    get_variables,
 )
 from nomad_simulations.model_system import ModelSystem, AtomicCell, Symmetry
+from nomad_simulations.variables import Temperature, Energy2 as Energy
+
+from . import logger
 
 
 def test_get_sibling_section():
@@ -59,3 +66,28 @@ def test_is_not_representative():
 
 
 # ! Missing test for RusselSandersState (but this class will probably be deprecated)
+
+
+@pytest.mark.parametrize(
+    'variables, result, result_length',
+    [
+        (None, [], 0),
+        ([], [], 0),
+        ([Temperature()], [], 0),
+        ([Temperature(), Energy(n_points=4)], [Energy(n_points=4)], 1),
+        (
+            [Temperature(), Energy(n_points=2), Energy(n_points=10)],
+            [Energy(n_points=2), Energy(n_points=10)],
+            2,
+        ),
+        # TODO add testing when we have variables which inherit from another variable
+    ],
+)
+def test_get_variables(variables: list, result: list, result_length: int):
+    """
+    Test the `get_variables` utility function
+    """
+    energies = get_variables(variables, Energy)
+    assert len(energies) == result_length
+    for i, energy in enumerate(energies):  # asserting energies == result does not work
+        assert energy.n_points == result[i].n_points

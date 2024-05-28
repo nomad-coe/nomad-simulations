@@ -22,6 +22,8 @@ from .spectral_profile import (
     SpectralProfile,
     DOSProfile,
     ElectronicDensityOfStates,
-    XASSpectra,
+    AbsorptionSpectrum,
+    XASSpectrum,
 )
 from .hopping_matrix import HoppingMatrix, CrystalFieldSplitting
+from .permittivity import Permittivity
