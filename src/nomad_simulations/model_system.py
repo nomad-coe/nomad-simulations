@@ -980,7 +980,7 @@ class ModelSystem(System):
         # Traversing the System Hierarchy
         def set_branch_composition(system, subsystems):
             subsystems_labels = [subsystem.get("branch_label") for subsystem in subsystems]
-            system.composition = get_composition(subsystems_labels)
+            system.composition_formula = get_composition(subsystems_labels)
 
         def traverse_system_recurs(system):
             subsystems = system.get("model_system")
