@@ -186,7 +186,7 @@ class KMesh(Variables):
     """
 
     points = Quantity(
-        type=KMeshSettings.points,  # ! fix this (it is not working during parsing)
+        type=KMeshSettings.points,
         description="""
         Reference to the `KMesh.points` over which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
         """,
@@ -206,7 +206,7 @@ class KLinePath(Variables):
     """ """
 
     points = Quantity(
-        type=KLinePathSettings.points,  # ! fix this (it is not working during parsing)
+        type=KLinePathSettings.points,
         description="""
         Reference to the `KLinePath.points` in which the physical property is calculated. These are 3D arrays stored in fractional coordinates.
         """,
