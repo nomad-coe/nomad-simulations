@@ -73,6 +73,7 @@ class TestPermittivity:
         # Generating `KMesh` numerical settings section
         simulation = generate_k_space_simulation(grid=kmesh_grid)
         k_mesh_settings = simulation.model_method[0].numerical_settings[0].k_mesh[0]
+        k_mesh_settings.label = 'q-mesh'
         k_mesh_settings.center = 'Monkhorst-Pack'
         k_mesh_settings.points, _ = k_mesh_settings.resolve_points_and_offset(logger)
         if kmesh_grid is not None and len(kmesh_grid) > 0:
@@ -139,6 +140,7 @@ class TestPermittivity:
         # Generating `KMesh` numerical settings section
         simulation = generate_k_space_simulation(grid=kmesh_grid)
         k_mesh_settings = simulation.model_method[0].numerical_settings[0].k_mesh[0]
+        k_mesh_settings.label = 'q-mesh'
         k_mesh_settings.center = 'Monkhorst-Pack'
         k_mesh_settings.points, _ = k_mesh_settings.resolve_points_and_offset(logger)
         if kmesh_grid is not None and len(kmesh_grid) > 0:
