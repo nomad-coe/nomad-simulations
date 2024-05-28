@@ -291,6 +291,45 @@ def generate_k_space_simulation(
     return generate_simulation(model_method=model_method, model_system=model_system)
 
 
+def generate_electronic_eigenvalues(
+    value: Optional[list] = [
+        [3, -2],
+        [3, 1],
+        [4, -2],
+        [5, -1],
+        [4, 0],
+        [2, 0],
+        [2, 1],
+        [4, -3],
+    ],
+    occupation: Optional[list] = [
+        [0, 2],
+        [0, 1],
+        [0, 2],
+        [0, 2],
+        [0, 1.5],
+        [0, 1.5],
+        [0, 1],
+        [0, 2],
+    ],
+    highest_occupied: Optional[float] = None,
+    lowest_unoccupied: Optional[float] = None,
+) -> ElectronicEigenvalues:
+    """
+    Generate an `ElectronicEigenvalues` section with the given parameters.
+    """
+    n_bands = 2
+    electronic_eigenvalues = ElectronicEigenvalues(n_bands=n_bands)
+    electronic_eigenvalues.variables = [Energy(points=[-3, -2, -1, 0, 1, 2, 3, 4])]
+    if value is not None:
+        electronic_eigenvalues.value = value
+    if occupation is not None:
+        electronic_eigenvalues.occupation = occupation
+    electronic_eigenvalues.highest_occupied = highest_occupied
+    electronic_eigenvalues.lowest_unoccupied = lowest_unoccupied
+    return electronic_eigenvalues
+
+
 @pytest.fixture(scope='session')
 def model_system() -> ModelSystem:
     return generate_model_system()

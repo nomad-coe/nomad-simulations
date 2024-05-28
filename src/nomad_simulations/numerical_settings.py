@@ -20,7 +20,7 @@ import numpy as np
 import pint
 from itertools import accumulate, tee, chain
 from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple, Union, Dict
+from typing import Optional, List, Tuple, Union
 from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
 from nomad.units import ureg
@@ -802,6 +802,10 @@ class KSpace(NumericalSettings):
         for model_system in model_systems:
             # General checks to proceed with normalization
             if is_not_representative(model_system, logger):
+                continue
+
+            if model_system.type is not None and model_system.type != 'bulk':
+                logger.warning('`ModelSystem.type` is not describing a bulk system.')
                 continue
 
             atomic_cell = model_system.cell
