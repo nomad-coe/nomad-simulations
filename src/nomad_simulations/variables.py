@@ -52,7 +52,7 @@ class Variables(ArchiveSection):
 
     points = Quantity(
         type=np.float64,
-        shape=['n_points'],
+        # shape=['n_points'],  # ! if defined, this breaks using `points` as refs (e.g., `KMesh.points`)
         description="""
         Points in which the variable is discretized. It might be overwritten with specific units.
         """,

@@ -133,18 +133,20 @@ def is_not_representative(model_system, logger: BoundLogger):
 
 # cannot define typing with `Variables` due to circular import issue
 def get_variables(
-    variables: List[ArchiveSection], variable_cls: ArchiveSection
+    variables: Optional[List[ArchiveSection]], variable_cls: ArchiveSection
 ) -> List[ArchiveSection]:
     """
     Get the list of variables which are of type `variable_cls` and appear under `variables`.
 
     Args:
-        variables (List[Variables]): The list of variables to check.
+        variables (Optional[List[Variables]]): The list of variables to check.
         variable_cls (Variables): The class of the variables to get.
 
     Returns:
         (List[Variables]): The list of variables which are of type `variable_cls`.
     """
+    if variables is None:
+        return []
     result = []
     for var in variables:
         if isinstance(var, variable_cls):
