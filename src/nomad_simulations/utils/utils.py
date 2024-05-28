@@ -125,8 +125,9 @@ def is_not_representative(model_system, logger: BoundLogger):
     if model_system is None:
         logger.warning('The `ModelSystem` is empty.')
         return None
+    #? Can we somehow only print this warning once in the case of many systems?
     if not model_system.is_representative:
-        logger.warning('The `ModelSystem` was not found to be representative.')
+        # logger.warning('The `ModelSystem` was not found to be representative.')
         return True
     return False
 

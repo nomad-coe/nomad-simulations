@@ -35,7 +35,7 @@ from matid.classification.classifications import (
 
 from nomad import config
 from nomad.units import ureg
-from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
+from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype, get_composition
 
 from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
@@ -901,6 +901,16 @@ class ModelSystem(System):
         """,
     )
 
+    composition_formula = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        The overall composition of the system with respect to its subsystems.
+        The syntax for a system composed of X and Y with x and y components of each,
+        respectively, is X(x)Y(y).
+        """,
+    )
+
     model_system = SubSection(sub_section=SectionProxy('ModelSystem'), repeats=True)
 
     def resolve_system_type_and_dimensionality(
@@ -966,6 +976,20 @@ class ModelSystem(System):
         # We don't need to normalize if the system is not representative
         if is_not_representative(self, logger):
             return
+
+        # Traversing the System Hierarchy
+        def set_branch_composition(system, subsystems):
+            subsystems_labels = [subsystem.get("branch_label") for subsystem in subsystems]
+            system.composition = get_composition(subsystems_labels)
+
+        def traverse_system_recurs(system):
+            subsystems = system.get("model_system")
+            if subsystems:
+                set_branch_composition(system, subsystems)
+                for subsystem in subsystems:
+                    traverse_system_recurs(subsystem)
+
+        traverse_system_recurs(self)
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
         if self.cell is None or len(self.cell) == 0:
