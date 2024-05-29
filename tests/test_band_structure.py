@@ -18,12 +18,15 @@
 
 import pytest
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union, List
 
+from nomad_simulations.model_method import ModelMethod
+from nomad_simulations.numerical_settings import KSpace, BasisSet
+from nomad_simulations.outputs import Outputs
 from nomad_simulations.properties import ElectronicEigenvalues
 
 from . import logger
-from .conftest import generate_electronic_eigenvalues
+from .conftest import generate_electronic_eigenvalues, generate_simulation
 
 
 class TestElectronicEigenvalues:
@@ -395,3 +398,34 @@ class TestElectronicEigenvalues:
         """
         # ! add test when `FermiSurface` is implemented
         pass
+
+    @pytest.mark.parametrize(
+        'numerical_settings, result',
+        [
+            (None, None),
+            (BasisSet(), None),
+            (
+                KSpace(reciprocal_lattice_vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+            ),
+        ],
+    )
+    def test_resolve_reciprocal_cell(
+        self,
+        numerical_settings: Optional[Union[BasisSet, KSpace]],
+        result: Optional[List[List[float]]],
+    ):
+        """
+        Test the `resolve_reciprocal_cell` method.
+        """
+        simulation = generate_simulation(outputs=Outputs())
+        if numerical_settings is not None:
+            model_method = ModelMethod(numerical_settings=[numerical_settings])
+            simulation.model_method.append(model_method)
+        electronic_eigenvalues = generate_electronic_eigenvalues()
+        simulation.outputs[-1].electronic_eigenvalues.append(electronic_eigenvalues)
+        reciprocal_cell = electronic_eigenvalues.resolve_reciprocal_cell()
+        if reciprocal_cell is not None:
+            assert np.allclose(reciprocal_cell.magnitude, result)
+        else:
+            assert reciprocal_cell == result

@@ -23,6 +23,7 @@ import pint
 
 from nomad.metainfo import Quantity, Section, Context, SubSection
 
+from nomad_simulations.numerical_settings import KSpace
 from nomad_simulations.physical_property import PhysicalProperty
 from nomad_simulations.properties import ElectronicBandGap, FermiSurface
 from nomad_simulations.utils import get_sibling_section
@@ -111,6 +112,14 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
             - `'SigX'`: Diagonal matrix elements of the exchange self-energy. This is also stored in the GW entry under `ElectronicSelfEnergy.value`.
             - `'SigC'`: Diagonal matrix elements of the correlation self-energy. This is also stored in the GW entry under `ElectronicSelfEnergy.value`.
             - `'Zk'`: Quasiparticle renormalization factors contribution. This is also stored in the GW entry under `QuasiparticleWeights.value`.
+        """,
+    )
+
+    reciprocal_cell = Quantity(
+        type=KSpace.reciprocal_lattice_vectors,
+        description="""
+        Reference to the reciprocal lattice vectors stored under `KSpace`. This reference is useful when resolving the Brillouin zone
+        for the front-end visualization.
         """,
     )
 
@@ -250,6 +259,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
                 band_gap.value = lumo - homo
         return band_gap
 
+    # TODO fix this method once `FermiSurface` property is implemented
     def extract_fermi_surface(self, logger: BoundLogger) -> Optional[FermiSurface]:
         """
         Extract the Fermi surface for metal systems and using the `FermiLevel.value`.
@@ -295,6 +305,27 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         fermi_surface.value = fermi_values
         return fermi_surface
 
+    def resolve_reciprocal_cell(self) -> Optional[pint.Quantity]:
+        """
+        Resolve the reciprocal cell from the `KSpace` numerical settings section.
+
+        Returns:
+            Optional[pint.Quantity]: _description_
+        """
+        numerical_settings = self.m_xpath(
+            'm_parent.m_parent.model_method[-1].numerical_settings', dict=False
+        )
+        if numerical_settings is None:
+            return None
+        k_space = None
+        for setting in numerical_settings:
+            if isinstance(setting, KSpace):
+                k_space = setting
+                break
+        if k_space is None:
+            return None
+        return k_space.reciprocal_lattice_vectors
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
@@ -312,11 +343,14 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         if band_gap is not None:
             self.m_parent.electronic_band_gap.append(band_gap)
 
-        # TODO comment out when implementing `FermiSurface` property
+        # TODO uncomment once `FermiSurface` property is implemented
         # `FermiSurface` extraction
         # fermi_surface = self.extract_fermi_surface(logger)
         # if fermi_surface is not None:
         #     self.m_parent.fermi_surface.append(fermi_surface)
+
+        # Resolve `reciprocal_cell` from the `KSpace` numerical settings section
+        self.reciprocal_cell = self.resolve_reciprocal_cell()
 
 
 class ElectronicBandStructure(ElectronicEigenvalues):
