@@ -978,18 +978,23 @@ class ModelSystem(System):
             return
 
         # Traversing the System Hierarchy
-        def set_branch_composition(system, subsystems):
-            subsystems_labels = [subsystem.get("branch_label") for subsystem in subsystems]
-            system.composition_formula = get_composition(subsystems_labels)
+        # TODO consider moving to utils and passing generic set of functions to execute at each branch level
+        def set_branch_composition(system, subsystems, atom_labels):
+            if subsystems is None:
+                subsystem_labels = [np.array(atom_labels)[system.get("atom_indices")]]
+            else:
+                subsystem_labels = [subsystem.get("branch_label") for subsystem in subsystems]
+            system.composition_formula = get_composition(subsystem_labels)
 
-        def traverse_system_recurs(system):
+        def traverse_system_recurs(system, atom_labels):
             subsystems = system.get("model_system")
+            set_branch_composition(system, subsystems, atom_labels)
             if subsystems:
-                set_branch_composition(system, subsystems)
                 for subsystem in subsystems:
-                    traverse_system_recurs(subsystem)
+                    traverse_system_recurs(subsystem, atom_labels)
 
-        traverse_system_recurs(self)
+        atom_labels = [atom.chemical_symbol for atom in self.cell[0].atoms_state]
+        traverse_system_recurs(self, atom_labels)
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
         if self.cell is None or len(self.cell) == 0:

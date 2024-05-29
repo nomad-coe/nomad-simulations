@@ -29,6 +29,8 @@ from nomad_simulations.model_system import (
     Symmetry,
     ChemicalFormula,
     ModelSystem,
+    AtomicCell,
+    AtomsState
 )
 
 
@@ -439,3 +441,75 @@ class TestModelSystem:
         assert np.isclose(model_system.elemental_composition[0].atomic_fraction, 2 / 3)
         assert model_system.elemental_composition[1].element == 'O'
         assert np.isclose(model_system.elemental_composition[1].atomic_fraction, 1 / 3)
+
+
+    @pytest.mark.parametrize(
+        'mol_label_list, n_mol_list, atom_labels_list, composition_formula_list',
+        [
+            (
+                ['H20'],
+                [3],
+                [['H', 'O', 'O']],
+                ['group_H20(1)', 'H20(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)']
+            ), # pure system
+            (
+                ['H20', 'Methane'],
+                [5, 2],
+                [['H', 'O', 'O'], ['C', 'H', 'H', 'H', 'H']],
+                ['group_H20(1)group_Methane(1)', 'H20(5)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)', 'Methane(2)', 'C(1)H(4)', 'C(1)H(4)']
+            ), # binary mixture
+        ],
+    )
+    def test_system_hierarchy_for_molecules(
+        self,
+        mol_label_list: List[str],
+        n_mol_list: List[int],
+        atom_labels_list: List[str],
+        composition_formula_list: List[str]
+    ):
+        """
+        Test the `ModelSystem` normalization of 'composition_formula' for atoms and molecules.
+        """
+        #? Does it make sense to test the setting of branch_label or branch_depth?
+        model_system = ModelSystem(is_representative=True)
+        model_system.branch_label = 'Total System'
+        model_system.branch_depth = 0
+        atomic_cell = AtomicCell()
+        model_system.cell.append(atomic_cell)
+        model_system.atom_indices = []
+        for (mol_label, n_mol, atom_labels) in zip(mol_label_list, n_mol_list, atom_labels_list):
+            # Create a branch in the hierarchy for this molecule type
+            model_system_mol_group = ModelSystem(branch_label='group' + mol_label)
+            model_system_mol_group.atom_indices = []
+            model_system_mol_group.branch_label = f"group_{mol_label}"
+            model_system_mol_group.branch_depth = 1
+            model_system.model_system.append(model_system_mol_group)
+            for _ in range(n_mol):
+                # Create a branch in the hierarchy for this molecule
+                model_system_mol = ModelSystem(branch_label=mol_label)
+                model_system_mol.branch_label = mol_label
+                model_system_mol.branch_depth = 2
+                model_system_mol_group.model_system.append(model_system_mol)
+                # add the corresponding atoms to the global atom list
+                for atom_label in atom_labels:
+                    atomic_cell.atoms_state.append(AtomsState(chemical_symbol = atom_label))
+                n_atoms = len(atomic_cell.atoms_state)
+                atom_indices = np.arange(n_atoms - len(atom_labels), n_atoms)
+                model_system_mol.atom_indices = atom_indices
+                model_system_mol_group.atom_indices = np.append(model_system_mol_group.atom_indices, atom_indices)
+                model_system.atom_indices = np.append(model_system.atom_indices, atom_indices)
+
+        model_system.normalize(EntryArchive(), logger)
+
+        assert model_system.composition_formula == composition_formula_list[0]
+        ctr_comp = 1
+        def get_system_recurs(sec_system, ctr_comp):
+            for sys in sec_system:
+                assert sys.composition_formula == composition_formula_list[ctr_comp]
+                ctr_comp += 1
+                sec_subsystem = sys.model_system
+                if sec_subsystem:
+                    ctr_comp = get_system_recurs(sec_subsystem, ctr_comp)
+            return ctr_comp
+
+        get_system_recurs(model_system.model_system, ctr_comp)
