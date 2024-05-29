@@ -324,7 +324,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
                 break
         if k_space is None:
             return None
-        return k_space.reciprocal_lattice_vectors
+        return k_space
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -341,13 +341,13 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         # `ElectronicBandGap` extraction
         band_gap = self.extract_band_gap(logger)
         if band_gap is not None:
-            self.m_parent.electronic_band_gap.append(band_gap)
+            self.m_parent.electronic_band_gaps.append(band_gap)
 
         # TODO uncomment once `FermiSurface` property is implemented
         # `FermiSurface` extraction
         # fermi_surface = self.extract_fermi_surface(logger)
         # if fermi_surface is not None:
-        #     self.m_parent.fermi_surface.append(fermi_surface)
+        #     self.m_parent.fermi_surfaces.append(fermi_surface)
 
         # Resolve `reciprocal_cell` from the `KSpace` numerical settings section
         self.reciprocal_cell = self.resolve_reciprocal_cell()

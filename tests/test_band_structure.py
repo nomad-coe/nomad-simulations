@@ -20,6 +20,8 @@ import pytest
 import numpy as np
 from typing import Optional, Tuple, Union, List
 
+from nomad.datamodel import EntryArchive
+
 from nomad_simulations.model_method import ModelMethod
 from nomad_simulations.numerical_settings import KSpace, BasisSet
 from nomad_simulations.outputs import Outputs
@@ -416,7 +418,8 @@ class TestElectronicEigenvalues:
         result: Optional[List[List[float]]],
     ):
         """
-        Test the `resolve_reciprocal_cell` method.
+        Test the `resolve_reciprocal_cell` method. This is done via the `normalize` function because `reciprocal_cell` is a
+        `QuantityReference`, hence we need to assign it.
         """
         simulation = generate_simulation(outputs=Outputs())
         if numerical_settings is not None:
@@ -424,7 +427,9 @@ class TestElectronicEigenvalues:
             simulation.model_method.append(model_method)
         electronic_eigenvalues = generate_electronic_eigenvalues()
         simulation.outputs[-1].electronic_eigenvalues.append(electronic_eigenvalues)
-        reciprocal_cell = electronic_eigenvalues.resolve_reciprocal_cell()
+        electronic_eigenvalues.normalize(EntryArchive(), logger)
+        reciprocal_cell = electronic_eigenvalues.reciprocal_cell
+        # reciprocal_cell = electronic_eigenvalues.resolve_reciprocal_cell()
         if reciprocal_cell is not None:
             assert np.allclose(reciprocal_cell.magnitude, result)
         else:
