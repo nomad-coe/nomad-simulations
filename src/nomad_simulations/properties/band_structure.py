@@ -69,6 +69,13 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
 
     iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicEigenvalues'
 
+    spin_channel = Quantity(
+        type=np.int32,
+        description="""
+        Spin channel of the corresponding electronic eigenvalues. It can take values of 0 or 1.
+        """,
+    )
+
     occupation = Quantity(
         type=np.float64,
         shape=['*', 'n_bands'],
