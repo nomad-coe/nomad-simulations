@@ -165,7 +165,7 @@ class KSpaceFunctionalities:
     A functionality class useful for defining methods shared between `KSpace`, `KMesh`, and `KLinePath`.
     """
 
-    def _check_reciprocal_lattice_vectors(
+    def validate_reciprocal_lattice_vectors(
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
         logger: BoundLogger,
@@ -173,7 +173,7 @@ class KSpaceFunctionalities:
         grid: Optional[List[int]] = [],
     ) -> bool:
         """
-        Check if the `reciprocal_lattice_vectors` exist and if they have the same dimensionality as `grid`.
+        Validate the `reciprocal_lattice_vectors` by checking if they exist and if they have the same dimensionality as `grid`.
 
         Args:
             reciprocal_lattice_vectors (Optional[pint.Quantity]): The reciprocal lattice vectors of the atomic cell.
@@ -404,7 +404,7 @@ class KMesh(Mesh):
             (np.float64): The k-line density of the `KMesh`.
         """
         # Initial check
-        if not KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
+        if not KSpaceFunctionalities().validate_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             logger=logger,
             check_grid=True,
@@ -438,7 +438,7 @@ class KMesh(Mesh):
             (Optional[pint.Quantity]): The resolved `k_line_density` of the `KMesh`.
         """
         # Initial check
-        if not KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
+        if not KSpaceFunctionalities().validate_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             logger=logger,
             check_grid=True,
@@ -553,7 +553,7 @@ class KLinePath(ArchiveSection):
             (Optional[List[float]]): The resolved `high_symmetry_path_values`.
         """
         # Initial check on the `reciprocal_lattice_vectors`
-        if not KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
+        if not KSpaceFunctionalities().validate_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
         ):
             return []
@@ -576,9 +576,9 @@ class KLinePath(ArchiveSection):
         ]
         return high_symmetry_path_values
 
-    def _check_high_symmetry_path(self, logger: BoundLogger) -> bool:
+    def validate_high_symmetry_path(self, logger: BoundLogger) -> bool:
         """
-        Check if the `high_symmetry_path_names` and `high_symmetry_path_values` are defined and have the same length.
+        Validate `high_symmetry_path_names` and `high_symmetry_path_values` by checking if they are defined and have the same length.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -624,7 +624,7 @@ class KLinePath(ArchiveSection):
                 `high_symmetry_path_value_norms = [0, 0.5, 0.5 + 1 / np.sqrt(2), 1 + 1 / np.sqrt(2)]`
         """
         # Checking the high symmetry path quantities
-        if not self._check_high_symmetry_path(logger):
+        if not self.validate_high_symmetry_path(logger):
             return None
         # Checking if `reciprocal_lattice_vectors` is defined and taking its magnitude to operate
         if reciprocal_lattice_vectors is None:
@@ -672,7 +672,7 @@ class KLinePath(ArchiveSection):
             logger (BoundLogger): The logger to log messages.
         """
         # General checks for quantities
-        if not self._check_high_symmetry_path(logger):
+        if not self.validate_high_symmetry_path(logger):
             return None
         if reciprocal_lattice_vectors is None:
             logger.warning(
@@ -755,7 +755,7 @@ class KLinePath(ArchiveSection):
             )
 
         # If `high_symmetry_path` is not defined, we do not normalize the KLinePath
-        if not self._check_high_symmetry_path(logger):
+        if not self.validate_high_symmetry_path(logger):
             return
 
 

@@ -90,7 +90,7 @@ class TestKSpaceFunctionalities:
             ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], True, [6, 6, 6], True),
         ],
     )
-    def test_check_reciprocal_lattice_vectors(
+    def test_validate_reciprocal_lattice_vectors(
         self,
         reciprocal_lattice_vectors: Optional[List[List[float]]],
         check_grid: bool,
@@ -98,9 +98,9 @@ class TestKSpaceFunctionalities:
         result: bool,
     ):
         """
-        Test the `_check_reciprocal_lattice_vectors` private method.
+        Test the `validate_reciprocal_lattice_vectors` method.
         """
-        check = KSpaceFunctionalities()._check_reciprocal_lattice_vectors(
+        check = KSpaceFunctionalities().validate_reciprocal_lattice_vectors(
             reciprocal_lattice_vectors=reciprocal_lattice_vectors,
             logger=logger,
             check_grid=check_grid,
@@ -292,20 +292,20 @@ class TestKLinePath:
             (['Gamma', 'X', 'Y'], [[0, 0, 0], [0.5, 0, 0], [0, 0.5, 0]], True),
         ],
     )
-    def test_check_high_symmetry_path(
+    def test_validate_high_symmetry_path(
         self,
         high_symmetry_path_names: List[str],
         high_symmetry_path_values: List[List[float]],
         result: bool,
     ):
         """
-        Test the `_check_high_symmetry_path` private method.
+        Test the `validate_high_symmetry_path` method.
         """
         k_line_path = generate_k_line_path(
             high_symmetry_path_names=high_symmetry_path_names,
             high_symmetry_path_values=high_symmetry_path_values,
         )
-        assert k_line_path._check_high_symmetry_path(logger) == result
+        assert k_line_path.validate_high_symmetry_path(logger) == result
 
     @pytest.mark.parametrize(
         'reciprocal_lattice_vectors, high_symmetry_path_names, result',

@@ -65,7 +65,7 @@ class TestElectronicEigenvalues:
             assert electronic_eigenvalues.rank == rank
 
     @pytest.mark.parametrize(
-        'occupation, result_check',
+        'occupation, result',
         [
             (None, False),
             ([], False),
@@ -76,15 +76,15 @@ class TestElectronicEigenvalues:
             ),
         ],
     )
-    def test_is_valid_occupation(self, occupation: Optional[list], result_check: bool):
+    def test_validate_occupation(self, occupation: Optional[list], result: bool):
         """
-        Test the `is_valid_occupation` method.
+        Test the `validate_occupation` method.
         """
         electronic_eigenvalues = generate_electronic_eigenvalues(
             value=[[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
             occupation=occupation,
         )
-        assert electronic_eigenvalues.is_valid_occupation(logger) == result_check
+        assert electronic_eigenvalues.validate_occupation(logger) == result
 
     @pytest.mark.parametrize(
         'occupation, value, result',

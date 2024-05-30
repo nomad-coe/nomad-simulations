@@ -136,9 +136,9 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def is_valid_occupation(self, logger: BoundLogger) -> bool:
+    def validate_occupation(self, logger: BoundLogger) -> bool:
         """
-        Checks if `occupation` is valid: exists and has the same shape as `value`.
+        Validate `occupation` by checking if they exist and have the same shape as `value`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -176,7 +176,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
             return None, None
 
         # Check if `occupation` exists and have the same shape as `value`
-        if not self.is_valid_occupation(logger):
+        if not self.validate_occupation(logger):
             return None, None
         total_shape = np.prod(self.value.shape)
 
@@ -337,7 +337,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         super().normalize(archive, logger)
 
         # Check if `occupation` exists and has the same shape as `value`
-        if not self.is_valid_occupation(logger):
+        if not self.validate_occupation(logger):
             return
 
         # Resolve `highest_occupied` and `lowest_unoccupied` eigenvalues
