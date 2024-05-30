@@ -45,7 +45,7 @@ class FermiSurface(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! `n_bands` need to be set up during initialization of the class
-        self.rank = [self.n_bands]
+        self.rank = [int(self.n_bands)]
         self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
