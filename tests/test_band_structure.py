@@ -76,17 +76,15 @@ class TestElectronicEigenvalues:
             ),
         ],
     )
-    def test_check_occupation_shape(
-        self, occupation: Optional[list], result_check: bool
-    ):
+    def test_is_valid_occupation(self, occupation: Optional[list], result_check: bool):
         """
-        Test the `_check_occupation_shape` private method.
+        Test the `is_valid_occupation` method.
         """
         electronic_eigenvalues = generate_electronic_eigenvalues(
             value=[[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
             occupation=occupation,
         )
-        assert electronic_eigenvalues._check_occupation_shape(logger) == result_check
+        assert electronic_eigenvalues.is_valid_occupation(logger) == result_check
 
     @pytest.mark.parametrize(
         'occupation, value, result',

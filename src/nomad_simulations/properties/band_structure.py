@@ -58,7 +58,7 @@ class BaseElectronicEigenvalues(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! `n_bands` need to be set up during initialization of the class
-        self.rank = [int(self.n_bands)]
+        self.rank = [kwargs.get('n_bands')]
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -136,9 +136,9 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def _check_occupation_shape(self, logger: BoundLogger) -> bool:
+    def is_valid_occupation(self, logger: BoundLogger) -> bool:
         """
-        Check if `occupation` exists and have the same shape as `value`.
+        Checks if `occupation` is valid: exists and has the same shape as `value`.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -176,7 +176,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
             return None, None
 
         # Check if `occupation` exists and have the same shape as `value`
-        if not self._check_occupation_shape(logger):
+        if not self.is_valid_occupation(logger):
             return None, None
         total_shape = np.prod(self.value.shape)
 
@@ -336,8 +336,8 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Check if `occupation` exists and have the same shape as `value`
-        if not self._check_occupation_shape(logger):
+        # Check if `occupation` exists and has the same shape as `value`
+        if not self.is_valid_occupation(logger):
             return
 
         # Resolve `highest_occupied` and `lowest_unoccupied` eigenvalues
