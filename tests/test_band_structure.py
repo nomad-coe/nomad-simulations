@@ -402,34 +402,29 @@ class TestElectronicEigenvalues:
         pass
 
     @pytest.mark.parametrize(
-        'numerical_settings, result',
+        'reciprocal_lattice_vectors, result',
         [
             (None, None),
-            (BasisSet(), None),
-            (
-                KSpace(reciprocal_lattice_vectors=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-            ),
+            ([], None),
+            ([[1, 0, 0], [0, 1, 0], [0, 0, 1]], [[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
         ],
     )
     def test_resolve_reciprocal_cell(
         self,
-        numerical_settings: Optional[Union[BasisSet, KSpace]],
+        reciprocal_lattice_vectors: Optional[List[List[float]]],
         result: Optional[List[List[float]]],
     ):
         """
         Test the `resolve_reciprocal_cell` method. This is done via the `normalize` function because `reciprocal_cell` is a
         `QuantityReference`, hence we need to assign it.
         """
-        simulation = generate_simulation(outputs=Outputs())
-        if numerical_settings is not None:
-            model_method = ModelMethod(numerical_settings=[numerical_settings])
-            simulation.model_method.append(model_method)
-        electronic_eigenvalues = generate_electronic_eigenvalues()
-        simulation.outputs[-1].electronic_eigenvalues.append(electronic_eigenvalues)
+        electronic_eigenvalues = generate_electronic_eigenvalues(
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors
+        )
+        # `normalize()` instead of `resolve_reciprocal_cell()` in order for refs to work
+        # reciprocal_cell = electronic_eigenvalues.resolve_reciprocal_cell()
         electronic_eigenvalues.normalize(EntryArchive(), logger)
         reciprocal_cell = electronic_eigenvalues.reciprocal_cell
-        # reciprocal_cell = electronic_eigenvalues.resolve_reciprocal_cell()
         if reciprocal_cell is not None:
             assert np.allclose(reciprocal_cell.magnitude, result)
         else:

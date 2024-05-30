@@ -19,7 +19,7 @@
 import os
 import numpy as np
 import pytest
-from typing import List, Optional, Dict
+from typing import List, Optional
 
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
@@ -37,7 +37,7 @@ from nomad_simulations.numerical_settings import (
     KLinePath as KLinePathSettings,
 )
 from nomad_simulations.outputs import Outputs, SCFOutputs
-from nomad_simulations.variables import Energy2 as Energy, KMesh
+from nomad_simulations.variables import Energy2 as Energy, KLinePath
 from nomad_simulations.properties import (
     ElectronicBandGap,
     DOSProfile,
@@ -259,6 +259,7 @@ def generate_k_space_simulation(
         [0, 0.5, 0],
         [0, 0, 0],
     ],
+    klinepath_points: Optional[List[float]] = None,
     grid=[6, 6, 6],
 ) -> Simulation:
     model_system = generate_model_system(
@@ -284,6 +285,8 @@ def generate_k_space_simulation(
         high_symmetry_path_names=high_symmetry_path_names,
         high_symmetry_path_values=high_symmetry_path_values,
     )
+    if klinepath_points is not None:
+        k_line_path.points = klinepath_points
     k_space.k_line_path = k_line_path
     # appending `KSpace` to `ModelMethod.numerical_settings`
     model_method = ModelMethod()
@@ -292,6 +295,11 @@ def generate_k_space_simulation(
 
 
 def generate_electronic_eigenvalues(
+    reciprocal_lattice_vectors: Optional[List[List[float]]] = [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+    ],
     value: Optional[list] = [
         [3, -2],
         [3, 1],
@@ -318,9 +326,34 @@ def generate_electronic_eigenvalues(
     """
     Generate an `ElectronicEigenvalues` section with the given parameters.
     """
-    n_bands = 2
-    electronic_eigenvalues = ElectronicEigenvalues(n_bands=n_bands)
-    electronic_eigenvalues.variables = [Energy(points=[-3, -2, -1, 0, 1, 2, 3, 4])]
+    outputs = Outputs()
+    k_space = KSpace(
+        k_line_path=KLinePathSettings(
+            points=[
+                [0, 0, 0],
+                [1, 0, 0],
+                [0, 1, 0],
+                [0, 0, 1],
+                [1, 1, 0],
+                [1, 0, 1],
+                [0, 1, 1],
+                [1, 1, 1],
+            ]
+        )
+    )
+    model_method = ModelMethod(numerical_settings=[k_space])
+    if reciprocal_lattice_vectors is not None and len(reciprocal_lattice_vectors) > 0:
+        k_space.reciprocal_lattice_vectors = reciprocal_lattice_vectors
+    simulation = generate_simulation(
+        model_system=generate_model_system(),
+        model_method=model_method,
+        outputs=outputs,
+    )
+    electronic_eigenvalues = ElectronicEigenvalues(n_bands=2)
+    outputs.electronic_eigenvalues.append(electronic_eigenvalues)
+    electronic_eigenvalues.variables = [
+        KLinePath(points=model_method.numerical_settings[0].k_line_path)
+    ]
     if value is not None:
         electronic_eigenvalues.value = value
     if occupation is not None:
