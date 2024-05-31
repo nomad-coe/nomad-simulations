@@ -479,189 +479,233 @@ class DihedralGeometryDistribution(GeometryDistribution):
         return self
 
 
-class DistributionHistogram:
-    """
-    A conversion class to compute the histogram of a distribution.
-    It can also store the histogram in a NOMAD `GeometryDistribution` section via `produce_nomad_distribution`.
-    """
+import math
+import pandas as pd
+from typing import Union
 
+
+class DistributionDataFrame:
     def __init__(
-        self,
-        combo: list[str],
-        distribution_values: pint.Quantity,
-        bins: pint.Quantity,
-        neighbor_list: pint.Quantity,
+        self, ase_atoms: ase.Atoms, cutoff_mappings: dict[str, float] = {}
     ) -> None:
-        """The `combo` is a list of element symbols, `distribution_values` is a list of distances or angles,
-        `bins` is the binning of the histogram and sets the final units,
-        and `neighbor_list` is the cutoffs for the distribution (in the same order as combo)."""
-        self.combo = combo
-        self.n_elem = len(combo)
-        self.bins = bins
-        self.neighbor_list = neighbor_list
-        self.compute_histogram(distribution_values)
-
-    def compute_histogram(self, distribution_values: pint.Quantity) -> None:
-        """Compute the histogram of the distribution values,
-        based on `self.bins` and `distribution_values`.
-        Results are stored under `self.counts`. Returns the object itself."""
-
-        # compute the histogram
-        self.counts, _ = np.histogram(
-            distribution_values.to(self.bins.u).magnitude, bins=self.bins.magnitude
-        )  # have the bins determine the units and range
-
-        # normalize so the minimum is 1
-        if len(nonzero_counts := self.counts[np.where(self.counts > 0)]) > 0:
-            self.frequency = self.counts / np.min(nonzero_counts)
+        """`cutoff_mappings` should contain all elements in `ase_atoms`."""
+        self.ase_atoms = ase_atoms
+        if cutoff_mappings:
+            self.df_elements = pd.DataFrame(
+                {'element': cutoff_mappings.keys(), 'cutoff': cutoff_mappings.values()}
+            )
         else:
-            self.frequency = self.counts
+            elements = ase_atoms.get_chemical_symbols()
+            pd.DataFrame({'element': elements, 'cutoff': [None for _ in elements]})
+        self._df_combo_headers = (
+            'extremity_left',
+            'center_left',
+            'center_right',
+            'extremity_right',
+            'cutoff',
+            'dist_storage_index',
+        )
+        # matching the order of the `ase` package:
+        # https://wiki.fysik.dtu.dk/ase/_modules/ase/geometry/analysis.html#Analysis.get_dihedrals
+        self.df_combos = pd.DataFrame({k: [] for k in self._df_combo_headers})
+        self.distributions: dict[int, pd.DataFrame] = {}
+        self._distribution_headers = (
+            'extremity_left_id',
+            'center_left_id',
+            'center_right_id',
+            'extremity_right_id',
+            'distribution',
+        )
 
-    def produce_nomad_distribution(self) -> GeometryDistribution:
-        # select the constructor based on the type
-        constructor_mapping = {
+    def _init_distribution(self, combo: tuple[str, str, str, str]):
+        if combo not in self.distributions:
+            self.distributions[combo] = pd.DataFrame(
+                {k: [] for k in self._distribution_headers}
+            )
+
+    def _prep_combos(
+        self, elements: list[str], mode: int
+    ) -> list[Union[tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]]:
+        combos = []
+        for i, extr_l in enumerate(elements):
+            for extr_r in elements[i:]:
+                if mode > 2:
+                    for cent_l in elements:
+                        if mode > 3:
+                            for cent_r in elements:
+                                combos.append((extr_l, cent_l, cent_r, extr_r))
+                        else:
+                            combos.append((extr_l, cent_l, extr_r))
+                else:
+                    combos.append((extr_l, extr_r))
+        return combos
+
+    def _prep_combo_row(
+        self,
+        combos: list[
+            Union[tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+        ],
+    ) -> dict[str, list[tuple[str, str, str, str]]]:
+        return dict(
+            zip(
+                self._df_combo_headers[:4],
+                [c[0] for c in combos],
+                [c[1] if len(c) > 2 else None for c in combos],
+                [c[2] if len(c) > 3 else None for c in combos],
+                [c[-1] for c in combos],
+            )
+        )
+
+    def factory(
+        self,
+        modes: list[
+            Union[int, tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+        ],
+        cutoff_mappings: dict[
+            Union[tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]],
+            float,
+        ] = {},
+    ):
+        """`cutoff_mappings` should contain all combinations in `modes`."""
+        elements = self.ase_atoms.get_chemical_symbols()
+        for mode in modes:  # ? add sorting
+            cs = self._prep_combos(elements, mode) if isinstance(mode, int) else [mode]
+            new_rows = self._prep_combo_row(cs)
+            if cutoff_mappings:
+                new_rows['cutoff'] = [cutoff_mappings[c] for c in cs]
+            new_rows['dist_storage_index'] = [None for _ in cs]
+            # ? what if the combo already exists
+            self.df_combos = self.df_combos.append(new_rows, ignore_index=True)
+            # note that this does not protect against duplicates
+        return self
+
+    def _get_all_cutoffs(self) -> dict[tuple[str, str], float]:
+        cutoffs = self.df_elements.join(
+            self.df_elements, how='cross', lsuffix='_left', rsuffix='_right'
+        )
+        cutoffs['cutoff'] = cutoffs[['cutoff_left', 'cutoff_right']].sum(axis=1)
+        cutoffs.drop(columns=['cutoff_left', 'cutoff_right'], inplace=True)
+        cutoffs.rename(
+            columns={
+                'element_left': 'extremity_left',
+                'element_right': 'extremity_right',
+            },
+            inplace=True,
+        ).set_index(['extremity_left', 'extremity_right'])
+        cutoffs.join(
+            self.df_combos[['extremity_left', 'extremity_right', 'cutoff']].set_index(
+                ['extremity_left', 'extremity_right']
+            ),
+            how='right',
+        )
+        return cutoffs.to_dict()
+
+    def analyze(self):
+        # run analysis
+        neighbor_list = ase_nl.build_neighbor_list(
+            self.ase_atoms,
+            self._get_all_cutoffs().values().to('angstrom').magnitude,
+            self_interaction=False,
+        )
+        an = ase_as.Analysis(self.ase_atoms, neighbor_list)
+        # return type of analysis.get_x: list[list[tuple[int, int, float]]],
+        # where the first index denotes the frame, the second the atom, and the tuple the full atom indices and distance
+
+        sel_cols = {
+            2: ['extremity_left', 'extremity_right', 'cutoff'],
+            3: ['extremity_left', 'extremity_right', 'center_left', 'cutoff'],
+            4: [
+                'extremity_left',
+                'center_left',
+                'center_right',
+                'extremity_right',
+                'cutoff',
+            ],
+        }
+        caller_map = {2: an.get_bonds, 3: an.get_angles, 4: an.get_dihedrals}
+
+        for _, row in self.df_combos.iloc[:, :4].iterrows():
+            combo = row.dropna()
+            ll = len(combo)
+
+            self._init_distribution(combo)
+            self.distributions[combo].append(
+                pd.DataFrame(caller_map[ll](*combo, unique=True), headers=sel_cols[ll])
+            )
+        return self
+
+    def get_full_df(
+        self,
+        modes: list[
+            Union[int, tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+        ],
+    ) -> pd.DataFrame:
+        df_combos = pd.DataFrame(headers=self._df_combo_headers)
+        for mode in modes:
+            if isinstance(mode, int):
+                pass
+            else:
+                df_combos = df_combos.append(self.df_combos[self.df_combos[mode]])
+
+    def df_to_hist(
+        self, df: pd.DataFrame, no_zeros: bool = True, normalize: bool = True
+    ):
+        if no_zeros:
+            hist = df[df['distribution'] > 0]
+        hist = hist.groupby('distribution').size().reset_index(name='count')
+        if normalize:
+            hist['count'] = hist['count'].apply(lambda x: x / hist['count'].min())
+        return hist
+
+    def sparsify(
+        self,
+        modes: list[
+            Union[int, tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+        ],
+        prec: pint.Quantity,
+    ) -> dict:
+        df = self.get_full_df(modes)
+        df['distribution'].apply(lambda x: math.floor(x / prec) * prec, inplace=True)
+        return self.df_to_hist(df, no_zeros=True, normalize=True)
+
+    def bin(
+        self,
+        modes: list[
+            Union[int, tuple[str, str], tuple[str, str, str], tuple[str, str, str, str]]
+        ],
+        binning: pint.Quantity,
+    ) -> dict:
+        """`bins` should be a list of bin edges, starting from below."""
+        df = self.get_full_df(modes)
+        df['distribution'].apply(
+            lambda x: binning(np.min(np.where(x > binning))), inplace=True
+        )
+        return self.df_to_hist(df, no_zeros=True, normalize=True)
+
+    def to_nomad(
+        self,
+        modes=[2, 3],
+        precs: list[pint.Quantity] = [0.001 * ureg.angstrom, 0.01 * ureg.degrees],
+        binnings: list[pint.Quantity] = [],
+    ) -> list[GeometryDistribution]:
+        constructor_map = {
+            0: GeometryDistribution,
             2: DistanceGeometryDistribution,
             3: AngleGeometryDistribution,
-            3: DihedralGeometryDistribution,
+            4: DihedralGeometryDistribution,
         }
-        if self.n_elem in constructor_mapping:
-            constructor = constructor_mapping[self.n_elem]
-        else:
-            raise ValueError('Cannot assign a constructor based on `self.combos`.')
 
-        # instantiate the NOMAD distribution
-        geom_dist = constructor(
-            extremity_atom_labels=[self.combo[0], self.combo[-1]],
-            frequency=self.frequency,
-            n_cutoff_specifications=len(self.neighbor_list),
-            element_cutoff_selection=self.combo,  # this is enforced by `DistributionFactory`
-            distance_cutoffs=self.neighbor_list,
-        )
-
-        # distances require explicit binning data
-        if self.n_elem == 2:
-            geom_dist.n_bins = len(self.bins)
-            geom_dist.bins = self.bins
-
-        # add the central atom labels if they exist
-        if self.n_elem > 2:
-            geom_dist.central_atom_labels = self.combo[1:-1]
-        return geom_dist
-
-
-class Distribution:
-    """
-    A helper class to compute the distribution of a given geometry type, i.e., distances or (dihedral) angles.
-    Also generates a histogram class via `produce_histogram`.
-    """
-
-    def __init__(
-        self,
-        combo: list[str],
-        ase_atoms: ase.Atoms,
-        neighbor_list: pint.Quantity,
-    ) -> None:
-        # initialize object attributes
-        self.combo = combo
-        self.n_elem = len(combo)
-        self.neighbor_list = neighbor_list
-
-        geom_analysis = ase_as.Analysis(
-            ase_atoms, neighbor_list.to('angstrom').magnitude
-        )
-        if self.n_elem == 2:  # distances
-            if len((matches := geom_analysis.get_bonds(*combo, unique=True))[0]) > 0:
-                self.values = geom_analysis.get_values(matches)
-            else:
-                self.values = np.array([])
-            self.values *= ureg.angstrom
-        elif self.n_elem in (3, 4):  # (dihedral) angles
-            if len((matches := geom_analysis.get_angles(*combo, unique=True))[0]) > 0:
-                self.values = np.array(geom_analysis.get_values(matches)) * ureg.degrees
-                self.values = np.abs(
-                    np.where(
-                        self.values > 180 * ureg.degrees,
-                        360 * ureg.degrees - self.values,
-                        self.values,
-                    )
-                )  # restrict to [0, 180] degrees
-            else:
-                self.values = np.array([])
-            self.values *= ureg.degrees
-        else:
-            raise ValueError('Could not infer distribution type from `combo`.')
-
-    def produce_histogram(self, bins: pint.Quantity) -> DistributionHistogram:
-        return DistributionHistogram(self.combo, self.values, bins, self.neighbor_list)
-
-
-class DistributionFactory:
-    """
-    Factory class for exhaustively generating distributions of geometrical observables
-    for all element paris or triples. It will produce a list of `Distribution` objects via `produce_distributions`.
-    """
-
-    def __init__(self, ase_atoms: ase.Atoms, neighbor_list: pint.Quantity) -> None:
-        """The neighbor list should follow the same order as `ase_atoms`."""
-        if len(ase_atoms) != len(neighbor_list):
-            raise ValueError('Length of `ase_atoms` and `neighbor_list` do not match.')
-
-        self.ase_atoms = ase_atoms
-        self.cutoff_mapping = dict(zip(ase_atoms.get_chemical_symbols(), neighbor_list))
-        self._elements = sorted(
-            list(set(self.ase_atoms.get_chemical_symbols())),
-            key=lambda x: ase.Atom(x).number,
-        )  # sort by atomic number
-
-    @property
-    def get_elemental_pairs(self) -> list[tuple[str, str]]:
-        """Generate all possible pairs of element symbols.
-        Permutations are not considered, i.e., (B, A) is converted into (A, B)."""
-        return [
-            (atom_1, atom_2)
-            for i, atom_1 in enumerate(self._elements)
-            for atom_2 in self._elements[i:]
-        ]
-
-    @property
-    def get_elemental_triples_centered(self) -> list[tuple[str, str, str]]:
-        """Generate all possible triples of element symbols with the center element first.
-        Permutations between the outer elements are not considered, i.e., (A, C, B) is converted into (A, B, C).
-        """
-        return [
-            (atom_1, atom_c, atom_2)
-            for atom_c in self._elements
-            for i, atom_1 in enumerate(self._elements)
-            for atom_2 in self._elements[i:]
-        ]  # matching the order of the `ase` package: https://wiki.fysik.dtu.dk/ase/_modules/ase/geometry/analysis.html#Analysis.get_angles
-
-    @property
-    def get_elemental_quadruples_centered(self) -> list[tuple[str, str, str, str]]:
-        """Generate all possible quadruples of element symbols with the center elements first.
-        Permutations between the outer elements are not considered, i.e., (A, D, B, C) is converted into (A, B, C, D).
-        """
-        return [
-            (atom_1, atom_c, atom_d, atom_2)
-            for atom_c in self._elements
-            for atom_d in self._elements
-            for i, atom_1 in enumerate(self._elements)
-            for atom_2 in self._elements[i:]
-        ]  # matching the order of the `ase` package: https://wiki.fysik.dtu.dk/ase/_modules/ase/geometry/analysis.html#Analysis.get_dihedrals
-
-    def produce_distributions(self) -> list[Distribution]:
-        """Generate all possible distributions of distances and angles
-        for all element pairs and triples, respectively."""
-        return [
-            Distribution(
-                list(combos),
-                self.ase_atoms,
-                [self.cutoff_mapping[atom] for atom in combos],
+        quants = binnings if binnings else precs
+        caller = self.bin if binnings else self.sparsify
+        if len(quants) != len(modes):
+            raise ValueError(
+                'Length quantifiers, i.e. `precs` or `binnings` should match length `modes`.'
             )
-            for combos in [
-                *self.get_elemental_pairs,
-                *self.get_elemental_triples_centered,
-            ]
-        ]
+
+        geom_dists: list[GeometryDistribution] = []
+        for mode, quant in zip(modes, quants):
+            geom_dists.append(constructor_map[len(mode)](caller(mode, quant)))
+        return geom_dists
 
 
 class AtomicCell(Cell):
