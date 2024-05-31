@@ -19,7 +19,7 @@
 import re
 import numpy as np
 import ase
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from structlog.stdlib import BoundLogger
 
 from matid import SymmetryAnalyzer, Classifier  # pylint: disable=import-error
@@ -903,11 +903,25 @@ class ModelSystem(System):
 
     composition_formula = Quantity(
         type=str,
-        shape=[],
         description="""
         The overall composition of the system with respect to its subsystems.
         The syntax for a system composed of X and Y with x and y components of each,
-        respectively, is X(x)Y(y).
+        respectively, is X(x)Y(y). At the deepest branch in the hierarchy, the
+        composition_formula is expressed in terms of the atomic labels.
+
+        Example: A system composed of 3 water molecules with the following hierarchy
+
+                                TotalSystem
+                                    |
+                                group_H2O
+                                |   |   |
+                               H2O H2O H2O
+
+        has the following compositional formulas at each branch:
+
+            branch 0, index 0: "Total_System" composition_formula = group_H2O(1)
+            branch 1, index 0: "group_H2O"    composition_formula = H2O(3)
+            branch 2, index 0: "H2O"          composition_formula = H(1)O(2)
         """,
     )
 
@@ -970,6 +984,31 @@ class ModelSystem(System):
 
         return system_type, dimensionality
 
+    def resolve_composition_formula(
+        self, logger: BoundLogger
+    ) -> None:
+        """
+        """
+        def set_branch_composition(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
+            if not subsystems:
+                atom_indices = system.atom_indices if system.atom_indices is not None else []
+                subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels and len(atom_indices) != 0 else []  # TODO need to add to testing the case where labels and indices are missing
+            else:
+                subsystem_labels = [subsystem.branch_label if subsystem.branch_label is not None else "Unknown" for subsystem in subsystems]
+            system.composition_formula = get_composition(subsystem_labels)
+
+        def traverse_system_recurs(system, atom_labels):
+            subsystems = system.model_system
+            set_branch_composition(system, subsystems, atom_labels)
+            if subsystems:
+                for subsystem in subsystems:
+                    traverse_system_recurs(subsystem, atom_labels)
+
+        atoms_state = self.cell[0].atoms_state if self.cell is not None else []
+        atom_labels = [atom.chemical_symbol for atom in atoms_state] if atoms_state is not None else []
+        traverse_system_recurs(self, atom_labels)
+
+
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
@@ -977,24 +1016,8 @@ class ModelSystem(System):
         if is_not_representative(self, logger):
             return
 
-        # Traversing the System Hierarchy
-        # TODO consider moving to utils and passing generic set of functions to execute at each branch level
-        def set_branch_composition(system, subsystems, atom_labels):
-            if subsystems is None:
-                subsystem_labels = [np.array(atom_labels)[system.get("atom_indices")]]
-            else:
-                subsystem_labels = [subsystem.get("branch_label") for subsystem in subsystems]
-            system.composition_formula = get_composition(subsystem_labels)
-
-        def traverse_system_recurs(system, atom_labels):
-            subsystems = system.get("model_system")
-            set_branch_composition(system, subsystems, atom_labels)
-            if subsystems:
-                for subsystem in subsystems:
-                    traverse_system_recurs(subsystem, atom_labels)
-
-        atom_labels = [atom.chemical_symbol for atom in self.cell[0].atoms_state]
-        traverse_system_recurs(self, atom_labels)
+        if self.composition_formula is None:
+            self.resolve_composition_formula(logger)
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
         if self.cell is None or len(self.cell) == 0:
