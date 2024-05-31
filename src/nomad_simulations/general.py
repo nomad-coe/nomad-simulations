@@ -17,17 +17,20 @@
 #
 
 import numpy as np
+from typing import List
+from structlog.stdlib import BoundLogger
 
 from nomad.units import ureg
 from nomad.metainfo import SubSection, Quantity, MEnum, Section, Datetime
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Entity, Activity
+from nomad.atomutils import get_composition
 
 from .model_system import ModelSystem
 from .model_method import ModelMethod
 from .outputs import Outputs
-
+from .utils import is_not_representative
 
 class Program(Entity):
     """
@@ -177,6 +180,31 @@ class Simulation(BaseSimulation, EntryData):
             system_child.branch_depth = branch_depth + 1
             self._set_system_branch_depth(system_child, branch_depth + 1)
 
+    def resolve_composition_formula(
+        self, system_parent: ModelSystem, logger: BoundLogger
+    ) -> None:
+        """
+        """
+        def set_branch_composition(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
+            if not subsystems:
+                atom_indices = system.atom_indices if system.atom_indices is not None else []
+                subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels and len(atom_indices) != 0 else []  # TODO need to add to testing the case where labels and indices are missing
+            else:
+                subsystem_labels = [subsystem.branch_label if subsystem.branch_label is not None else "Unknown" for subsystem in subsystems]
+            system.composition_formula = get_composition(subsystem_labels)
+
+        def traverse_system_recurs(system, atom_labels):
+            subsystems = system.model_system
+            set_branch_composition(system, subsystems, atom_labels)
+            if subsystems:
+                for subsystem in subsystems:
+                    traverse_system_recurs(subsystem, atom_labels)
+
+        atoms_state = system_parent.cell[0].atoms_state if system_parent.cell is not None else []
+        atom_labels = [atom.chemical_symbol for atom in atoms_state] if atoms_state is not None else []
+        print(atom_labels)
+        traverse_system_recurs(system_parent, atom_labels)
+
     def normalize(self, archive, logger) -> None:
         super(EntryData, self).normalize(archive, logger)
 
@@ -192,8 +220,11 @@ class Simulation(BaseSimulation, EntryData):
         self.m_cache['system_ref'] = system_ref
 
         # Setting up the `branch_depth` in the parent-child tree
-        for system_parents in self.model_system:
-            system_parents.branch_depth = 0
-            if len(system_parents.model_system) == 0:
+        for system_parent in self.model_system:
+            system_parent.branch_depth = 0
+            if len(system_parent.model_system) == 0:
                 continue
-            self._set_system_branch_depth(system_parents)
+            self._set_system_branch_depth(system_parent)
+            if is_not_representative(system_parent, logger):
+                return
+            self.resolve_composition_formula(system_parent, logger)
