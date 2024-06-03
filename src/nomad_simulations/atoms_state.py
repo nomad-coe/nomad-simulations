@@ -160,15 +160,15 @@ class OrbitalsState(Entity):
             'ms_numbers': dict((zip(('down', 'up'), (-0.5, 0.5)))),
         }
 
-    def _check_quantum_numbers(self, logger: BoundLogger) -> bool:
+    def validate_quantum_numbers(self, logger: BoundLogger) -> bool:
         """
-        Checks the physicality of the quantum numbers.
+        Validate the quantum numbers (`n`, `l`, `ml`, `ms`) by checking if they are physically sensible.
 
         Args:
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (bool): True if the quantum numbers are physical, False otherwise.
+            (bool): True if the quantum numbers are physically sensible, False otherwise.
         """
         if self.n_quantum_number is not None and self.n_quantum_number < 1:
             logger.error('The `n_quantum_number` must be greater than 0.')
@@ -293,7 +293,7 @@ class OrbitalsState(Entity):
         super().normalize(archive, logger)
 
         # General checks for physical quantum numbers and symbols
-        if not self._check_quantum_numbers(logger):
+        if not self.validate_quantum_numbers(logger):
             logger.error('The quantum numbers are not physical.')
             return
 

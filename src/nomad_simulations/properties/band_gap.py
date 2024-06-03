@@ -83,9 +83,9 @@ class ElectronicBandGap(PhysicalProperty):
         self.name = self.m_def.name
         self.rank = []
 
-    def _check_negative_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+    def validate_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
         """
-        Checks if the electronic band gaps is negative and sets them to None if they are.
+        Validate the electronic band gap `value` by checking if they are negative and sets them to None if they are.
 
         Args:
             logger (BoundLogger): The logger to log messages.
@@ -143,7 +143,7 @@ class ElectronicBandGap(PhysicalProperty):
         super().normalize(archive, logger)
 
         # Checks if the `value` is negative and sets it to None if it is.
-        self.value = self._check_negative_values(logger)
+        self.value = self.validate_values(logger)
         if self.value is None:
             # ? What about deleting the class if `value` is None?
             logger.error('The `value` of the electronic band gap is not stored.')

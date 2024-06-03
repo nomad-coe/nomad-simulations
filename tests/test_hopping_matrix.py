@@ -17,9 +17,11 @@
 #
 
 import pytest
-import numpy as np
+from typing import Optional
 
 from nomad_simulations.properties import HoppingMatrix, CrystalFieldSplitting
+
+from . import logger
 
 
 class TestHoppingMatrix:
@@ -31,18 +33,26 @@ class TestHoppingMatrix:
     @pytest.mark.parametrize(
         'n_orbitals, rank',
         [
-            (None, []),
+            (None, None),
             (3, [3, 3]),
         ],
     )
-    def test_default_quantities(self, n_orbitals: int, rank: list):
+    def test_default_quantities(self, n_orbitals: Optional[int], rank: Optional[list]):
         """
         Test the default quantities assigned when creating an instance of the `HoppingMatrix` class.
         """
-        hopping_matrix = HoppingMatrix(n_orbitals=n_orbitals)
-        assert hopping_matrix.iri == 'http://fairmat-nfdi.eu/taxonomy/HoppingMatrix'
-        assert hopping_matrix.name == 'HoppingMatrix'
-        assert hopping_matrix.rank == rank
+        if n_orbitals is None:
+            with pytest.raises(ValueError) as exc_info:
+                hopping_matrix = HoppingMatrix(n_orbitals=n_orbitals)
+            assert (
+                str(exc_info.value)
+                == f'`n_orbitals` is not defined during initialization of the class.'
+            )
+        else:
+            hopping_matrix = HoppingMatrix(n_orbitals=n_orbitals)
+            assert hopping_matrix.iri == 'http://fairmat-nfdi.eu/taxonomy/HoppingMatrix'
+            assert hopping_matrix.name == 'HoppingMatrix'
+            assert hopping_matrix.rank == rank
 
 
 class TestCrystalFieldSplitting:
@@ -54,17 +64,26 @@ class TestCrystalFieldSplitting:
     @pytest.mark.parametrize(
         'n_orbitals, rank',
         [
-            (None, []),
+            (None, None),
             (3, [3]),
         ],
     )
-    def test_default_quantities(self, n_orbitals: int, rank: list):
+    def test_default_quantities(self, n_orbitals: Optional[int], rank: Optional[list]):
         """
         Test the default quantities assigned when creating an instance of the `CrystalFieldSplitting` class.
         """
-        crystal_field = CrystalFieldSplitting(n_orbitals=n_orbitals)
-        assert (
-            crystal_field.iri == 'http://fairmat-nfdi.eu/taxonomy/CrystalFieldSplitting'
-        )
-        assert crystal_field.name == 'CrystalFieldSplitting'
-        assert crystal_field.rank == rank
+        if n_orbitals is None:
+            with pytest.raises(ValueError) as exc_info:
+                crystal_field = CrystalFieldSplitting(n_orbitals=n_orbitals)
+            assert (
+                str(exc_info.value)
+                == f'`n_orbitals` is not defined during initialization of the class.'
+            )
+        else:
+            crystal_field = CrystalFieldSplitting(n_orbitals=n_orbitals)
+            assert (
+                crystal_field.iri
+                == 'http://fairmat-nfdi.eu/taxonomy/CrystalFieldSplitting'
+            )
+            assert crystal_field.name == 'CrystalFieldSplitting'
+            assert crystal_field.rank == rank

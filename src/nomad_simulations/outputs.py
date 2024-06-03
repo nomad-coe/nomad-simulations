@@ -33,6 +33,9 @@ from .properties import (
     HoppingMatrix,
     ElectronicBandGap,
     ElectronicDensityOfStates,
+    ElectronicEigenvalues,
+    FermiSurface,
+    ElectronicBandStructure,
     AbsorptionSpectrum,
     XASSpectrum,
     Permittivity,
@@ -75,10 +78,20 @@ class Outputs(ArchiveSection):
 
     hopping_matrices = SubSection(sub_section=HoppingMatrix.m_def, repeats=True)
 
+    electronic_eigenvalues = SubSection(
+        sub_section=ElectronicEigenvalues.m_def, repeats=True
+    )
+
     electronic_band_gaps = SubSection(sub_section=ElectronicBandGap.m_def, repeats=True)
 
     electronic_dos = SubSection(
         sub_section=ElectronicDensityOfStates.m_def, repeats=True
+    )
+
+    fermi_surfaces = SubSection(sub_section=FermiSurface.m_def, repeats=True)
+
+    electronic_band_structures = SubSection(
+        sub_section=ElectronicBandStructure.m_def, repeats=True
     )
 
     permittivities = SubSection(sub_section=Permittivity.m_def, repeats=True)

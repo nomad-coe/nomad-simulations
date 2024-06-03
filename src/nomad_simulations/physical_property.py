@@ -18,6 +18,7 @@
 
 import numpy as np
 from typing import Any, Optional
+from functools import wraps
 
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
@@ -40,6 +41,43 @@ from .numerical_settings import SelfConsistency
 
 # We add `logger` for the `PhysicalProperty.variables_shape` method
 logger = utils.get_logger(__name__)
+
+
+def validate_quantity_wrt_value(name: str = ''):
+    """
+    Decorator to validate the existence of a quantity and its shape with respect to the `PhysicalProperty.value`
+    before calling a method. An example can be found in the module `properties/band_structure.py` for the method
+    `ElectronicEigenvalues.order_eigenvalues()`.
+
+    Args:
+        name (str, optional): The name of the `quantity` to validate. Defaults to ''.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # Checks if `quantity` is defined
+            quantity = getattr(self, name, None)
+            if quantity is None or len(quantity) == 0:
+                logger.warning(f'The quantity `{name}` is not defined.')
+                return False
+
+            # Checks if `value` exists and has the same shape as `quantity`
+            value = getattr(self, 'value', None)
+            if value is None:
+                logger.warning(f'The quantity `value` is not defined.')
+                return False
+            if value is not None and value.shape != quantity.shape:
+                logger.warning(
+                    f'The shape of the quantity `{name}` does not match the shape of the `value`.'
+                )
+                return False
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class PhysicalProperty(ArchiveSection):
@@ -221,10 +259,19 @@ class PhysicalProperty(ArchiveSection):
         self, m_def: Section = None, m_context: Context = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
+
+        # Checking if IRI is defined
         if self.iri is None:
             logger.warning(
                 'The used property is not defined in the FAIRmat taxonomy (https://fairmat-nfdi.github.io/fairmat-taxonomy/). You can contribute there if you want to extend the list of available materials properties.'
             )
+
+        # Checking if the quantities `n_` are defined, as this are used to calculate `rank`
+        for quantity, _ in self.m_def.all_quantities.items():
+            if quantity.startswith('n_') and getattr(self, quantity) is None:
+                raise ValueError(
+                    f'`{quantity}` is not defined during initialization of the class.'
+                )
 
     def __setattr__(self, name: str, val: Any) -> None:
         # For the special case of `value`, its `shape` needs to be defined from `_full_shape`

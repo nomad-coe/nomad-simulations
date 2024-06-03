@@ -56,11 +56,9 @@ class TestElectronicBandGap:
             ([1.0, 2.0, -1.0], None),
         ],
     )
-    def test_check_negative_values(
-        self, value: Union[List[float], float], result: float
-    ):
+    def test_validate_values(self, value: Union[List[float], float], result: float):
         """
-        Test the `_check_negative_values` method.
+        Test the `validate_values` method.
         """
         if isinstance(value, list):
             electronic_band_gap = ElectronicBandGap(
@@ -69,11 +67,11 @@ class TestElectronicBandGap:
         else:
             electronic_band_gap = ElectronicBandGap()
         electronic_band_gap.value = value * ureg.joule
-        checked_value = electronic_band_gap._check_negative_values(logger)
-        if checked_value is not None:
-            assert np.isclose(checked_value.magnitude, result)
+        validated_value = electronic_band_gap.validate_values(logger)
+        if validated_value is not None:
+            assert np.isclose(validated_value.magnitude, result)
         else:
-            assert checked_value == result
+            assert validated_value == result
 
     @pytest.mark.parametrize(
         'momentum_transfer, type, result',

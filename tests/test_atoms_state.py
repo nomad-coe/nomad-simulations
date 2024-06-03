@@ -64,18 +64,18 @@ class TestOrbitalsState:
             ('ms_quantum_number', [0, 10, -0.5, 0.5], [False, False, True, True]),
         ],
     )
-    def test_check_quantum_numbers(
+    def test_validate_quantum_numbers(
         self, number_label: str, values: List[int], results: List[bool]
     ):
         """
-        Test the quantum number check for the `OrbitalsState` section.
+        Test the `validate_quantum_numbers` method.
         """
         orbital_state = OrbitalsState(n_quantum_number=2)
         for val, res in zip(values, results):
             if number_label == 'ml_quantum_number':
                 orbital_state.l_quantum_number = 2
             setattr(orbital_state, number_label, val)
-            assert orbital_state._check_quantum_numbers(logger) == res
+            assert orbital_state.validate_quantum_numbers(logger) == res
 
     @pytest.mark.parametrize(
         'quantum_name, value, expected_result',
