@@ -19,7 +19,6 @@
 
 from nomad.config.models.plugins import SchemaPackageEntryPoint
 from pydantic import Field
-from .schema import m_package, Simulation
 
 
 class NomadSimulationsPackageEntryPoint(SchemaPackageEntryPoint):

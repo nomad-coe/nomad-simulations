@@ -99,4 +99,4 @@ package-dir = { "" = "src" }
 where = ["src"]
 
 [project.entry-points.'nomad.plugin']
-nomad_simulations = "nomad_simulations:nomad_simulations"
+nomad_simulations = "nomad_simulations_data:nomad_simulations"
