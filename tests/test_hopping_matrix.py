@@ -19,7 +19,10 @@
 import pytest
 import numpy as np
 
-from nomad_simulations.properties import HoppingMatrix, CrystalFieldSplitting
+from nomad_simulations.schema_sections.properties import (
+    HoppingMatrix,
+    CrystalFieldSplitting,
+)
 
 
 class TestHoppingMatrix:

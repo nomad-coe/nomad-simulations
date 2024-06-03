@@ -25,7 +25,7 @@ from nomad.datamodel import EntryArchive
 
 from . import logger
 
-from nomad_simulations.atoms_state import (
+from nomad_simulations.schema_sections.atoms_state import (
     OrbitalsState,
     CoreHole,
     HubbardInteractions,

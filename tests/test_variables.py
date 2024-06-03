@@ -22,7 +22,7 @@ from nomad.datamodel import EntryArchive
 
 from . import logger
 
-from nomad_simulations.variables import Variables
+from nomad_simulations.schema_sections.variables import Variables
 
 
 class TestVariables:

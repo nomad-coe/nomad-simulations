@@ -25,8 +25,8 @@ from nomad.metainfo import Quantity
 
 from . import logger
 
-from nomad_simulations.variables import Variables
-from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.schema_sections.variables import Variables
+from nomad_simulations.schema_sections.physical_property import PhysicalProperty
 
 
 class DummyPhysicalProperty(PhysicalProperty):

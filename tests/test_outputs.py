@@ -24,7 +24,7 @@ from nomad.datamodel import EntryArchive
 from . import logger
 from .conftest import generate_scf_electronic_band_gap_template
 
-from nomad_simulations.outputs import Outputs, ElectronicBandGap
+from nomad_simulations.schema_sections.outputs import Outputs, ElectronicBandGap
 
 
 class TestOutputs:

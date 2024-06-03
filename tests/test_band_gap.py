@@ -25,8 +25,8 @@ from nomad.datamodel import EntryArchive
 
 from . import logger
 
-from nomad_simulations.properties import ElectronicBandGap
-from nomad_simulations.variables import Temperature
+from nomad_simulations.schema_sections.properties import ElectronicBandGap
+from nomad_simulations.schema_sections.variables import Temperature
 
 
 class TestElectronicBandGap:

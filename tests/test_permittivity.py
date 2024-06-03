@@ -25,12 +25,12 @@ from nomad.datamodel import EntryArchive
 
 from . import logger
 
-from nomad_simulations import Simulation
-from nomad_simulations.model_system import ModelSystem, AtomicCell
-from nomad_simulations.atoms_state import AtomsState
-from nomad_simulations.outputs import Outputs
-from nomad_simulations.properties import Permittivity
-from nomad_simulations.variables import Variables, KMesh, Frequency
+from nomad_simulations.schema import Simulation
+from nomad_simulations.schema_sections.model_system import ModelSystem, AtomicCell
+from nomad_simulations.schema_sections.atoms_state import AtomsState
+from nomad_simulations.schema_sections.outputs import Outputs
+from nomad_simulations.schema_sections.properties import Permittivity
+from nomad_simulations.schema_sections.variables import Variables, KMesh, Frequency
 
 from .conftest import generate_k_space_simulation
 

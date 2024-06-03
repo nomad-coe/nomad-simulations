@@ -25,7 +25,7 @@ from nomad.datamodel import EntryArchive
 from . import logger
 from .conftest import generate_atomic_cell
 
-from nomad_simulations.model_system import (
+from nomad_simulations.schema_sections.model_system import (
     Symmetry,
     ChemicalFormula,
     ModelSystem,
