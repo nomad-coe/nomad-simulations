@@ -18,6 +18,7 @@
 
 import numpy as np
 from typing import Any, Optional
+from functools import wraps
 
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
@@ -40,6 +41,41 @@ from .numerical_settings import SelfConsistency
 
 # We add `logger` for the `PhysicalProperty.variables_shape` method
 logger = utils.get_logger(__name__)
+
+
+def validate_quantity_wrt_value(name: str = ''):
+    """
+    Decorator to validate the existence of a quantity and its shape with respect to the `PhysicalProperty.value` before calling a method.
+
+    Args:
+        name (str, optional): The name of the `quantity` to validate. Defaults to ''.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            # Checks if `quantity` is defined
+            quantity = getattr(self, name, None)
+            if quantity is None or len(quantity) == 0:
+                logger.warning(f'The quantity `{name}` is not defined.')
+                return False
+
+            # Checks if `value` exists and has the same shape as `quantity`
+            value = getattr(self, 'value', None)
+            if value is None:
+                logger.warning(f'The quantity `value` is not defined.')
+                return False
+            if value is not None and value.shape != quantity.shape:
+                logger.warning(
+                    f'The shape of the quantity `{name}` does not match the shape of the `value`.'
+                )
+                return False
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class PhysicalProperty(ArchiveSection):

@@ -804,6 +804,7 @@ class KSpace(NumericalSettings):
             if is_not_representative(model_system, logger):
                 continue
 
+            # TODO extend this for other dimensions (@ndaelman-hu)
             if model_system.type is not None and model_system.type != 'bulk':
                 logger.warning('`ModelSystem.type` is not describing a bulk system.')
                 continue

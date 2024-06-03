@@ -19,6 +19,7 @@
 import pytest
 import numpy as np
 from typing import Optional, Tuple, Union, List
+import pint
 
 from nomad.datamodel import EntryArchive
 
@@ -64,27 +65,27 @@ class TestElectronicEigenvalues:
             assert electronic_eigenvalues.name == 'ElectronicEigenvalues'
             assert electronic_eigenvalues.rank == rank
 
-    @pytest.mark.parametrize(
-        'occupation, result',
-        [
-            (None, False),
-            ([], False),
-            ([[2, 2], [0, 0]], False),  # `value` and `occupation` must have same shape
-            (
-                [[0, 2], [0, 1], [0, 2], [0, 2], [0, 1.5], [0, 1.5], [0, 1], [0, 2]],
-                True,
-            ),
-        ],
-    )
-    def test_validate_occupation(self, occupation: Optional[list], result: bool):
-        """
-        Test the `validate_occupation` method.
-        """
-        electronic_eigenvalues = generate_electronic_eigenvalues(
-            value=[[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-            occupation=occupation,
-        )
-        assert electronic_eigenvalues.validate_occupation(logger) == result
+    # @pytest.mark.parametrize(
+    #     'occupation, result',
+    #     [
+    #         (None, False),
+    #         ([], False),
+    #         ([[2, 2], [0, 0]], False),  # `value` and `occupation` must have same shape
+    #         (
+    #             [[0, 2], [0, 1], [0, 2], [0, 2], [0, 1.5], [0, 1.5], [0, 1], [0, 2]],
+    #             True,
+    #         ),
+    #     ],
+    # )
+    # def test_validate_occupation(self, occupation: Optional[list], result: bool):
+    #     """
+    #     Test the `validate_occupation` method.
+    #     """
+    #     electronic_eigenvalues = generate_electronic_eigenvalues(
+    #         value=[[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
+    #         occupation=occupation,
+    #     )
+    #     assert electronic_eigenvalues.validate_occupation(logger) == result
 
     @pytest.mark.parametrize(
         'occupation, value, result',
@@ -92,22 +93,22 @@ class TestElectronicEigenvalues:
             (
                 None,
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                (None, None),
+                False,
             ),
             (
                 [],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                (None, None),
+                False,
             ),
             (
                 [[2, 2], [0, 0]],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                (None, None),
+                False,
             ),  # `value` and `occupation` must have same shape
             (
                 [[0, 2], [0, 1], [0, 2], [0, 2], [0, 1.5], [0, 1.5], [0, 1], [0, 2]],
                 None,
-                (None, None),
+                False,
             ),
             (
                 [[0, 2], [0, 1], [0, 2], [0, 2], [0, 1.5], [0, 1.5], [0, 1], [0, 2]],
@@ -161,7 +162,7 @@ class TestElectronicEigenvalues:
         self,
         occupation: Optional[list],
         value: Optional[list],
-        result: Tuple[Optional[list], Optional[list]],
+        result,
     ):
         """
         Test the `order_eigenvalues` method.
@@ -170,15 +171,14 @@ class TestElectronicEigenvalues:
             value=value,
             occupation=occupation,
         )
-        sorted_value, sorted_occupation = electronic_eigenvalues.order_eigenvalues(
-            logger
-        )
-        if sorted_value is not None and sorted_occupation is not None:
+        order_result = electronic_eigenvalues.order_eigenvalues()
+        if not order_result:
+            assert order_result == result
+        else:
+            sorted_value, sorted_occupation = order_result
             assert electronic_eigenvalues.m_cache['sorted_eigenvalues']
             assert (sorted_value.magnitude == result[0]).all()
             assert (sorted_occupation == result[1]).all()
-        else:
-            assert (sorted_value, sorted_occupation) == result
 
     @pytest.mark.parametrize(
         'occupation, value, highest_occupied, lowest_unoccupied, result',
@@ -276,7 +276,7 @@ class TestElectronicEigenvalues:
             highest_occupied=highest_occupied,
             lowest_unoccupied=lowest_unoccupied,
         )
-        homo, lumo = electronic_eigenvalues.resolve_homo_lumo_eigenvalues(logger)
+        homo, lumo = electronic_eigenvalues.resolve_homo_lumo_eigenvalues()
         if homo is not None and lumo is not None:
             assert (homo.magnitude, lumo.magnitude) == result
         else:
@@ -386,7 +386,7 @@ class TestElectronicEigenvalues:
             highest_occupied=highest_occupied,
             lowest_unoccupied=lowest_unoccupied,
         )
-        band_gap = electronic_eigenvalues.extract_band_gap(logger)
+        band_gap = electronic_eigenvalues.extract_band_gap()
         if band_gap is not None:
             assert np.isclose(band_gap.value.magnitude, band_gap_result)
         else:

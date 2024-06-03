@@ -18,22 +18,23 @@
 
 import numpy as np
 from structlog.stdlib import BoundLogger
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 import pint
 
 from nomad.metainfo import Quantity, Section, Context, SubSection
 
 from nomad_simulations.numerical_settings import KSpace
-from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.physical_property import (
+    PhysicalProperty,
+    validate_quantity_wrt_value,
+)
 from nomad_simulations.properties import ElectronicBandGap, FermiSurface
 from nomad_simulations.utils import get_sibling_section
 
 
 class BaseElectronicEigenvalues(PhysicalProperty):
     """
-    A base section used to define basic quantities for the `ElectronicEigenvalues`, `FermiSurface`, and
-    `ElectronicBandStructure` properties. This section serves to define `FermiSurface` and without needing to specify
-    other quantities that appear in `ElectronicEigenvalues`
+    A base section used to define basic quantities for the `ElectronicEigenvalues`  and `ElectronicBandStructure` properties.
     """
 
     iri = ''
@@ -80,13 +81,12 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         type=np.float64,
         shape=['*', 'n_bands'],
         description="""
-        Occupation of the electronic eigenvalues. This is a number between 0 and 2, where 0 means
-        that the state is unoccupied and 2 means that the state is fully occupied. It is controlled
-        by the Fermi-Dirac distribution:
-
-            $ f(E) = 1 / (1 + exp((E - E_F) / kT)) $
-
-        The shape of this quantity is defined as `[KMesh.n_points, KMesh.dimensionality, n_bands]`, where `KMesh` is a `variable`.
+        Occupation of the electronic eigenvalues. This is a number depending whether the `spin_channel` has been set or not.
+        If `spin_channel` is set, then this number is between 0 and 2, where 0 means that the state is unoccupied and 2 means
+        that the state is fully occupied; if `spin_channel` is not set, then this number is between 0 and 1. The shape of
+        this quantity is defined as `[K.n_points, K.dimensionality, n_bands]`, where `K` is a `variable` which can
+        be `KMesh` or `KLinePath`, depending whether the simulation mapped the whole Brillouin zone or just a specific
+        path.
         """,
     )
 
@@ -108,6 +108,9 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         """,
     )
 
+    # ? Should we add functionalities to handle min/max of the `value` in some specific cases, .e.g, bands around the Fermi level,
+    # ? core bands separated by gaps, and equivalently, higher-energy valence bands separated by gaps?
+
     value_contributions = SubSection(
         sub_section=BaseElectronicEigenvalues.m_def,
         repeats=True,
@@ -125,8 +128,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
     reciprocal_cell = Quantity(
         type=KSpace.reciprocal_lattice_vectors,
         description="""
-        Reference to the reciprocal lattice vectors stored under `KSpace`. This reference is useful when resolving the Brillouin zone
-        for the front-end visualization.
+        Reference to the reciprocal lattice vectors stored under `KSpace`.
         """,
     )
 
@@ -136,48 +138,16 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def validate_occupation(self, logger: BoundLogger) -> bool:
-        """
-        Validate `occupation` by checking if they exist and have the same shape as `value`.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
-        Returns:
-            (bool): True if the shape of `occupation` is the same as `value`, False otherwise.
-        """
-        if self.occupation is None or len(self.occupation) == 0:
-            logger.warning('Cannot find `occupation` defined.')
-            return False
-        if self.value is not None and self.value.shape != self.occupation.shape:
-            logger.warning(
-                'The shape of `value` and `occupation` are different. They should have the same shape.'
-            )
-            return False
-        return True
-
-    def order_eigenvalues(
-        self, logger: BoundLogger
-    ) -> Tuple[Optional[pint.Quantity], Optional[np.ndarray]]:
+    @validate_quantity_wrt_value(name='occupation')
+    def order_eigenvalues(self) -> Union[bool, Tuple[pint.Quantity, np.ndarray]]:
         """
         Order the eigenvalues based on the `value` and `occupation`. The return `value` and
         `occupation` are flattened.
 
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
         Returns:
-            (Tuple[Optional[pint.Quantity], Optional[list]]): The flattened and sorted `value` and `occupation`.
+            (Union[bool, Tuple[pint.Quantity, np.ndarray]]): The flattened and sorted `value` and `occupation`. If validation
+            fails, then it returns `False`.
         """
-
-        # Check if `value` exists
-        if self.value is None or len(self.value) == 0:
-            logger.error('Could not find `value` defined.')
-            return None, None
-
-        # Check if `occupation` exists and have the same shape as `value`
-        if not self.validate_occupation(logger):
-            return None, None
         total_shape = np.prod(self.value.shape)
 
         # Order the indices in the flattened list of `value`
@@ -196,26 +166,23 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         return sorted_value, sorted_occupation
 
     def resolve_homo_lumo_eigenvalues(
-        self, logger: BoundLogger
+        self,
     ) -> Tuple[Optional[pint.Quantity], Optional[pint.Quantity]]:
         """
         Resolve the `highest_occupied` and `lowest_unoccupied` eigenvalues by performing a binary search on the
         flattened and sorted `value` and `occupation`. If these quantities already exist, overwrite them or return
         them if it is not possible to resolve from `value` and `occupation`.
 
-        Args:
-            logger (BoundLogger): The logger to log messages.
-
         Returns:
             (Tuple[Optional[pint.Quantity], Optional[pint.Quantity]]): The `highest_occupied` and
             `lowest_unoccupied` eigenvalues.
         """
         # Sorting `value` and `occupation`
-        sorted_value, sorted_occupation = self.order_eigenvalues(logger)
-        if sorted_value is None or sorted_occupation is None:
+        if not self.order_eigenvalues():  # validation fails
             if self.highest_occupied is not None and self.lowest_unoccupied is not None:
                 return self.highest_occupied, self.lowest_unoccupied
             return None, None
+        sorted_value, sorted_occupation = self.order_eigenvalues()
         sorted_value_unit = sorted_value.u
         sorted_value = sorted_value.magnitude
 
@@ -244,19 +211,16 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
 
         return homo, lumo
 
-    def extract_band_gap(self, logger: BoundLogger) -> Optional[ElectronicBandGap]:
+    def extract_band_gap(self) -> Optional[ElectronicBandGap]:
         """
         Extract the electronic band gap from the `highest_occupied` and `lowest_unoccupied` eigenvalues.
         If the difference of `highest_occupied` and `lowest_unoccupied` is negative, the band gap `value` is set to 0.0.
-
-        Args:
-            logger (BoundLogger): The logger to log messages.
 
         Returns:
             (Optional[ElectronicBandGap]): The extracted electronic band gap section to be stored in `Outputs`.
         """
         band_gap = None
-        homo, lumo = self.resolve_homo_lumo_eigenvalues(logger)
+        homo, lumo = self.resolve_homo_lumo_eigenvalues()
         if homo and lumo:
             band_gap = ElectronicBandGap(is_derived=True, physical_property_ref=self)
 
@@ -278,7 +242,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
             (Optional[FermiSurface]): The extracted Fermi surface section to be stored in `Outputs`.
         """
         # Check if the system has a finite band gap
-        homo, lumo = self.resolve_homo_lumo_eigenvalues(logger)
+        homo, lumo = self.resolve_homo_lumo_eigenvalues()
         if (homo and lumo) and (lumo - homo).magnitude > 0:
             return None
 
@@ -336,17 +300,13 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        # Check if `occupation` exists and has the same shape as `value`
-        if not self.validate_occupation(logger):
-            return
-
         # Resolve `highest_occupied` and `lowest_unoccupied` eigenvalues
         self.highest_occupied, self.lowest_unoccupied = (
-            self.resolve_homo_lumo_eigenvalues(logger)
+            self.resolve_homo_lumo_eigenvalues()
         )
 
         # `ElectronicBandGap` extraction
-        band_gap = self.extract_band_gap(logger)
+        band_gap = self.extract_band_gap()
         if band_gap is not None:
             self.m_parent.electronic_band_gaps.append(band_gap)
 
