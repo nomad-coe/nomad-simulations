@@ -202,7 +202,6 @@ class Simulation(BaseSimulation, EntryData):
 
         atoms_state = system_parent.cell[0].atoms_state if system_parent.cell is not None else []
         atom_labels = [atom.chemical_symbol for atom in atoms_state] if atoms_state is not None else []
-        print(atom_labels)
         traverse_system_recurs(system_parent, atom_labels)
 
     def normalize(self, archive, logger) -> None:
