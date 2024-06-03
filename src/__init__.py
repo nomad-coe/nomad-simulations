@@ -25,7 +25,7 @@ class NomadSimulationsPackageEntryPoint(SchemaPackageEntryPoint):
     # parameter: int = Field(0, description='Custom configuration parameter')
 
     def load(self):
-        from nomad_simulations.schema import (
+        from .schema import (
             m_package,
         )
 
