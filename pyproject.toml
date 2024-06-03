@@ -92,11 +92,11 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 
-[tool.setuptools.packages.find]
+[tool.setuptools]
 package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.entry-points.'nomad.plugin']
 nomad_simulations = "nomad_simulations:nomad_simulations"
-
-[tool.setuptools.package-data]
-nomad_simulations = ["*/nomad_plugin.yaml"]
