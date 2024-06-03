@@ -17,4 +17,22 @@
 # limitations under the License.
 #
 
-from .general import Program, Simulation
+from nomad.config.models.plugins import SchemaPackageEntryPoint
+from pydantic import Field
+
+
+class NomadSimulationsPackageEntryPoint(SchemaPackageEntryPoint):
+    # parameter: int = Field(0, description='Custom configuration parameter')
+
+    def load(self):
+        from nomad_simulations.schema import (
+            m_package,
+        )
+
+        return m_package
+
+
+nomad_simulations = NomadSimulationsPackageEntryPoint(
+    name='NomadSimulations',
+    description='Schema package defined for simulations.',
+)

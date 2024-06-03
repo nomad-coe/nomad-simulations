@@ -1,7 +1,8 @@
 #
 # Copyright The NOMAD Authors.
 #
-# This file is part of NOMAD. See https://nomad-lab.eu for further info.
+# This file is part of NOMAD.
+# See https://nomad-lab.eu for further info.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +17,24 @@
 # limitations under the License.
 #
 
+from typing import (
+    TYPE_CHECKING,
+)
+
+if TYPE_CHECKING:
+    pass
+
 import numpy as np
 
-from nomad.units import ureg
-from nomad.metainfo import SubSection, Quantity, MEnum, Section, Datetime
+from nomad.metainfo import SubSection, Quantity, Section, Datetime
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Entity, Activity
+from nomad.metainfo import SchemaPackage, Section, SubSection
 
-from .model_system import ModelSystem
-from .model_method import ModelMethod
-from .outputs import Outputs
+from nomad_simulations.schema_sections import ModelSystem, ModelMethod, Outputs
+
+m_package = SchemaPackage()
 
 
 class Program(Entity):
@@ -197,3 +205,6 @@ class Simulation(BaseSimulation, EntryData):
             if len(system_parents.model_system) == 0:
                 continue
             self._set_system_branch_depth(system_parents)
+
+
+m_package.__init_metainfo__()

@@ -4,14 +4,15 @@ jobs:
   install-and-test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
     - name: Install dependencies
       run: |
         pip install --upgrade pip
+        pip install nomad-lab[infrastructure]@git+https://github.com/nomad-coe/nomad.git@develop
         pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
         pip install coverage coveralls
     - name: mypy
@@ -29,9 +30,9 @@ jobs:
   build-and-install:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
         python-version: 3.9
     - name: Build the package
@@ -45,14 +46,14 @@ jobs:
   ruff-linting:
       runs-on: ubuntu-latest
       steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
         - uses: chartboost/ruff-action@v1
           with:
             args: "check ."
   ruff-formatting:
       runs-on: ubuntu-latest
       steps:
-        - uses: actions/checkout@v3
+        - uses: actions/checkout@v4
         - uses: chartboost/ruff-action@v1
           with:
             args: "format . --check --verbose"

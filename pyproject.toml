@@ -6,7 +6,17 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = 'nomad-schema-plugin-simulation-data'
+classifiers = [
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+]
+name = 'nomad-simulations'
 dynamic = ["version"]
 description = 'A NOMAD plugin for FAIR schemas for simulation data.'
 readme = "README.md"
@@ -16,17 +26,20 @@ authors = [
     { name = "Bernadette Mohr", email = "mohrbern@physik.hu-berlin.de" },
     { name = "Joseph F. Rudzinski", email = "joseph.rudzinski@physik.hu-berlin.de" }
 ]
-license = { text = "Apache-2.0" }
+maintainers = [
+    { name = "Jose M. Pizarro", email = "jose.pizarro@physik.hu-berlin.de" }
+]
 requires-python = ">=3.9"
+license = { file = "LICENSE" }
 dependencies = [
     "nomad-lab>=1.2.2dev578",
     "matid>=2.0.0.dev2",
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/nomad-coe/nomad-schema-plugin-simulation-data"
-"Bug Tracker" = "https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/issues"
-"Documentation" = "https://nomad-coe.github.io/nomad-schema-plugin-simulation-data/"
+"Homepage" = "https://github.com/nomad-coe/nomad-simulations"
+"Bug Tracker" = "https://github.com/nomad-coe/nomad-simulations/issues"
+"Documentation" = "https://nomad-coe.github.io/nomad-simulations/"
 
 [project.optional-dependencies]
 dev = [
@@ -40,7 +53,7 @@ dev = [
 ]
 
 [tool.ruff]
-include = ["src/nomad_simulations/*.py", "tests/*.py"]
+include = ["src/nomad_simulations/*.py", src/nomad_simulations/schema_sections/*.py, "tests/*.py"]
 lint.select = [
     "E", # pycodestyle
     "W", # pycodestyle
@@ -81,7 +94,10 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+package-dir = { "" = "src" }
+
+[project.entry-points.'nomad.plugin']
+nomad_simulations = "nomad_simulations:nomad_simulations"
 
 [tool.setuptools.package-data]
 nomad_simulations = ["*/nomad_plugin.yaml"]
