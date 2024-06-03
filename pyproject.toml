@@ -37,9 +37,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/nomad-coe/nomad-simulations"
-"Bug Tracker" = "https://github.com/nomad-coe/nomad-simulations/issues"
-"Documentation" = "https://nomad-coe.github.io/nomad-simulations/"
+"Homepage" = "https://github.com/nomad-coe/nomad-schema-plugin-simulation-data"
+"Bug Tracker" = "https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/issues"
+"Documentation" = "https://nomad-coe.github.io/nomad-schema-plugin-simulation-data/"
 
 [project.optional-dependencies]
 dev = [
