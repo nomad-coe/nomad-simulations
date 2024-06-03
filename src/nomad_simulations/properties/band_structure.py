@@ -190,24 +190,14 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         tolerance = 1e-3  # TODO add tolerance from config fields
         homo = self.highest_occupied
         lumo = self.lowest_unoccupied
-        low_occ = 0
-        high_unocc = sorted_value.shape[-1] - 1
-        while low_occ <= high_unocc:
-            mid = (low_occ + high_unocc) // 2
-            # check if occupation[mid] and [mid+1] is 0
+        mid = np.searchsorted(sorted_occupation <= tolerance, True) - 1
+        if mid >= 0 and mid < len(sorted_occupation) - 1:
             if sorted_occupation[mid] > 0 and (
                 sorted_occupation[mid + 1] >= -tolerance
                 and sorted_occupation[mid + 1] <= tolerance
             ):
                 homo = sorted_value[mid] * sorted_value_unit
                 lumo = sorted_value[mid + 1] * sorted_value_unit
-                break
-            # check if the occupation[mid] is finite but [mid+1] is as well
-            elif sorted_occupation[mid] > 0:
-                low_occ = mid + 1
-            # check if the occupation[mid] is 0
-            else:
-                high_unocc = mid - 1
 
         return homo, lumo
 
