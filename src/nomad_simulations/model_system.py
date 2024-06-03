@@ -503,6 +503,67 @@ Modes = NewType(
 )
 
 
+class DistributionDataFrameHistogram:
+    def __init__(
+        self,
+        el_distrs: pd.DataFrame,
+        cutoffs: pd.DataFrame,
+        ll: int,
+        bins: pint.Quantity,
+    ) -> None:
+        self._ll = ll
+        self._hists: dict[Mode, pd.DataFrame] = {}
+        self._cutoffs: dict[Mode, pint.Quantity] = {}
+        protocol = (
+            lambda x: self._sparsify(x, bins)
+            if isinstance(bins.magnitude, (int, float))
+            else self._bin(x, bins)
+        )
+
+        distr = self._sel_distr_cols(el_distrs)
+        for mode, df in distr.groupby(distr.columns[:-1]):
+            self._hists[mode] = self._cmp_hist(protocol(df))
+            self._cutoffs[mode] = cutoffs.loc[mode]
+
+    def _sel_distr_cols(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Select the appropriate elemental combinations."""
+        return df[df.count(axis=1) == self._ll].dropna(axis=0)
+
+    def _cmp_hist(self, df: pd.Series) -> pd.DataFrame:
+        """Return a histogram of the distribution."""
+        hist = df[df['value'] > 0]
+        hist = hist.groupby('value').size().reset_index(name='count')
+        hist['freq'] = hist['count'].apply(lambda x: x / hist['count'].min())
+        return hist
+
+    def _sparsify(self, df: pd.DataFrame, prec: pint.Quantity) -> pd.DataFrame:
+        """Sparsify the distribution by rounding the values to the nearest `prec`."""
+        return df['value'].map(lambda x: math.floor(x / prec) * prec, inplace=True)
+
+    def _bin(self, df: pd.DataFrame, binning: pint.Quantity) -> pd.DataFrame:
+        """Bin the distribution by the `binning` values."""
+        return df['value'].map(lambda x: binning(np.min(np.where(x > binning))))
+
+    def get(self, mode: Mode) -> tuple[pint.Quantity, pd.DataFrame]:
+        return self._cutoffs[mode], self._hists[mode]
+
+    def to_nomad(self) -> list[GeometryDistribution]:
+        constructor_map = {
+            2: DistanceGeometryDistribution,
+            3: AngleGeometryDistribution,
+            4: DihedralGeometryDistribution,
+        }
+        return [
+            constructor_map[self._ll](
+                element_cutoff_selection=mode,
+                distance_cutoffs=self._cutoffs[mode],
+                bins=self._hists[mode]['value'],
+                frequencies=self._hists[mode]['freq'],
+            )
+            for mode in self._hists.keys()
+        ]
+
+
 class DistributionDataFrame:
     def __init__(
         self,
@@ -617,67 +678,6 @@ class DistributionDataFrame:
         return DistributionDataFrameHistogram(
             self._el_distrs, self._df_cutoffs, ll, bins
         )
-
-
-class DistributionDataFrameHistogram:
-    def __init__(
-        self,
-        el_distrs: pd.DataFrame,
-        cutoffs: pd.DataFrame,
-        ll: int,
-        bins: pint.Quantity,
-    ) -> None:
-        self._ll = ll
-        self._hists: dict[Mode, pd.DataFrame] = {}
-        self._cutoffs: dict[Mode, pint.Quantity] = {}
-        protocol = (
-            lambda x: self._sparsify(x, bins)
-            if isinstance(bins.magnitude, (int, float))
-            else self._bin(x, bins)
-        )
-
-        distr = self._sel_distr_cols(el_distrs)
-        for mode, df in distr.groupby(distr.columns[:-1]):
-            self._hists[mode] = self._cmp_hist(protocol(df))
-            self._cutoffs[mode] = cutoffs.loc[mode]
-
-    def _sel_distr_cols(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Select the appropriate elemental combinations."""
-        return df[df.count(axis=1) == self._ll].dropna(axis=0)
-
-    def _cmp_hist(self, df: pd.Series) -> pd.DataFrame:
-        """Return a histogram of the distribution."""
-        hist = df[df['value'] > 0]
-        hist = hist.groupby('value').size().reset_index(name='count')
-        hist['freq'] = hist['count'].apply(lambda x: x / hist['count'].min())
-        return hist
-
-    def _sparsify(self, df: pd.DataFrame, prec: pint.Quantity) -> pd.DataFrame:
-        """Sparsify the distribution by rounding the values to the nearest `prec`."""
-        return df['value'].map(lambda x: math.floor(x / prec) * prec, inplace=True)
-
-    def _bin(self, df: pd.DataFrame, binning: pint.Quantity) -> pd.DataFrame:
-        """Bin the distribution by the `binning` values."""
-        return df['value'].map(lambda x: binning(np.min(np.where(x > binning))))
-
-    def get(self, mode: Mode) -> tuple[pint.Quantity, pd.DataFrame]:
-        return self._cutoffs[mode], self._hists[mode]
-
-    def to_nomad(self) -> list[GeometryDistribution]:
-        constructor_map = {
-            2: DistanceGeometryDistribution,
-            3: AngleGeometryDistribution,
-            4: DihedralGeometryDistribution,
-        }
-        return [
-            constructor_map[self._ll](
-                element_cutoff_selection=mode,
-                distance_cutoffs=self._cutoffs[mode],
-                bins=self._hists[mode]['value'],
-                frequencies=self._hists[mode]['freq'],
-            )
-            for mode in self._hists.keys()
-        ]
 
 
 class AtomicCell(Cell):
