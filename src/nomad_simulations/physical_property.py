@@ -45,7 +45,9 @@ logger = utils.get_logger(__name__)
 
 def validate_quantity_wrt_value(name: str = ''):
     """
-    Decorator to validate the existence of a quantity and its shape with respect to the `PhysicalProperty.value` before calling a method.
+    Decorator to validate the existence of a quantity and its shape with respect to the `PhysicalProperty.value`
+    before calling a method. An example can be found in the module `properties/band_structure.py` for the method
+    `ElectronicEigenvalues.order_eigenvalues()`.
 
     Args:
         name (str, optional): The name of the `quantity` to validate. Defaults to ''.
