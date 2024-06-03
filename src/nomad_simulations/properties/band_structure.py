@@ -59,7 +59,7 @@ class BaseElectronicEigenvalues(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! `n_bands` need to be set up during initialization of the class
-        self.rank = [kwargs.get('n_bands')]
+        self.rank = [int(kwargs.get('n_bands'))]
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
