@@ -613,8 +613,10 @@ class DistributionDataFrame:
         )
         return self
 
-    def to_hist(self) -> DistributionDataFrameHistogram:
-        return DistributionDataFrameHistogram(self._el_distrs, self._df_cutoffs)
+    def to_hist(self, ll: int, bins: pint.Quantity) -> DistributionDataFrameHistogram:
+        return DistributionDataFrameHistogram(
+            self._el_distrs, self._df_cutoffs, ll, bins
+        )
 
 
 class DistributionDataFrameHistogram:
@@ -625,7 +627,7 @@ class DistributionDataFrameHistogram:
         ll: int,
         bins: pint.Quantity,
     ) -> None:
-        self._ll
+        self._ll = ll
         self._hists: dict[Mode, pd.DataFrame] = {}
         self._cutoffs: dict[Mode, pint.Quantity] = {}
         protocol = (
