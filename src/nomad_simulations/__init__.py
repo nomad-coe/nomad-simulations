@@ -19,13 +19,14 @@
 
 from nomad.config.models.plugins import SchemaPackageEntryPoint
 from pydantic import Field
+from .schema import m_package, Simulation
 
 
 class NomadSimulationsPackageEntryPoint(SchemaPackageEntryPoint):
     # parameter: int = Field(0, description='Custom configuration parameter')
 
     def load(self):
-        from .schema import (
+        from nomad_simulations.schema import (
             m_package,
         )
 
