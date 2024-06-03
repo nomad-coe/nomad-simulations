@@ -52,7 +52,7 @@ dev = [
 ]
 
 [tool.ruff]
-include = ["src/nomad_simulations/*.py", "src/nomad_simulations/schema_sections/*.py", "tests/*.py"]
+include = ["src/nomad_simulations_data/*.py", "src/nomad_simulations_data/schema_sections/*.py", "tests/*.py"]
 lint.select = [
     "E", # pycodestyle
     "W", # pycodestyle

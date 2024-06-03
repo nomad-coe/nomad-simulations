@@ -17,7 +17,7 @@ jobs:
         pip install coverage coveralls
     - name: mypy
       run: |
-        python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional src/nomad_simulations tests
+        python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional src/nomad_simulations_data tests
     - name: Test with pytest
       run: |
         python -m coverage run -m pytest -sv tests
