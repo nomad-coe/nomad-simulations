@@ -152,7 +152,7 @@ def get_variables(
             result.append(var)
     return result
 
-# TODO Either update nomad.atomutils function and remove this one, or remove the one in atomutils if we prefer it here only
+# TODO remove function in nomad.atomutils
 def get_composition(children_names: List[str]) -> str:
     """
     Generates a generalized "chemical formula" based on the provided list `children_names`,

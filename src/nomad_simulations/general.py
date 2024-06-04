@@ -17,7 +17,7 @@
 #
 
 import numpy as np
-from typing import List
+from typing import List, Callable, Any
 from structlog.stdlib import BoundLogger
 
 from nomad.units import ureg
@@ -182,9 +182,23 @@ class Simulation(BaseSimulation, EntryData):
     def resolve_composition_formula(
         self, system_parent: ModelSystem, logger: BoundLogger
     ) -> None:
+        """Determine and set the composition formula for system_parent and all of its
+        descendants.
+
+        Args:
+            system_parent (ModelSystem): The upper-most level of the system hierarchy to consider.
+            logger (BoundLogger): The logger to log messages.
         """
-        """
-        def set_branch_composition(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
+        def set_composition_formula(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
+            """Determines the composition formula for `system` based on its `subsystems`.
+            If `system` has no children, the atom_labels are used to determine the formula.
+
+            Args:
+                system (ModelSystem): The system under consideration.
+                subsystems (List[ModelSystem]): The children of system.
+                atom_labels (List[str]): The global list of atom labels corresponding
+                to the atom indices stored in system.
+            """
             if not subsystems:
                 atom_indices = system.atom_indices if system.atom_indices is not None else []
                 subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels else ['Unknown' for atom in range(len(atom_indices))]
@@ -193,16 +207,24 @@ class Simulation(BaseSimulation, EntryData):
             if system.composition_formula is None:
                 system.composition_formula = get_composition(subsystem_labels)
 
-        def traverse_system_recurs(system, atom_labels):
+        def get_composition_recurs(system: ModelSystem, atom_labels: List[str]) -> None:
+            """Traverse the system hierarchy downward and set the branch composition for
+            all (subs)systems at each level.
+
+            Args:
+                system (ModelSystem): The system to traverse downward.
+                atom_labels (List[str]): The global list of atom labels corresponding
+                to the atom indices stored in system.
+            """
             subsystems = system.model_system
-            set_branch_composition(system, subsystems, atom_labels)
+            set_composition_formula(system, subsystems, atom_labels)
             if subsystems:
                 for subsystem in subsystems:
-                    traverse_system_recurs(subsystem, atom_labels)
+                    get_composition_recurs(subsystem, atom_labels)
 
         atoms_state = system_parent.cell[0].atoms_state if system_parent.cell is not None else []
         atom_labels = [atom.chemical_symbol for atom in atoms_state] if atoms_state is not None else []
-        traverse_system_recurs(system_parent, atom_labels)
+        get_composition_recurs(system_parent, atom_labels)
 
     def normalize(self, archive, logger) -> None:
         super(EntryData, self).normalize(archive, logger)
@@ -226,5 +248,5 @@ class Simulation(BaseSimulation, EntryData):
             self._set_system_branch_depth(system_parent)
 
             if is_not_representative(system_parent, logger):
-                return
+                continue
             self.resolve_composition_formula(system_parent, logger)
