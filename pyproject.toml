@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = 'nomad-schema-plugin-simulation-data'
+name = 'nomad-simulations'
 dynamic = ["version"]
 description = 'A NOMAD plugin for FAIR schemas for simulation data.'
 readme = "README.md"
@@ -24,9 +24,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/nomad-coe/nomad-schema-plugin-simulation-data"
-"Bug Tracker" = "https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/issues"
-"Documentation" = "https://nomad-coe.github.io/nomad-schema-plugin-simulation-data/"
+"Homepage" = "https://github.com/nomad-coe/nomad-simulations"
+"Bug Tracker" = "https://github.com/nomad-coe/nomad-simulations/issues"
+"Documentation" = "https://nomad-coe.github.io/nomad-simulations/"
 
 [project.optional-dependencies]
 dev = [
