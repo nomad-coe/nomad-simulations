@@ -21,4 +21,5 @@ from .utils import (
     RussellSaundersState,
     is_not_representative,
     get_variables,
+    get_composition,
 )

@@ -29,7 +29,10 @@ from nomad_simulations.model_system import (
     Symmetry,
     ChemicalFormula,
     ModelSystem,
+    AtomicCell,
+    AtomsState,
 )
+from nomad_simulations.general import Simulation
 
 
 class TestAtomicCell:
@@ -439,3 +442,187 @@ class TestModelSystem:
         assert np.isclose(model_system.elemental_composition[0].atomic_fraction, 2 / 3)
         assert model_system.elemental_composition[1].element == 'O'
         assert np.isclose(model_system.elemental_composition[1].atomic_fraction, 1 / 3)
+
+    @pytest.mark.parametrize(
+        'is_representative, has_atom_indices, mol_label_list, n_mol_list, atom_labels_list, composition_formula_list, custom_formulas',
+        [
+            (
+                True,
+                True,
+                ['H20'],
+                [3],
+                [['H', 'O', 'O']],
+                ['group_H20(1)', 'H20(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)'],
+                [None, None, None, None, None],
+            ),  # pure system
+            (
+                False,
+                True,
+                ['H20'],
+                [3],
+                [['H', 'O', 'O']],
+                [None, None, None, None, None],
+                [None, None, None, None, None],
+            ),  # non-representative system
+            (
+                True,
+                True,
+                [None],
+                [3],
+                [['H', 'O', 'O']],
+                ['Unknown(1)', 'Unknown(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)'],
+                [None, None, None, None, None],
+            ),  # missing branch labels
+            (
+                True,
+                True,
+                ['H20'],
+                [3],
+                [[None, None, None]],
+                ['group_H20(1)', 'H20(3)', 'Unknown(3)', 'Unknown(3)', 'Unknown(3)'],
+                [None, None, None, None, None],
+            ),  # missing atom labels
+            (
+                True,
+                False,
+                ['H20'],
+                [3],
+                [['H', 'O', 'O']],
+                ['group_H20(1)', 'H20(3)', None, None, None],
+                [None, None, None, None, None],
+            ),  # missing atom indices
+            (
+                True,
+                True,
+                ['H20'],
+                [3],
+                [['H', 'O', 'O']],
+                ['waters(1)', 'water_molecules(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)'],
+                ['waters(1)', 'water_molecules(3)', None, None, None],
+            ),  # custom formulas
+            (
+                True,
+                True,
+                ['H20', 'Methane'],
+                [5, 2],
+                [['H', 'O', 'O'], ['C', 'H', 'H', 'H', 'H']],
+                [
+                    'group_H20(1)group_Methane(1)',
+                    'H20(5)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'Methane(2)',
+                    'C(1)H(4)',
+                    'C(1)H(4)',
+                ],
+                [None, None, None, None, None, None, None, None, None, None],
+            ),  # binary mixture
+        ],
+    )
+    def test_system_hierarchy_for_molecules(
+        self,
+        is_representative: bool,
+        has_atom_indices: bool,
+        mol_label_list: List[str],
+        n_mol_list: List[int],
+        atom_labels_list: List[str],
+        composition_formula_list: List[str],
+        custom_formulas: List[str],
+    ):
+        """Test the `ModelSystem` normalization of 'composition_formula' for atoms and molecules.
+
+        Args:
+            is_representative (bool): Specifies if branch_depth = 0 is representative or not.
+                If not representative, the composition formulas should not be generated.
+            has_atom_indices (bool): Specifies if the atom_indices should be populated during parsing.
+                Without atom_indices, the composition formulas for the deepest level of the hierarchy
+                should not be populated.
+            mol_label_list (List[str]): Molecule types for generating the hierarchy.
+            n_mol_list (List[int]): Number of molecules for each molecule type. Should be same
+                length as mol_label_list.
+            atom_labels_list (List[str]): Atom labels for each molecule type. Should be same length as
+                mol_label_list, with each entry being a list of corresponding atom labels.
+            composition_formula_list (List[str]): Resulting composition formulas after normalization. The
+                ordering is dictated by the recursive traversing of the hierarchy in get_system_recurs(),
+                which follows each branch to its deepest level before moving to the next branch, i.e.,
+                [model_system.composition_formula,
+                model_system.model_system[0].composition_formula],
+                model_system.model_system[0].model_system[0].composition_formula,
+                model_system.model_system[0].model_system[1].composition_formula, ...,
+                model_system.model_system[1].composition_formula, ...]
+            custom_formulas (List[str]): Custom composition formulas that can be set in the generation
+                of the hierarchy, which will cause the normalize to ignore (i.e., not overwrite) these formula entries.
+                The ordering is as described above.
+
+        Returns:
+            None
+        """
+
+        ### Generate the system hierarchy ###
+        simulation = Simulation()
+        model_system = ModelSystem(is_representative=True)
+        simulation.model_system.append(model_system)
+        model_system.branch_label = 'Total System'
+        model_system.is_representative = is_representative
+        model_system.composition_formula = custom_formulas[0]
+        ctr_comp = 1
+        atomic_cell = AtomicCell()
+        model_system.cell.append(atomic_cell)
+        if has_atom_indices:
+            model_system.atom_indices = []
+        for mol_label, n_mol, atom_labels in zip(
+            mol_label_list, n_mol_list, atom_labels_list
+        ):
+            # Create a branch in the hierarchy for this molecule type
+            model_system_mol_group = ModelSystem()
+            if has_atom_indices:
+                model_system_mol_group.atom_indices = []
+            model_system_mol_group.branch_label = (
+                f'group_{mol_label}' if mol_label is not None else None
+            )
+            model_system_mol_group.composition_formula = custom_formulas[ctr_comp]
+            ctr_comp += 1
+            model_system.model_system.append(model_system_mol_group)
+            for _ in range(n_mol):
+                # Create a branch in the hierarchy for this molecule
+                model_system_mol = ModelSystem(branch_label=mol_label)
+                model_system_mol.branch_label = mol_label
+                model_system_mol.composition_formula = custom_formulas[ctr_comp]
+                ctr_comp += 1
+                model_system_mol_group.model_system.append(model_system_mol)
+                # add the corresponding atoms to the global atom list
+                for atom_label in atom_labels:
+                    if atom_label is not None:
+                        atomic_cell.atoms_state.append(
+                            AtomsState(chemical_symbol=atom_label)
+                        )
+                n_atoms = len(atomic_cell.atoms_state)
+                atom_indices = np.arange(n_atoms - len(atom_labels), n_atoms)
+                if has_atom_indices:
+                    model_system_mol.atom_indices = atom_indices
+                    model_system_mol_group.atom_indices = np.append(
+                        model_system_mol_group.atom_indices, atom_indices
+                    )
+                    model_system.atom_indices = np.append(
+                        model_system.atom_indices, atom_indices
+                    )
+
+        simulation.normalize(EntryArchive(), logger)
+
+        ### Traverse the hierarchy recursively and check the results ###
+        assert model_system.composition_formula == composition_formula_list[0]
+        ctr_comp = 1
+
+        def get_system_recurs(sec_system, ctr_comp):
+            for sys in sec_system:
+                assert sys.composition_formula == composition_formula_list[ctr_comp]
+                ctr_comp += 1
+                sec_subsystem = sys.model_system
+                if sec_subsystem:
+                    ctr_comp = get_system_recurs(sec_subsystem, ctr_comp)
+            return ctr_comp
+
+        get_system_recurs(model_system.model_system, ctr_comp)

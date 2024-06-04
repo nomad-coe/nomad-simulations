@@ -19,7 +19,7 @@
 import re
 import numpy as np
 import ase
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from structlog.stdlib import BoundLogger
 
 from matid import SymmetryAnalyzer, Classifier  # pylint: disable=import-error
@@ -35,7 +35,12 @@ from matid.classification.classifications import (
 
 from nomad import config
 from nomad.units import ureg
-from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
+from nomad.atomutils import (
+    Formula,
+    get_normalized_wyckoff,
+    search_aflow_prototype,
+    get_composition,
+)
 
 from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
@@ -898,6 +903,30 @@ class ModelSystem(System):
         description="""
         List of pairs of atom indices corresponding to bonds (e.g., as defined by a force field)
         within this atoms_group.
+        """,
+    )
+
+    composition_formula = Quantity(
+        type=str,
+        description="""
+        The overall composition of the system with respect to its subsystems.
+        The syntax for a system composed of X and Y with x and y components of each,
+        respectively, is X(x)Y(y). At the deepest branch in the hierarchy, the
+        composition_formula is expressed in terms of the atomic labels.
+
+        Example: A system composed of 3 water molecules with the following hierarchy
+
+                                TotalSystem
+                                    |
+                                group_H2O
+                                |   |   |
+                               H2O H2O H2O
+
+        has the following compositional formulas at each branch:
+
+            branch 0, index 0: "Total_System" composition_formula = group_H2O(1)
+            branch 1, index 0: "group_H2O"    composition_formula = H2O(3)
+            branch 2, index 0: "H2O"          composition_formula = H(1)O(2)
         """,
     )
 
