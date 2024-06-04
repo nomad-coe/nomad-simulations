@@ -25,4 +25,4 @@ jobs:
 
       - name: Build and Deploy
         run: |
-          mkdocs gh-deploy --config-file ../nomad-schema-plugin-simulation-data/mkdocs.yml --force --remote-branch gh-pages
+          mkdocs gh-deploy --config-file ../nomad-simulations/mkdocs.yml --force --remote-branch gh-pages

@@ -3,7 +3,7 @@
 <!--
 Improve these paragraphs once `Program` and `BaseSimulation` are integrated in `basesections.py`
 --->
-In NOMAD, all the simulation metadata is defined in the `Simulation` section. You can find its Python schema definition in [src/nomad_simulations/general.py](https://github.com/nomad-coe/nomad-schema-plugin-simulation-data/blob/develop/src/nomad_simulations/general.py). This section will appear under the `data` section for the [*archive*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#archive) metadata structure of each [*entry*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#entry).
+In NOMAD, all the simulation metadata is defined in the `Simulation` section. You can find its Python schema definition in [src/nomad_simulations/general.py](https://github.com/nomad-coe/nomad-simulations/blob/develop/src/nomad_simulations/general.py). This section will appear under the `data` section for the [*archive*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#archive) metadata structure of each [*entry*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#entry).
 
 The `Simulation` section inherits from a _base section_ `BaseSimulation`. In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/base_sections.html) derived from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/) are defined. We used them to define `BaseSimulation` as an [`Activity`](http://purl.obolibrary.org/obo/BFO_0000015). The UML diagram is:
 
