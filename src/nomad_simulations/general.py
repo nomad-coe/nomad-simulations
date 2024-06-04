@@ -25,12 +25,11 @@ from nomad.metainfo import SubSection, Quantity, MEnum, Section, Datetime
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Entity, Activity
-from nomad.atomutils import get_composition
 
 from .model_system import ModelSystem
 from .model_method import ModelMethod
 from .outputs import Outputs
-from .utils import is_not_representative
+from .utils import is_not_representative, get_composition
 
 class Program(Entity):
     """
@@ -188,10 +187,11 @@ class Simulation(BaseSimulation, EntryData):
         def set_branch_composition(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
             if not subsystems:
                 atom_indices = system.atom_indices if system.atom_indices is not None else []
-                subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels and len(atom_indices) != 0 else []  # TODO need to add to testing the case where labels and indices are missing
+                subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels else ['Unknown' for atom in range(len(atom_indices))]
             else:
                 subsystem_labels = [subsystem.branch_label if subsystem.branch_label is not None else "Unknown" for subsystem in subsystems]
-            system.composition_formula = get_composition(subsystem_labels)
+            if system.composition_formula is None:
+                system.composition_formula = get_composition(subsystem_labels)
 
         def traverse_system_recurs(system, atom_labels):
             subsystems = system.model_system
@@ -224,6 +224,7 @@ class Simulation(BaseSimulation, EntryData):
             if len(system_parent.model_system) == 0:
                 continue
             self._set_system_branch_depth(system_parent)
+
             if is_not_representative(system_parent, logger):
                 return
             self.resolve_composition_formula(system_parent, logger)

@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+import numpy as np
 from math import factorial
 from typing import Optional, List
 from structlog.stdlib import BoundLogger
@@ -129,7 +130,6 @@ def is_not_representative(model_system, logger: BoundLogger):
         return True
     return False
 
-
 # cannot define typing with `Variables` due to circular import issue
 def get_variables(
     variables: Optional[List[ArchiveSection]], variable_cls: ArchiveSection
@@ -151,3 +151,13 @@ def get_variables(
         if isinstance(var, variable_cls):
             result.append(var)
     return result
+
+# TODO Either update nomad.atomutils function and remove this one, or remove the one in atomutils if we prefer it here only
+def get_composition(children_names: List[str]) -> str:
+    """
+    Generates a generalized "chemical formula" based on the provided list `children_names`,
+    with the format X(m)Y(n) for children_names X and Y of quantities m and n, respectively.
+    """
+    children_count_tup = np.unique(children_names, return_counts=True)
+    formula = ''.join([f'{name}({count})' for name, count in zip(*children_count_tup)])
+    return formula if formula else None

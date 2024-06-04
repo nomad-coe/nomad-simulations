@@ -984,39 +984,12 @@ class ModelSystem(System):
 
         return system_type, dimensionality
 
-    # def resolve_composition_formula(
-    #     self, logger: BoundLogger
-    # ) -> None:
-    #     """
-    #     """
-    #     def set_branch_composition(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
-    #         if not subsystems:
-    #             atom_indices = system.atom_indices if system.atom_indices is not None else []
-    #             subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels and len(atom_indices) != 0 else []  # TODO need to add to testing the case where labels and indices are missing
-    #         else:
-    #             subsystem_labels = [subsystem.branch_label if subsystem.branch_label is not None else "Unknown" for subsystem in subsystems]
-    #         system.composition_formula = get_composition(subsystem_labels)
-
-    #     def traverse_system_recurs(system, atom_labels):
-    #         subsystems = system.model_system
-    #         set_branch_composition(system, subsystems, atom_labels)
-    #         if subsystems:
-    #             for subsystem in subsystems:
-    #                 traverse_system_recurs(subsystem, atom_labels)
-
-    #     atoms_state = self.cell[0].atoms_state if self.cell is not None else []
-    #     atom_labels = [atom.chemical_symbol for atom in atoms_state] if atoms_state is not None else []
-    #     traverse_system_recurs(self, atom_labels)
-
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
         # We don't need to normalize if the system is not representative
         if is_not_representative(self, logger):
             return
-
-        # if self.composition_formula is None:
-        #     self.resolve_composition_formula(logger)
 
         # Extracting ASE Atoms object from the originally parsed AtomicCell section
         if self.cell is None or len(self.cell) == 0:
