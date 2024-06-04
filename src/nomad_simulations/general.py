@@ -182,14 +182,14 @@ class Simulation(BaseSimulation, EntryData):
     def resolve_composition_formula(
         self, system_parent: ModelSystem
     ) -> None:
-        """Determine and set the composition formula for system_parent and all of its
+        """Determine and set the composition formula for `system_parent` and all of its
         descendants.
 
         Args:
             system_parent (ModelSystem): The upper-most level of the system hierarchy to consider.
         """
         def set_composition_formula(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
-            """Determines the composition formula for `system` based on its `subsystems`.
+            """Determine the composition formula for `system` based on its `subsystems`.
             If `system` has no children, the atom_labels are used to determine the formula.
 
             Args:
@@ -208,7 +208,7 @@ class Simulation(BaseSimulation, EntryData):
 
         def get_composition_recurs(system: ModelSystem, atom_labels: List[str]) -> None:
             """Traverse the system hierarchy downward and set the branch composition for
-            all (subs)systems at each level.
+            all (sub)systems at each level.
 
             Args:
                 system (ModelSystem): The system to traverse downward.
