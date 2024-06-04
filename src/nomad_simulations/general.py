@@ -17,7 +17,7 @@
 #
 
 import numpy as np
-from typing import List, Callable, Any
+from typing import List
 from structlog.stdlib import BoundLogger
 
 from nomad.units import ureg
@@ -180,14 +180,13 @@ class Simulation(BaseSimulation, EntryData):
             self._set_system_branch_depth(system_child, branch_depth + 1)
 
     def resolve_composition_formula(
-        self, system_parent: ModelSystem, logger: BoundLogger
+        self, system_parent: ModelSystem
     ) -> None:
         """Determine and set the composition formula for system_parent and all of its
         descendants.
 
         Args:
             system_parent (ModelSystem): The upper-most level of the system hierarchy to consider.
-            logger (BoundLogger): The logger to log messages.
         """
         def set_composition_formula(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
             """Determines the composition formula for `system` based on its `subsystems`.
@@ -249,4 +248,4 @@ class Simulation(BaseSimulation, EntryData):
 
             if is_not_representative(system_parent, logger):
                 continue
-            self.resolve_composition_formula(system_parent, logger)
+            self.resolve_composition_formula(system_parent)
