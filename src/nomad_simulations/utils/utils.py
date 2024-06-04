@@ -130,6 +130,7 @@ def is_not_representative(model_system, logger: BoundLogger):
         return True
     return False
 
+
 # cannot define typing with `Variables` due to circular import issue
 def get_variables(
     variables: Optional[List[ArchiveSection]], variable_cls: ArchiveSection
@@ -151,6 +152,7 @@ def get_variables(
         if isinstance(var, variable_cls):
             result.append(var)
     return result
+
 
 # TODO remove function in nomad.atomutils
 def get_composition(children_names: List[str]) -> str:

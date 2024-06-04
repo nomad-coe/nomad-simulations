@@ -31,6 +31,7 @@ from .model_method import ModelMethod
 from .outputs import Outputs
 from .utils import is_not_representative, get_composition
 
+
 class Program(Entity):
     """
     A base section used to specify a well-defined program used for computation.
@@ -179,16 +180,17 @@ class Simulation(BaseSimulation, EntryData):
             system_child.branch_depth = branch_depth + 1
             self._set_system_branch_depth(system_child, branch_depth + 1)
 
-    def resolve_composition_formula(
-        self, system_parent: ModelSystem
-    ) -> None:
+    def resolve_composition_formula(self, system_parent: ModelSystem) -> None:
         """Determine and set the composition formula for `system_parent` and all of its
         descendants.
 
         Args:
             system_parent (ModelSystem): The upper-most level of the system hierarchy to consider.
         """
-        def set_composition_formula(system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]) -> None:
+
+        def set_composition_formula(
+            system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]
+        ) -> None:
             """Determine the composition formula for `system` based on its `subsystems`.
             If `system` has no children, the atom_labels are used to determine the formula.
 
@@ -199,10 +201,21 @@ class Simulation(BaseSimulation, EntryData):
                 to the atom indices stored in system.
             """
             if not subsystems:
-                atom_indices = system.atom_indices if system.atom_indices is not None else []
-                subsystem_labels = [np.array(atom_labels)[atom_indices]] if atom_labels else ['Unknown' for atom in range(len(atom_indices))]
+                atom_indices = (
+                    system.atom_indices if system.atom_indices is not None else []
+                )
+                subsystem_labels = (
+                    [np.array(atom_labels)[atom_indices]]
+                    if atom_labels
+                    else ['Unknown' for atom in range(len(atom_indices))]
+                )
             else:
-                subsystem_labels = [subsystem.branch_label if subsystem.branch_label is not None else "Unknown" for subsystem in subsystems]
+                subsystem_labels = [
+                    subsystem.branch_label
+                    if subsystem.branch_label is not None
+                    else 'Unknown'
+                    for subsystem in subsystems
+                ]
             if system.composition_formula is None:
                 system.composition_formula = get_composition(subsystem_labels)
 
@@ -221,8 +234,14 @@ class Simulation(BaseSimulation, EntryData):
                 for subsystem in subsystems:
                     get_composition_recurs(subsystem, atom_labels)
 
-        atoms_state = system_parent.cell[0].atoms_state if system_parent.cell is not None else []
-        atom_labels = [atom.chemical_symbol for atom in atoms_state] if atoms_state is not None else []
+        atoms_state = (
+            system_parent.cell[0].atoms_state if system_parent.cell is not None else []
+        )
+        atom_labels = (
+            [atom.chemical_symbol for atom in atoms_state]
+            if atoms_state is not None
+            else []
+        )
         get_composition_recurs(system_parent, atom_labels)
 
     def normalize(self, archive, logger) -> None:

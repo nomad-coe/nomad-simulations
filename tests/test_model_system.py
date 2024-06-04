@@ -30,7 +30,7 @@ from nomad_simulations.model_system import (
     ChemicalFormula,
     ModelSystem,
     AtomicCell,
-    AtomsState
+    AtomsState,
 )
 from nomad_simulations.general import Simulation
 
@@ -443,7 +443,6 @@ class TestModelSystem:
         assert model_system.elemental_composition[1].element == 'O'
         assert np.isclose(model_system.elemental_composition[1].atomic_fraction, 1 / 3)
 
-
     @pytest.mark.parametrize(
         'is_representative, has_atom_indices, mol_label_list, n_mol_list, atom_labels_list, composition_formula_list, custom_formulas',
         [
@@ -454,8 +453,8 @@ class TestModelSystem:
                 [3],
                 [['H', 'O', 'O']],
                 ['group_H20(1)', 'H20(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)'],
-                [None, None, None, None, None]
-            ), # pure system
+                [None, None, None, None, None],
+            ),  # pure system
             (
                 False,
                 True,
@@ -463,8 +462,8 @@ class TestModelSystem:
                 [3],
                 [['H', 'O', 'O']],
                 [None, None, None, None, None],
-                [None, None, None, None, None]
-            ), # non-representative system
+                [None, None, None, None, None],
+            ),  # non-representative system
             (
                 True,
                 True,
@@ -472,8 +471,8 @@ class TestModelSystem:
                 [3],
                 [['H', 'O', 'O']],
                 ['Unknown(1)', 'Unknown(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)'],
-                [None, None, None, None, None]
-            ), # missing branch labels
+                [None, None, None, None, None],
+            ),  # missing branch labels
             (
                 True,
                 True,
@@ -481,8 +480,8 @@ class TestModelSystem:
                 [3],
                 [[None, None, None]],
                 ['group_H20(1)', 'H20(3)', 'Unknown(3)', 'Unknown(3)', 'Unknown(3)'],
-                [None, None, None, None, None]
-            ), # missing atom labels
+                [None, None, None, None, None],
+            ),  # missing atom labels
             (
                 True,
                 False,
@@ -490,8 +489,8 @@ class TestModelSystem:
                 [3],
                 [['H', 'O', 'O']],
                 ['group_H20(1)', 'H20(3)', None, None, None],
-                [None, None, None, None, None]
-            ), # missing atom indices
+                [None, None, None, None, None],
+            ),  # missing atom indices
             (
                 True,
                 True,
@@ -499,17 +498,28 @@ class TestModelSystem:
                 [3],
                 [['H', 'O', 'O']],
                 ['waters(1)', 'water_molecules(3)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)'],
-                ['waters(1)', 'water_molecules(3)', None, None, None]
-            ), # custom formulas
+                ['waters(1)', 'water_molecules(3)', None, None, None],
+            ),  # custom formulas
             (
                 True,
                 True,
                 ['H20', 'Methane'],
                 [5, 2],
                 [['H', 'O', 'O'], ['C', 'H', 'H', 'H', 'H']],
-                ['group_H20(1)group_Methane(1)', 'H20(5)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)', 'H(1)O(2)', 'Methane(2)', 'C(1)H(4)', 'C(1)H(4)'],
-                [None, None, None, None, None, None, None, None, None, None]
-            ), # binary mixture
+                [
+                    'group_H20(1)group_Methane(1)',
+                    'H20(5)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'H(1)O(2)',
+                    'Methane(2)',
+                    'C(1)H(4)',
+                    'C(1)H(4)',
+                ],
+                [None, None, None, None, None, None, None, None, None, None],
+            ),  # binary mixture
         ],
     )
     def test_system_hierarchy_for_molecules(
@@ -520,7 +530,7 @@ class TestModelSystem:
         n_mol_list: List[int],
         atom_labels_list: List[str],
         composition_formula_list: List[str],
-        custom_formulas: List[str]
+        custom_formulas: List[str],
     ):
         """Test the `ModelSystem` normalization of 'composition_formula' for atoms and molecules.
 
@@ -563,12 +573,16 @@ class TestModelSystem:
         model_system.cell.append(atomic_cell)
         if has_atom_indices:
             model_system.atom_indices = []
-        for (mol_label, n_mol, atom_labels) in zip(mol_label_list, n_mol_list, atom_labels_list):
+        for mol_label, n_mol, atom_labels in zip(
+            mol_label_list, n_mol_list, atom_labels_list
+        ):
             # Create a branch in the hierarchy for this molecule type
             model_system_mol_group = ModelSystem()
             if has_atom_indices:
                 model_system_mol_group.atom_indices = []
-            model_system_mol_group.branch_label = f"group_{mol_label}" if mol_label is not None else None
+            model_system_mol_group.branch_label = (
+                f'group_{mol_label}' if mol_label is not None else None
+            )
             model_system_mol_group.composition_formula = custom_formulas[ctr_comp]
             ctr_comp += 1
             model_system.model_system.append(model_system_mol_group)
@@ -582,19 +596,26 @@ class TestModelSystem:
                 # add the corresponding atoms to the global atom list
                 for atom_label in atom_labels:
                     if atom_label is not None:
-                        atomic_cell.atoms_state.append(AtomsState(chemical_symbol = atom_label))
+                        atomic_cell.atoms_state.append(
+                            AtomsState(chemical_symbol=atom_label)
+                        )
                 n_atoms = len(atomic_cell.atoms_state)
                 atom_indices = np.arange(n_atoms - len(atom_labels), n_atoms)
                 if has_atom_indices:
                     model_system_mol.atom_indices = atom_indices
-                    model_system_mol_group.atom_indices = np.append(model_system_mol_group.atom_indices, atom_indices)
-                    model_system.atom_indices = np.append(model_system.atom_indices, atom_indices)
+                    model_system_mol_group.atom_indices = np.append(
+                        model_system_mol_group.atom_indices, atom_indices
+                    )
+                    model_system.atom_indices = np.append(
+                        model_system.atom_indices, atom_indices
+                    )
 
         simulation.normalize(EntryArchive(), logger)
 
         ### Traverse the hierarchy recursively and check the results ###
         assert model_system.composition_formula == composition_formula_list[0]
         ctr_comp = 1
+
         def get_system_recurs(sec_system, ctr_comp):
             for sys in sec_system:
                 assert sys.composition_formula == composition_formula_list[ctr_comp]
