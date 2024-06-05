@@ -42,12 +42,11 @@ python -m pytest -sv
 
 where the `-s` and `-v` options toggle the output verbosity.
 
-Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages.
-To emulate this locally, perform:
+Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages. We suggest you to generate your own coverage reports locally by doing:
 
 ```sh
 pip install coverage coveralls
-python -m coverage run -m pytest -sv
+python -m pytest --cov=src
 ```
 
 ## Development
