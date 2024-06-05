@@ -20,7 +20,7 @@ import numpy as np
 
 from nomad.metainfo import Quantity, Section, Context
 
-from ..physical_property import PhysicalProperty
+from nomad_simulations.physical_property import PhysicalProperty
 
 
 class HoppingMatrix(PhysicalProperty):

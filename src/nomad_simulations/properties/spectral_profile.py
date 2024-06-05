@@ -24,11 +24,11 @@ import pint
 from nomad import config
 from nomad.metainfo import Quantity, SubSection, Section, Context, MEnum
 
-from ..utils import get_sibling_section, get_variables
-from ..physical_property import PhysicalProperty
-from ..variables import Energy2 as Energy
-from ..atoms_state import AtomsState, OrbitalsState
-from .band_gap import ElectronicBandGap
+from nomad_simulations.utils import get_sibling_section, get_variables
+from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.variables import Energy2 as Energy
+from nomad_simulations.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.properties.band_gap import ElectronicBandGap
 
 
 class SpectralProfile(PhysicalProperty):

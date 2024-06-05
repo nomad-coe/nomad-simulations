@@ -23,10 +23,10 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .model_system import ModelSystem
-from .physical_property import PhysicalProperty
-from .numerical_settings import SelfConsistency
-from .properties import (
+from nomad_simulations.model_system import ModelSystem
+from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.numerical_settings import SelfConsistency
+from nomad_simulations.properties import (
     FermiLevel,
     ChemicalPotential,
     CrystalFieldSplitting,

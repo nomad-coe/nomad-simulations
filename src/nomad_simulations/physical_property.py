@@ -35,8 +35,8 @@ from nomad.metainfo import (
 from nomad.metainfo.metainfo import DirectQuantity, Dimension, _placeholder_quantity
 from nomad.datamodel.metainfo.basesections import Entity
 
-from .variables import Variables
-from .numerical_settings import SelfConsistency
+from nomad_simulations.variables import Variables
+from nomad_simulations.numerical_settings import SelfConsistency
 
 
 # We add `logger` for the `PhysicalProperty.variables_shape` method
