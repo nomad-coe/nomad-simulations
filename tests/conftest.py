@@ -120,11 +120,11 @@ def generate_model_system(
 
 
 def generate_atomic_cell(
-    lattice_vectors: List = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-    positions=None,
-    periodic_boundary_conditions=None,
-    chemical_symbols: List = ['H', 'H', 'O'],
-    atomic_numbers: List = [1, 1, 8],
+    lattice_vectors: List[List[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    positions: Optional[list] = None,
+    periodic_boundary_conditions: List[bool] = [False, False, False],
+    chemical_symbols: List[str] = ['H', 'H', 'O'],
+    atomic_numbers: List[int] = [1, 1, 8],
 ) -> AtomicCell:
     """
     Generate an `AtomicCell` section with the given parameters.
@@ -133,18 +133,13 @@ def generate_atomic_cell(
     if positions is None and chemical_symbols is not None:
         n_atoms = len(chemical_symbols)
         positions = [[i / n_atoms, i / n_atoms, i / n_atoms] for i in range(n_atoms)]
-    # Define periodic boundary conditions if not provided
-    if periodic_boundary_conditions is None:
-        periodic_boundary_conditions = [False, False, False]
 
     # Define the atomic cell
-    atomic_cell = AtomicCell()
+    atomic_cell = AtomicCell(periodic_boundary_conditions=periodic_boundary_conditions)
     if lattice_vectors:
         atomic_cell.lattice_vectors = lattice_vectors * ureg('angstrom')
     if positions:
         atomic_cell.positions = positions * ureg('angstrom')
-    if periodic_boundary_conditions:
-        atomic_cell.periodic_boundary_conditions = periodic_boundary_conditions
 
     # Add the elements information
     for index, atom in enumerate(chemical_symbols):
