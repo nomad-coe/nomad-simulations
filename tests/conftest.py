@@ -145,7 +145,7 @@ def generate_atomic_cell(
     for index, atom in enumerate(chemical_symbols):
         atom_state = AtomsState()
         setattr(atom_state, 'chemical_symbol', atom)
-        atomic_number = atom_state.resolve_atomic_number(logger)
+        atomic_number = atom_state.resolve_atomic_number(logger=logger)
         assert atomic_number == atomic_numbers[index]
         atom_state.atomic_number = atomic_number
         atomic_cell.atoms_state.append(atom_state)

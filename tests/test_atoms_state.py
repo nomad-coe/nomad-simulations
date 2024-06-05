@@ -69,13 +69,18 @@ class TestOrbitalsState:
     ):
         """
         Test the `validate_quantum_numbers` method.
+
+        Args:
+            number_label (str): The quantum number string to be tested.
+            values (List[int]): The values stored in `OrbitalState`.
+            results (List[bool]): The expected results after validation.
         """
         orbital_state = OrbitalsState(n_quantum_number=2)
         for val, res in zip(values, results):
             if number_label == 'ml_quantum_number':
                 orbital_state.l_quantum_number = 2
             setattr(orbital_state, number_label, val)
-            assert orbital_state.validate_quantum_numbers(logger) == res
+            assert orbital_state.validate_quantum_numbers(logger=logger) == res
 
     @pytest.mark.parametrize(
         'quantum_name, value, expected_result',
@@ -103,6 +108,11 @@ class TestOrbitalsState:
     ):
         """
         Test the number and symbol resolution for each of the quantum numbers defined in the parametrization.
+
+        Args:
+            quantum_name (str): The quantum number string to be tested.
+            value (Union[int, float]): The value stored in `OrbitalState`.
+            expected_result (Optional[str]): The expected result after resolving the counter-type.
         """
         # Adding quantum numbers to the `OrbitalsState` section
         orbital_state = OrbitalsState(n_quantum_number=2)
@@ -112,13 +122,13 @@ class TestOrbitalsState:
 
         # Making sure that the `'number'` is assigned
         resolved_type = orbital_state.resolve_number_and_symbol(
-            quantum_name, 'number', logger
+            quantum_name=quantum_name, quantum_type='number', logger=logger
         )
         assert resolved_type == value
 
         # Resolving if the counter-type is assigned
         resolved_countertype = orbital_state.resolve_number_and_symbol(
-            quantum_name, 'symbol', logger
+            quantum_name=quantum_name, quantum_type='symbol', logger=logger
         )
         assert resolved_countertype == expected_result
 
@@ -146,6 +156,14 @@ class TestOrbitalsState:
     ):
         """
         Test the degeneracy of each orbital states defined in the parametrization.
+
+        Args:
+            l_quantum_number (int): The angular momentum quantum number.
+            ml_quantum_number (Optional[int]): The magnetic quantum number.
+            j_quantum_number (Optional[List[float]]): The total angular momentum quantum number.
+            mj_quantum_number (Optional[List[float]]): The magnetic quantum number for the total angular momentum.
+            ms_quantum_number (Optional[float]): The spin quantum number.
+            degeneracy (int): The expected degeneracy of the orbital state.
         """
         orbital_state = OrbitalsState(n_quantum_number=2)
         self.add_state(
@@ -195,13 +213,19 @@ class TestCoreHole:
     ):
         """
         Test the occupation of a core hole for a given set of orbital reference and degeneracy.
+
+        Args:
+            orbital_ref (Optional[OrbitalsState]): The orbital reference of the core hole.
+            degeneracy (Optional[int]): The degeneracy of the orbital reference.
+            n_excited_electrons (float): The number of excited electrons.
+            occupation (Optional[float]): The expected occupation of the core hole.
         """
         core_hole = CoreHole(
             orbital_ref=orbital_ref, n_excited_electrons=n_excited_electrons
         )
         if orbital_ref is not None:
             assert orbital_ref.resolve_degeneracy() == degeneracy
-        resolved_occupation = core_hole.resolve_occupation(logger)
+        resolved_occupation = core_hole.resolve_occupation(logger=logger)
         if resolved_occupation is not None:
             assert np.isclose(resolved_occupation, occupation)
         else:
@@ -232,6 +256,12 @@ class TestCoreHole:
     ):
         """
         Test the normalization of the `CoreHole`. Inputs are defined as the quantities of the `CoreHole` section.
+
+        Args:
+            orbital_ref (Optional[OrbitalsState]): The orbital reference of the core hole.
+            n_excited_electrons (Optional[float]): The number of excited electrons.
+            dscf_state (Optional[str]): The DSCF state of the core hole.
+            results (Tuple[Optional[float], Optional[float], Optional[float]]): The expected results after normalization.
         """
         core_hole = CoreHole(
             orbital_ref=orbital_ref,
@@ -265,6 +295,10 @@ class TestHubbardInteractions:
     ):
         """
         Test the Hubbard interactions `U`, `U'`, and `J` for a given set of Slater integrals.
+
+        Args:
+            slater_integrals (Optional[List[float]]): The Slater integrals of the Hubbard interactions.
+            results (Tuple[Optional[float], Optional[float], Optional[float]]): The expected results of the Hubbard interactions.
         """
         # Adding `slater_integrals` to the `HubbardInteractions` section
         hubbard_interactions = HubbardInteractions()
@@ -276,7 +310,7 @@ class TestHubbardInteractions:
             u_interaction,
             u_interorbital_interaction,
             j_hunds_coupling,
-        ) = hubbard_interactions.resolve_u_interactions(logger)
+        ) = hubbard_interactions.resolve_u_interactions(logger=logger)
 
         if None not in (u_interaction, u_interorbital_interaction, j_hunds_coupling):
             assert np.isclose(u_interaction.to('eV').magnitude, results[0])
@@ -306,6 +340,11 @@ class TestHubbardInteractions:
     ):
         """
         Test the effective Hubbard interaction `U_eff` for a given set of Hubbard interactions `U` and `J`.
+
+        Args:
+            u_interaction (Optional[float]): The Hubbard interaction `U`.
+            j_local_exchange_interaction (Optional[float]): The Hubbard interaction `J`.
+            u_effective (Optional[float]): The expected effective Hubbard interaction `U_eff`.
         """
         # Adding `u_interaction` and `j_local_exchange_interaction` to the `HubbardInteractions` section
         hubbard_interactions = HubbardInteractions()
@@ -317,7 +356,7 @@ class TestHubbardInteractions:
             )
 
         # Resolving Ueff from class method
-        resolved_u_effective = hubbard_interactions.resolve_u_effective(logger)
+        resolved_u_effective = hubbard_interactions.resolve_u_effective(logger=logger)
         if resolved_u_effective is not None:
             assert np.isclose(resolved_u_effective.to('eV').magnitude, u_effective)
         else:
@@ -358,10 +397,14 @@ class TestAtomsState:
     ):
         """
         Test the `chemical_symbol` and `atomic_number` resolution for the `AtomsState` section.
+
+        Args:
+            chemical_symbol (str): The chemical symbol of the atom.
+            atomic_number (int): The atomic number of the atom.
         """
         # Testing `chemical_symbol`
         atom_state = AtomsState(chemical_symbol=chemical_symbol)
-        assert atom_state.resolve_atomic_number(logger) == atomic_number
+        assert atom_state.resolve_atomic_number(logger=logger) == atomic_number
         # Testing `atomic_number`
         atom_state.atomic_number = atomic_number
-        assert atom_state.resolve_chemical_symbol(logger) == chemical_symbol
+        assert atom_state.resolve_chemical_symbol(logger=logger) == chemical_symbol
