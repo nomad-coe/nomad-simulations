@@ -17,7 +17,7 @@
 #
 
 from structlog.stdlib import BoundLogger
-from typing import Optional
+from typing import Optional, List
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import Quantity, SubSection
@@ -103,7 +103,9 @@ class Outputs(ArchiveSection):
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
-    def extract_spin_polarized_property(self, property_name: str) -> list:
+    def extract_spin_polarized_property(
+        self, property_name: str
+    ) -> List[PhysicalProperty]:
         """
         Extracts the spin-polarized properties if present from the property name and returns them as a list of two elements in
         which each element refers to each `spin_channel`. If the return list is empty, it means that the simulation is not
@@ -113,7 +115,7 @@ class Outputs(ArchiveSection):
             property_name (str): The name of the property to be extracted.
 
         Returns:
-            (list): The list of spin-polarized properties.
+            (List[PhysicalProperty]): The list of spin-polarized properties.
         """
         spin_polarized_properties = []
         properties = getattr(self, property_name)
@@ -165,27 +167,36 @@ class SCFOutputs(Outputs):
 
     def get_last_scf_steps_value(
         self,
-        scf_last_steps: list,
+        scf_last_steps: List[Outputs],
         property_name: str,
         i_property: int,
-        scf_parameters: SelfConsistency,
+        scf_parameters: Optional[SelfConsistency],
         logger: BoundLogger,
     ) -> Optional[list]:
         """
         Get the last two SCF values' magnitudes of a physical property and appends then in a list.
 
         Args:
-            scf_last_steps (list): The list of the last two SCF steps.
+            scf_last_steps (List[Outputs]): The list of SCF steps. This must be of length 2 in order to the method to work.
             property_name (str): The name of the physical property.
             i_property (int): The index of the physical property.
+            scf_parameters (Optional[SelfConsistency]): The self-consistency parameters section stored under `ModelMethod`.
+            logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[list]): The list of the last two SCF values' magnitudes of a physical property.
+            (Optional[list]): The list of the last two SCF values (in magnitude) of the physical property.
         """
+        # Initial check
+        if len(scf_last_steps) != 2:
+            logger.warning(
+                '`scf_last_steps` needs to be of length 2, pointing to the last 2 SCF steps performed in the simulation.'
+            )
+            return []
+
         scf_values = []
         for step in scf_last_steps:
-            scf_phys_property = getattr(step, property_name)[i_property]
             try:
+                scf_phys_property = getattr(step, property_name)[i_property]
                 if scf_phys_property.value.u != scf_parameters.threshold_change_unit:
                     logger.error(
                         f'The units of the `scf_step.{property_name}.value` does not coincide with the units of the `self_consistency_ref.threshold_unit`.'
@@ -200,36 +211,40 @@ class SCFOutputs(Outputs):
         self,
         property_name: str,
         i_property: int,
-        phys_property: PhysicalProperty,
+        physical_property: PhysicalProperty,
         logger: BoundLogger,
-    ) -> Optional[bool]:
+    ) -> bool:
         """
         Resolves if the physical property is converged or not after a SCF process. This is only ran
         when there are at least two `scf_steps` elements.
 
         Returns:
-            (bool): The flag indicating whether the physical property is converged or not after a SCF process.
+            (bool): Boolean indicating whether the physical property is converged or not after a SCF process.
         """
-        # If there are not at least 2 `scf_steps`, return None
+        # Check that there are at least 2 `scf_steps`
         if len(self.scf_steps) < 2:
             logger.warning('The SCF normalization needs at least two SCF steps.')
-            return None
+            return False
         scf_last_steps = self.scf_steps[-2:]
 
-        # If there is not `self_consistency_ref` section, return None
-        scf_parameters = phys_property.self_consistency_ref
+        # Check for `self_consistency_ref` section
+        scf_parameters = physical_property.self_consistency_ref
         if scf_parameters is None:
-            return None
+            return False
 
-        # Extract the value.magnitude of the phys_property to be checked if converged or not
+        # Extract the value.magnitude of the `physical_property` to be checked if converged or not
         scf_values = self.get_last_scf_steps_value(
-            scf_last_steps, property_name, i_property, scf_parameters, logger
+            scf_last_steps=scf_last_steps,
+            property_name=property_name,
+            i_property=i_property,
+            scf_parameters=scf_parameters,
+            logger=logger,
         )
         if scf_values is None or len(scf_values) != 2:
             logger.warning(
                 f'The SCF normalization could not resolve the SCF values for the property `{property_name}`.'
             )
-            return None
+            return False
 
         # Compare with the `threshold_change`
         scf_diff = abs(scf_values[0] - scf_values[1])
@@ -248,10 +263,7 @@ class SCFOutputs(Outputs):
         # Resolve the `is_scf_converged` flag for all SCF obtained properties
         for property_name in self.m_def.all_sub_sections.keys():
             # Skip the `scf_steps` and `custom_physical_property` sub-sections
-            if (
-                property_name == 'scf_steps'
-                or property_name == 'custom_physical_property'
-            ):
+            if property_name == 'scf_steps':
                 continue
 
             # Check if the physical property with that property name is populated
@@ -264,5 +276,8 @@ class SCFOutputs(Outputs):
             # Loop over the physical property of the same m_def type and set `is_scf_converged`
             for i_property, phys_property in enumerate(phys_properties):
                 phys_property.is_scf_converged = self.resolve_is_scf_converged(
-                    property_name, i_property, phys_property, logger
+                    property_name=property_name,
+                    i_property=i_property,
+                    physical_property=phys_property,
+                    logger=logger,
                 )

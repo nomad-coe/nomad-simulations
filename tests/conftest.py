@@ -159,7 +159,9 @@ def generate_atomic_cell(
 
 
 def generate_scf_electronic_band_gap_template(
-    threshold_change: float = 1e-3,
+    n_scf_steps: int = 5,
+    threshold_change: Optional[float] = 1e-3,
+    threshold_change_unit: Optional[str] = 'joule',
 ) -> SCFOutputs:
     """
     Generate a `SCFOutputs` section with a template for the electronic_band_gap property.
@@ -167,20 +169,30 @@ def generate_scf_electronic_band_gap_template(
     scf_outputs = SCFOutputs()
     # Define a list of scf_steps with values of the total energy like [1, 1.1, 1.11, 1.111, etc],
     # such that the difference between one step and the next one decreases a factor of 10.
-    n_scf_steps = 5
-    for i in range(1, n_scf_steps):
-        value = 1 + sum([1 / (10**j) for j in range(1, i + 1)])
-        scf_step = Outputs(
-            electronic_band_gaps=[ElectronicBandGap(value=value * ureg.joule)]
-        )
+    value = None
+    for i in range(n_scf_steps):
+        value = 1 + sum([1 / (10**j) for j in range(1, i + 2)])
+        scf_step = Outputs(electronic_band_gaps=[ElectronicBandGap(value=value)])
         scf_outputs.scf_steps.append(scf_step)
     # Add a SCF calculated PhysicalProperty
-    scf_outputs.electronic_band_gaps.append(ElectronicBandGap(value=value * ureg.joule))
+    if value is not None:
+        scf_outputs.electronic_band_gaps.append(ElectronicBandGap(value=value))
+    else:
+        scf_outputs.electronic_band_gaps.append(ElectronicBandGap())
     # and a `SelfConsistency` ref section
-    scf_params = SelfConsistency(
-        threshold_change=threshold_change, threshold_change_unit='joule'
-    )
-    scf_outputs.electronic_band_gaps[0].self_consistency_ref = scf_params
+    if threshold_change is not None:
+        model_method = ModelMethod(
+            numerical_settings=[
+                SelfConsistency(
+                    threshold_change=threshold_change,
+                    threshold_change_unit=threshold_change_unit,
+                )
+            ]
+        )
+        simulation = generate_simulation(model_method=model_method, outputs=scf_outputs)
+        scf_outputs.electronic_band_gaps[
+            0
+        ].self_consistency_ref = simulation.model_method[0].numerical_settings[0]
     return scf_outputs
 
 
