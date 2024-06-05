@@ -226,7 +226,7 @@ class KSpaceFunctionalities:
         lattice = None
         for model_system in model_systems:
             # General checks to proceed with normalization
-            if is_not_representative(model_system, logger):
+            if is_not_representative(model_system=model_system, logger=logger):
                 continue
             if model_system.symmetry is None:
                 logger.warning('Could not find `ModelSystem.symmetry`.')
@@ -253,9 +253,9 @@ class KSpaceFunctionalities:
                 )
                 continue
             # function defined in AtomicCell
-            atoms = prim_atomic_cell.to_ase_atoms(logger)
+            atoms = prim_atomic_cell.to_ase_atoms(logger=logger)
             cell = atoms.get_cell()
-            lattice = cell.get_bravais_lattice(eps)
+            lattice = cell.get_bravais_lattice(eps=eps)
             break  # only cover the first representative `ModelSystem`
 
         # Checking if `bravais_lattice` and `lattice` are defined
@@ -380,8 +380,8 @@ class KMesh(Mesh):
             offset = np.array([0, 0, 0])
         elif self.center == 'Monkhorst-Pack':
             try:
-                points = monkhorst_pack(self.grid)
-                offset = get_monkhorst_pack_size_and_offset(points)[-1]
+                points = monkhorst_pack(size=self.grid)
+                offset = get_monkhorst_pack_size_and_offset(kpts=points)[-1]
             except ValueError:
                 logger.warning(
                     'Could not resolve `KMesh.points` and `KMesh.offset` from `KMesh.grid`. ASE `monkhorst_pack` failed.'
@@ -448,7 +448,7 @@ class KMesh(Mesh):
 
         for model_system in model_systems:
             # General checks to proceed with normalization
-            if is_not_representative(model_system, logger):
+            if is_not_representative(model_system=model_system, logger=logger):
                 continue
             # TODO extend this for other dimensions (@ndaelman-hu)
             if model_system.type != 'bulk':
@@ -457,7 +457,7 @@ class KMesh(Mesh):
 
             # Resolve `k_line_density`
             if k_line_density := self.get_k_line_density(
-                reciprocal_lattice_vectors, logger
+                reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
             ):
                 return k_line_density
         return None
@@ -472,7 +472,7 @@ class KMesh(Mesh):
 
         # Normalize k mesh from grid sampling
         if self.points is None and self.offset is None:
-            self.points, self.offset = self.resolve_points_and_offset(logger)
+            self.points, self.offset = self.resolve_points_and_offset(logger=logger)
 
         # Calculate k_line_density for data quality measures
         model_systems = self.m_xpath(
@@ -483,7 +483,9 @@ class KMesh(Mesh):
         )
         if self.k_line_density is None:
             self.k_line_density = self.resolve_k_line_density(
-                model_systems, reciprocal_lattice_vectors, logger
+                model_systems=model_systems,
+                reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+                logger=logger,
             )
 
         # Resolve `high_symmetry_points`
@@ -624,7 +626,7 @@ class KLinePath(ArchiveSection):
                 `high_symmetry_path_value_norms = [0, 0.5, 0.5 + 1 / np.sqrt(2), 1 + 1 / np.sqrt(2)]`
         """
         # Checking the high symmetry path quantities
-        if not self.validate_high_symmetry_path(logger):
+        if not self.validate_high_symmetry_path(logger=logger):
             return None
         # Checking if `reciprocal_lattice_vectors` is defined and taking its magnitude to operate
         if reciprocal_lattice_vectors is None:
@@ -672,7 +674,7 @@ class KLinePath(ArchiveSection):
             logger (BoundLogger): The logger to log messages.
         """
         # General checks for quantities
-        if not self.validate_high_symmetry_path(logger):
+        if not self.validate_high_symmetry_path(logger=logger):
             return None
         if reciprocal_lattice_vectors is None:
             logger.warning(
@@ -693,7 +695,7 @@ class KLinePath(ArchiveSection):
 
         # Calculate the norms in the path and find the closest indices in points_norm to the high symmetry path norms
         high_symmetry_path_value_norms = self.get_high_symmetry_path_norms(
-            reciprocal_lattice_vectors, logger
+            reciprocal_lattice_vectors=reciprocal_lattice_vectors, logger=logger
         )
         closest_indices = list(
             map(
@@ -751,11 +753,13 @@ class KLinePath(ArchiveSection):
             or len(self.high_symmetry_path_values) == 0
         ):
             self.high_symmetry_path_values = self.resolve_high_symmetry_path_values(
-                model_systems, reciprocal_lattice_vectors, logger
+                model_systems=model_systems,
+                reciprocal_lattice_vectors=reciprocal_lattice_vectors,
+                logger=logger,
             )
 
         # If `high_symmetry_path` is not defined, we do not normalize the KLinePath
-        if not self.validate_high_symmetry_path(logger):
+        if not self.validate_high_symmetry_path(logger=logger):
             return
 
 
@@ -801,7 +805,7 @@ class KSpace(NumericalSettings):
         """
         for model_system in model_systems:
             # General checks to proceed with normalization
-            if is_not_representative(model_system, logger):
+            if is_not_representative(model_system=model_system, logger=logger):
                 continue
 
             # TODO extend this for other dimensions (@ndaelman-hu)
@@ -815,7 +819,7 @@ class KSpace(NumericalSettings):
                 continue
 
             # Set the `reciprocal_lattice_vectors` using ASE
-            ase_atoms = atomic_cell[0].to_ase_atoms(logger)
+            ase_atoms = atomic_cell[0].to_ase_atoms(logger=logger)
             return 2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
         return None
 
@@ -826,7 +830,7 @@ class KSpace(NumericalSettings):
         model_systems = self.m_xpath('m_parent.m_parent.model_system', dict=False)
         if self.reciprocal_lattice_vectors is None:
             self.reciprocal_lattice_vectors = self.resolve_reciprocal_lattice_vectors(
-                model_systems, logger
+                model_systems=model_systems, logger=logger
             )
 
 

@@ -182,7 +182,7 @@ class TestKMesh:
         k_mesh = KMesh(center=center)
         if grid is not None:
             k_mesh.grid = grid
-        points, offset = k_mesh.resolve_points_and_offset(logger)
+        points, offset = k_mesh.resolve_points_and_offset(logger=logger)
         if points is not None:
             assert np.allclose(points, result_points)
         else:
@@ -305,7 +305,7 @@ class TestKLinePath:
             high_symmetry_path_names=high_symmetry_path_names,
             high_symmetry_path_values=high_symmetry_path_values,
         )
-        assert k_line_path.validate_high_symmetry_path(logger) == result
+        assert k_line_path.validate_high_symmetry_path(logger=logger) == result
 
     @pytest.mark.parametrize(
         'reciprocal_lattice_vectors, high_symmetry_path_names, result',
