@@ -21,11 +21,16 @@ python3.9 -m venv .pyenv
 . .pyenv/bin/activate
 ```
 
+We recommend installing `uv` for fast pip installation of the packages:
+```sh
+pip install uv
+```
+
 Install the `nomad-lab` package:
 
 ```sh
 pip install --upgrade pip
-pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+uv pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
 **Note!**
@@ -37,7 +42,7 @@ sure to include NOMAD's internal package registry (via `--index-url` in the abov
 You can run local tests using the `pytest` package:
 
 ```sh
-python -m pytest -sv
+python -m pytest -sv tests
 ```
 
 where the `-s` and `-v` options toggle the output verbosity.
@@ -46,7 +51,12 @@ Our CI/CD pipeline produces a more comprehensive test report using `coverage` an
 
 ```sh
 pip install coverage coveralls
-python -m pytest --cov=src
+python -m pytest --cov=src  tests
+```
+
+You can also run the script to generate a local file `coverage.txt` with the same information by doing:
+```sh
+./scripts/generate_coverage_txt.sh
 ```
 
 ## Development
@@ -54,7 +64,7 @@ python -m pytest --cov=src
 The plugin is still under development. If you would like to contribute, install the package in editable mode (with the added `-e` flag) with the development dependencies:
 
 ```sh
-pip install -e .[dev] --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+uv pip install -e .[dev] --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
 ### Setting up plugin on your local installation
