@@ -23,7 +23,7 @@ from typing import Optional
 
 from nomad.metainfo import Quantity, MEnum, Section, Context
 
-from ..physical_property import PhysicalProperty
+from nomad_simulations.physical_property import PhysicalProperty
 
 
 class ElectronicBandGap(PhysicalProperty):

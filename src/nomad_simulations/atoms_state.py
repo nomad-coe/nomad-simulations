@@ -28,7 +28,7 @@ from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
-from .utils import RussellSaundersState
+from nomad_simulations.utils import RussellSaundersState
 
 
 class OrbitalsState(Entity):
@@ -280,7 +280,7 @@ class OrbitalsState(Entity):
             for jj in self.j_quantum_number:
                 if self.mj_quantum_number is not None:
                     mjs = RussellSaundersState.generate_MJs(
-                        self.j_quantum_number[0], rising=True
+                        J=self.j_quantum_number[0], rising=True
                     )
                     degeneracy += len(
                         [mj for mj in mjs if mj in self.mj_quantum_number]
@@ -293,7 +293,7 @@ class OrbitalsState(Entity):
         super().normalize(archive, logger)
 
         # General checks for physical quantum numbers and symbols
-        if not self.validate_quantum_numbers(logger):
+        if not self.validate_quantum_numbers(logger=logger):
             logger.error('The quantum numbers are not physical.')
             return
 
@@ -301,7 +301,7 @@ class OrbitalsState(Entity):
         for quantum_name in ['l', 'ml', 'ms']:
             for quantum_type in ['number', 'symbol']:
                 quantity = self.resolve_number_and_symbol(
-                    quantum_name, quantum_type, logger
+                    quantum_name=quantum_name, quantum_type=quantum_type, logger=logger
                 )
                 if getattr(self, f'{quantum_name}_quantum_{quantum_type}') is None:
                     setattr(self, f'{quantum_name}_quantum_{quantum_type}', quantity)
@@ -383,7 +383,7 @@ class CoreHole(ArchiveSection):
                 self.n_excited_electrons = None
                 self.orbital_ref.degeneracy = 1
             if self.orbital_ref.occupation is None:
-                self.orbital_ref.occupation = self.resolve_occupation(logger)
+                self.orbital_ref.occupation = self.resolve_occupation(logger=logger)
 
 
 class HubbardInteractions(ArchiveSection):
@@ -552,11 +552,11 @@ class HubbardInteractions(ArchiveSection):
                 self.u_interaction,
                 self.u_interorbital_interaction,
                 self.j_hunds_coupling,
-            ) = self.resolve_u_interactions(logger)
+            ) = self.resolve_u_interactions(logger=logger)
 
         # If u_effective is not available, calculate it
         if self.u_effective is None:
-            self.u_effective = self.resolve_u_effective(logger)
+            self.u_effective = self.resolve_u_effective(logger=logger)
 
         # Check if length of `orbitals_ref` is the same as the length of `umn`:
         if self.u_matrix is not None and self.orbitals_ref is not None:
@@ -652,6 +652,6 @@ class AtomsState(Entity):
 
         # Get chemical_symbol from atomic_number and viceversa
         if self.chemical_symbol is None:
-            self.chemical_symbol = self.resolve_chemical_symbol(logger)
+            self.chemical_symbol = self.resolve_chemical_symbol(logger=logger)
         if self.atomic_number is None:
-            self.atomic_number = self.resolve_atomic_number(logger)
+            self.atomic_number = self.resolve_atomic_number(logger=logger)

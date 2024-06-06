@@ -18,18 +18,16 @@
 
 import numpy as np
 from typing import List
-from structlog.stdlib import BoundLogger
 
-from nomad.units import ureg
-from nomad.metainfo import SubSection, Quantity, MEnum, Section, Datetime
+from nomad.metainfo import SubSection, Quantity, Section, Datetime
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.basesections import Entity, Activity
 
-from .model_system import ModelSystem
-from .model_method import ModelMethod
-from .outputs import Outputs
-from .utils import is_not_representative, get_composition
+from nomad_simulations.model_system import ModelSystem
+from nomad_simulations.model_method import ModelMethod
+from nomad_simulations.outputs import Outputs
+from nomad_simulations.utils import is_not_representative, get_composition
 
 
 class Program(Entity):
@@ -178,7 +176,9 @@ class Simulation(BaseSimulation, EntryData):
     ):
         for system_child in system_parent.model_system:
             system_child.branch_depth = branch_depth + 1
-            self._set_system_branch_depth(system_child, branch_depth + 1)
+            self._set_system_branch_depth(
+                system_parent=system_child, branch_depth=branch_depth + 1
+            )
 
     def resolve_composition_formula(self, system_parent: ModelSystem) -> None:
         """Determine and set the composition formula for `system_parent` and all of its
@@ -217,7 +217,9 @@ class Simulation(BaseSimulation, EntryData):
                     for subsystem in subsystems
                 ]
             if system.composition_formula is None:
-                system.composition_formula = get_composition(subsystem_labels)
+                system.composition_formula = get_composition(
+                    children_names=subsystem_labels
+                )
 
         def get_composition_recurs(system: ModelSystem, atom_labels: List[str]) -> None:
             """Traverse the system hierarchy downward and set the branch composition for
@@ -229,10 +231,12 @@ class Simulation(BaseSimulation, EntryData):
                 to the atom indices stored in system.
             """
             subsystems = system.model_system
-            set_composition_formula(system, subsystems, atom_labels)
+            set_composition_formula(
+                system=system, subsystems=subsystems, atom_labels=atom_labels
+            )
             if subsystems:
                 for subsystem in subsystems:
-                    get_composition_recurs(subsystem, atom_labels)
+                    get_composition_recurs(system=subsystem, atom_labels=atom_labels)
 
         atoms_state = (
             system_parent.cell[0].atoms_state if system_parent.cell is not None else []
@@ -242,7 +246,7 @@ class Simulation(BaseSimulation, EntryData):
             if atoms_state is not None
             else []
         )
-        get_composition_recurs(system_parent, atom_labels)
+        get_composition_recurs(system=system_parent, atom_labels=atom_labels)
 
     def normalize(self, archive, logger) -> None:
         super(EntryData, self).normalize(archive, logger)
@@ -263,8 +267,8 @@ class Simulation(BaseSimulation, EntryData):
             system_parent.branch_depth = 0
             if len(system_parent.model_system) == 0:
                 continue
-            self._set_system_branch_depth(system_parent)
+            self._set_system_branch_depth(system_parent=system_parent)
 
-            if is_not_representative(system_parent, logger):
+            if is_not_representative(model_system=system_parent, logger=logger):
                 continue
-            self.resolve_composition_formula(system_parent)
+            self.resolve_composition_formula(system_parent=system_parent)
