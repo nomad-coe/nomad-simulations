@@ -40,6 +40,7 @@ from nomad_simulations.properties import (
     AbsorptionSpectrum,
     XASSpectrum,
     Permittivity,
+    TotalEnergy
 )
 
 
@@ -109,6 +110,8 @@ class Outputs(ArchiveSection):
     absorption_spectra = SubSection(sub_section=AbsorptionSpectrum.m_def, repeats=True)
 
     xas_spectra = SubSection(sub_section=XASSpectrum.m_def, repeats=True)
+
+    total_energy = SubSection(SubSection=TotalEnergy.m_def, repeats=True)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
