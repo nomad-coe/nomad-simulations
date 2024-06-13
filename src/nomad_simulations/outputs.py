@@ -24,6 +24,7 @@ from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 
 from nomad_simulations.model_system import ModelSystem
+from nomad_simulations.model_method import ModelMethod
 from nomad_simulations.physical_property import PhysicalProperty
 from nomad_simulations.numerical_settings import SelfConsistency
 from nomad_simulations.properties import (
@@ -60,6 +61,15 @@ class Outputs(ArchiveSection):
         description="""
         Reference to the `ModelSystem` section to which the output property references to and on
         on which the simulation is performed.
+        """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
+    model_method_ref = Quantity(
+        type=ModelMethod,
+        description="""
+        Reference to the `ModelMethod` section to which the output property references to
+        and on which the simulation is performed.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
