@@ -257,7 +257,7 @@ class ExternalEnergy(PhysicalProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-class EnergyContributionsClassical(PhysicalProperty):
+class ClassicalEnergyContributions(PhysicalProperty):
     """
     Section containing contributions to the potential energy from a classical force field.
     """
@@ -481,7 +481,7 @@ class NuclearRepulsionEnergy(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-class EnergyTotalContributionsQuantum(EnergyContributions):
+class QuantumEnergyContributions(EnergyContributions):
     """
     Section containing contributions to the potential energy from a DFT calculation.
     """
@@ -511,7 +511,7 @@ class EnergyTotalContributionsQuantum(EnergyContributions):
 # Other / General energies
 ##########################
 
-class EnergyTotal(PhysicalProperty):
+class TotalEnergy(PhysicalProperty):
     """
     Section containing the total energy of a (sub)system.
     """
@@ -525,9 +525,9 @@ class EnergyTotal(PhysicalProperty):
     )
     # ? Do we need these descriptions under value? It ends up simply duplicating the section info to some extent.
 
-    classical_contributions = SubSection(sub_section=EnergyContributionsClassical.m_def, repeats=False)
+    classical_contributions = SubSection(sub_section=ClassicalEnergyContributions.m_def, repeats=False)
 
-    quantum_contributions = SubSection(sub_section=EnergyTotalContributionsQuantum.m_def, repeats=False)
+    quantum_contributions = SubSection(sub_section=QuantumEnergyContributions.m_def, repeats=False)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
