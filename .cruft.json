@@ -1,0 +1,26 @@
+{
+  "template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin.git",
+  "commit": "dbf41935075d9057d69478db6eb9e7901bb44992",
+  "checkout": null,
+  "context": {
+    "cookiecutter": {
+      "full_name": "Jose M. Pizarro",
+      "email": "jose.pizarro@physik.hu-berlin.de",
+      "github_username": "JosePizarro3",
+      "plugin_name": "example-nomad-plugin",
+      "module_name": "example_nomad_plugin",
+      "short_description": "A example of the NOMAD plugin structure.",
+      "version": "0.1.0",
+      "license": "Apache Software License 2.0",
+      "include_schema_package": true,
+      "include_normalizer": false,
+      "include_parser": false,
+      "include_app": false,
+      "_copy_without_render": [
+        "*.html"
+      ],
+      "_template": "https://github.com/FAIRmat-NFDI/cookiecutter-nomad-plugin.git"
+    }
+  },
+  "directory": null
+}

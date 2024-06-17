@@ -1,23 +1,34 @@
 [build-system]
-requires = [
-    "setuptools>=61.0.0",
-    "setuptools-scm>=8.0",
-]
+requires = ["setuptools>=61.0.0", "setuptools-scm>=8.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = 'nomad-simulations'
+classifiers = [
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+]
+name = "nomad-simulations"
+description = "A NOMAD plugin for FAIR schemas for simulation data."
 dynamic = ["version"]
-description = 'A NOMAD plugin for FAIR schemas for simulation data.'
-readme = "README.md"
+readme = "README.rst"
+requires-python = ">=3.9"
 authors = [
     { name = "Jose M. Pizarro", email = "jose.pizarro@physik.hu-berlin.de" },
     { name = "Nathan Daelman", email = "ndaelman@physik.hu-berlin.de" },
     { name = "Bernadette Mohr", email = "mohrbern@physik.hu-berlin.de" },
     { name = "Joseph F. Rudzinski", email = "joseph.rudzinski@physik.hu-berlin.de" }
 ]
-license = { text = "Apache-2.0" }
-requires-python = ">=3.9"
+maintainers = [
+    { name = "Jose M. Pizarro", email = "jose.pizarro@physik.hu-berlin.de" },
+    { name = "Joseph F. Rudzinski", email = "joseph.rudzinski@physik.hu-berlin.de" }
+]
+license = { file = "LICENSE" }
 dependencies = [
     "nomad-lab>=1.2.2dev578",
     "matid>=2.0.0.dev2",
@@ -29,24 +40,46 @@ dependencies = [
 "Documentation" = "https://nomad-coe.github.io/nomad-simulations/"
 
 [project.optional-dependencies]
-dev = [
-    'mypy==1.0.1',
-    'pytest',
-    'pytest-timeout',
-    'pytest-cov',
-    'ruff',
-    "structlog==22.3.0",
-    "lxml_html_clean>=0.1.0",
-]
+dev = ["mypy==1.0.1", "ruff", "pytest", "structlog", "lxml_html_clean>=0.1.0"]
 
 [tool.ruff]
-include = ["src/nomad_simulations/*.py", "tests/*.py"]
-lint.select = [
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[tool.ruff.lint]
+select = [
     "E", # pycodestyle
     "W", # pycodestyle
     "PL", # pylint
 ]
-lint.ignore = [
+
+ignore = [
     "E501", # Line too long ({width} > {limit} characters)
     "E701", # Multiple statements on one line (colon)
     "E731", # Do not assign a lambda expression, use a def
@@ -61,12 +94,13 @@ lint.ignore = [
     "PLR1714", # consider-using-in
     "PLR5501", # else-if-used
 ]
-lint.fixable = ["ALL"]
 
-# Same as Black.
-line-length = 88
-indent-width = 4
+fixable = ["ALL"]
 
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+# this is entirely optional, you can remove this if you wish to
 [tool.ruff.format]
 # use single quotes for strings.
 quote-style = "single"
@@ -80,8 +114,12 @@ skip-magic-trailing-comma = false
 # Like Black, automatically detect the appropriate line ending.
 line-ending = "auto"
 
+[tool.setuptools]
+package-dir = { "" = "src" }
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
-[tool.setuptools.package-data]
-nomad_simulations = ["*/nomad_plugin.yaml"]
+[project.entry-points.'nomad.plugin']
+
+nomad_simulations_plugin = "nomad_simulations.schema:nomad_simulations_plugin"
