@@ -16,7 +16,7 @@ classifiers = [
 name = "nomad-simulations"
 description = "A NOMAD plugin for FAIR schemas for simulation data."
 dynamic = ["version"]
-readme = "README.rst"
+readme = "README.md"
 requires-python = ">=3.9"
 authors = [
     { name = "Jose M. Pizarro", email = "jose.pizarro@physik.hu-berlin.de" },
