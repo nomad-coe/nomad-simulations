@@ -23,7 +23,7 @@ jobs:
         pip install --upgrade pip
         pip install uv
         uv pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple --system
-        uv pip install coverage coveralls --system
+        uv pip install pytest-cov --system
     - name: mypy
       run: |
         python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional src/nomad_simulations/schema tests
