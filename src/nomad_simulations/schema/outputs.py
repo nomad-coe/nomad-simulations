@@ -16,29 +16,29 @@
 # limitations under the License.
 #
 
-from structlog.stdlib import BoundLogger
-from typing import Optional, List
+from typing import List, Optional
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.metainfo import Quantity, SubSection
+from structlog.stdlib import BoundLogger
 
-from nomad_simulations.model_system import ModelSystem
-from nomad_simulations.physical_property import PhysicalProperty
-from nomad_simulations.numerical_settings import SelfConsistency
-from nomad_simulations.properties import (
-    FermiLevel,
+from nomad_simulations.schema.model_system import ModelSystem
+from nomad_simulations.schema.numerical_settings import SelfConsistency
+from nomad_simulations.schema.physical_property import PhysicalProperty
+from nomad_simulations.schema.properties import (
+    AbsorptionSpectrum,
     ChemicalPotential,
     CrystalFieldSplitting,
-    HoppingMatrix,
     ElectronicBandGap,
+    ElectronicBandStructure,
     ElectronicDensityOfStates,
     ElectronicEigenvalues,
+    FermiLevel,
     FermiSurface,
-    ElectronicBandStructure,
-    AbsorptionSpectrum,
-    XASSpectrum,
+    HoppingMatrix,
     Permittivity,
+    XASSpectrum,
 )
 
 

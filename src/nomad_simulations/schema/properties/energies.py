@@ -17,10 +17,9 @@
 #
 
 import numpy as np
+from nomad.metainfo import Context, Quantity, Section
 
-from nomad.metainfo import Quantity, Section, Context
-
-from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.schema.physical_property import PhysicalProperty
 
 
 class FermiLevel(PhysicalProperty):

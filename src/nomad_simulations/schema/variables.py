@@ -16,17 +16,15 @@
 # limitations under the License.
 #
 
-import numpy as np
 from typing import Optional
+
+import numpy as np
+from nomad.datamodel.data import ArchiveSection
+from nomad.metainfo import Context, Quantity, Section
 from structlog.stdlib import BoundLogger
 
-from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, Section, Context
-
-from nomad_simulations.numerical_settings import (
-    KMesh as KMeshSettings,
-    KLinePath as KLinePathSettings,
-)
+from nomad_simulations.schema.numerical_settings import KLinePath as KLinePathSettings
+from nomad_simulations.schema.numerical_settings import KMesh as KMeshSettings
 
 
 class Variables(ArchiveSection):

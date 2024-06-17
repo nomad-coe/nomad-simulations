@@ -16,18 +16,25 @@
 # limitations under the License.
 #
 
-import numpy as np
 from typing import List
 
-from nomad.metainfo import SubSection, Quantity, Section, Datetime
-from nomad.datamodel.metainfo.annotations import ELNAnnotation
+import numpy as np
+from nomad.config import config
 from nomad.datamodel.data import EntryData
-from nomad.datamodel.metainfo.basesections import Entity, Activity
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.datamodel.metainfo.basesections import Activity, Entity
+from nomad.metainfo import Datetime, Quantity, SchemaPackage, Section, SubSection
 
-from nomad_simulations.model_system import ModelSystem
-from nomad_simulations.model_method import ModelMethod
-from nomad_simulations.outputs import Outputs
-from nomad_simulations.utils import is_not_representative, get_composition
+from nomad_simulations.schema.model_method import ModelMethod
+from nomad_simulations.schema.model_system import ModelSystem
+from nomad_simulations.schema.outputs import Outputs
+from nomad_simulations.schema.utils import get_composition, is_not_representative
+
+configuration = config.get_plugin_entry_point(
+    'nomad_simulations_plugin.schema_packages:nomad_simulations_plugin'
+)
+
+m_package = SchemaPackage()
 
 
 class Program(Entity):
@@ -272,3 +279,6 @@ class Simulation(BaseSimulation, EntryData):
             if is_not_representative(model_system=system_parent, logger=logger):
                 continue
             self.resolve_composition_formula(system_parent=system_parent)
+
+
+m_package.__init_metainfo__()

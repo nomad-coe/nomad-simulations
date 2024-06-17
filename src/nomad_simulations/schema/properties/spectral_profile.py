@@ -16,19 +16,19 @@
 # limitations under the License.
 #
 
+from typing import Dict, List, Optional
+
 import numpy as np
-from structlog.stdlib import BoundLogger
-from typing import Optional, List, Dict
 import pint
-
 from nomad import config
-from nomad.metainfo import Quantity, SubSection, Section, Context, MEnum
+from nomad.metainfo import Context, MEnum, Quantity, Section, SubSection
+from structlog.stdlib import BoundLogger
 
-from nomad_simulations.utils import get_sibling_section, get_variables
-from nomad_simulations.physical_property import PhysicalProperty
-from nomad_simulations.variables import Energy2 as Energy
-from nomad_simulations.atoms_state import AtomsState, OrbitalsState
-from nomad_simulations.properties.band_gap import ElectronicBandGap
+from nomad_simulations.schema.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.schema.physical_property import PhysicalProperty
+from nomad_simulations.schema.properties.band_gap import ElectronicBandGap
+from nomad_simulations.schema.utils import get_sibling_section, get_variables
+from nomad_simulations.schema.variables import Energy2 as Energy
 
 
 class SpectralProfile(PhysicalProperty):

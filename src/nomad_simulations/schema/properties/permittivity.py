@@ -16,17 +16,16 @@
 # limitations under the License.
 #
 
+from typing import List, Optional
+
 import numpy as np
+from nomad.metainfo import Context, MEnum, Quantity, Section
 from structlog.stdlib import BoundLogger
-from typing import Optional, List
 
-from nomad.metainfo import Quantity, Section, Context, MEnum
-
-from nomad_simulations.physical_property import PhysicalProperty
-from nomad_simulations.utils import get_variables
-from nomad_simulations.variables import Frequency, KMesh
-from nomad_simulations.properties.spectral_profile import AbsorptionSpectrum
-
+from nomad_simulations.schema.physical_property import PhysicalProperty
+from nomad_simulations.schema.properties.spectral_profile import AbsorptionSpectrum
+from nomad_simulations.schema.utils import get_variables
+from nomad_simulations.schema.variables import Frequency, KMesh
 
 # TODO add `DielectricStrength` when we have examples and understand how to extract it from the `Permittivity` tensor.
 

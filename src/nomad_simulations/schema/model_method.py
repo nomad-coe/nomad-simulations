@@ -16,25 +16,19 @@
 # limitations under the License.
 #
 
-import numpy as np
 import re
-from structlog.stdlib import BoundLogger
-from typing import Optional, List
+from typing import List, Optional
 
+import numpy as np
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import (
-    Quantity,
-    SubSection,
-    MEnum,
-    Section,
-    Context,
-)
+from nomad.metainfo import Context, MEnum, Quantity, Section, SubSection
+from structlog.stdlib import BoundLogger
 
-from nomad_simulations.numerical_settings import NumericalSettings
-from nomad_simulations.model_system import ModelSystem, AtomicCell
-from nomad_simulations.atoms_state import OrbitalsState, CoreHole
-from nomad_simulations.utils import is_not_representative
+from nomad_simulations.schema.atoms_state import CoreHole, OrbitalsState
+from nomad_simulations.schema.model_system import ModelSystem
+from nomad_simulations.schema.numerical_settings import NumericalSettings
+from nomad_simulations.schema.utils import is_not_representative
 
 
 class ModelMethod(ArchiveSection):

@@ -16,28 +16,27 @@
 # limitations under the License.
 #
 
-import numpy as np
-from typing import Any, Optional
 from functools import wraps
+from typing import Any, Optional
 
+import numpy as np
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.basesections import Entity
 from nomad.metainfo import (
-    Quantity,
-    SubSection,
-    SectionProxy,
-    Reference,
-    Section,
+    URL,
     Context,
     MEnum,
-    URL,
+    Quantity,
+    Reference,
+    Section,
+    SectionProxy,
+    SubSection,
 )
-from nomad.metainfo.metainfo import DirectQuantity, Dimension, _placeholder_quantity
-from nomad.datamodel.metainfo.basesections import Entity
+from nomad.metainfo.metainfo import Dimension, DirectQuantity, _placeholder_quantity
 
-from nomad_simulations.variables import Variables
-from nomad_simulations.numerical_settings import SelfConsistency
-
+from nomad_simulations.schema.numerical_settings import SelfConsistency
+from nomad_simulations.schema.variables import Variables
 
 # We add `logger` for the `PhysicalProperty.variables_shape` method
 logger = utils.get_logger(__name__)
@@ -65,7 +64,7 @@ def validate_quantity_wrt_value(name: str = ''):
             # Checks if `value` exists and has the same shape as `quantity`
             value = getattr(self, 'value', None)
             if value is None:
-                logger.warning(f'The quantity `value` is not defined.')
+                logger.warning('The quantity `value` is not defined.')
                 return False
             if value is not None and value.shape != quantity.shape:
                 logger.warning(

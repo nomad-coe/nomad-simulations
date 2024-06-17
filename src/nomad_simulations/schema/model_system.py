@@ -17,37 +17,31 @@
 #
 
 import re
-import numpy as np
-import ase
-from typing import Tuple, Optional
-from structlog.stdlib import BoundLogger
+from typing import Optional, Tuple
 
-from matid import SymmetryAnalyzer, Classifier  # pylint: disable=import-error
+import ase
+import numpy as np
+from matid import Classifier, SymmetryAnalyzer  # pylint: disable=import-error
 from matid.classification.classifications import (
-    Class0D,
     Atom,
+    Class0D,
     Class1D,
     Class2D,
+    Class3D,
     Material2D,
     Surface,
-    Class3D,
-)  # pylint: disable=import-error
-
-from nomad import config
-from nomad.units import ureg
-from nomad.atomutils import (
-    Formula,
-    get_normalized_wyckoff,
-    search_aflow_prototype,
 )
-
-from nomad.metainfo import Quantity, SubSection, SectionProxy, MEnum, Section, Context
+from nomad import config
+from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.basesections import Entity, System
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.datamodel.metainfo.basesections import Entity, System
+from nomad.metainfo import Context, MEnum, Quantity, Section, SectionProxy, SubSection
+from nomad.units import ureg
+from structlog.stdlib import BoundLogger
 
-from nomad_simulations.atoms_state import AtomsState
-from nomad_simulations.utils import get_sibling_section, is_not_representative
+from nomad_simulations.schema.atoms_state import AtomsState
+from nomad_simulations.schema.utils import get_sibling_section, is_not_representative
 
 
 class GeometricSpace(Entity):

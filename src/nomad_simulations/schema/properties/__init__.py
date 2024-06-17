@@ -16,16 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .energies import FermiLevel, ChemicalPotential
 from .band_gap import ElectronicBandGap
+from .band_structure import ElectronicBandStructure, ElectronicEigenvalues
+from .energies import ChemicalPotential, FermiLevel
+from .fermi_surface import FermiSurface
+from .hopping_matrix import CrystalFieldSplitting, HoppingMatrix
+from .permittivity import Permittivity
 from .spectral_profile import (
-    SpectralProfile,
+    AbsorptionSpectrum,
     DOSProfile,
     ElectronicDensityOfStates,
-    AbsorptionSpectrum,
+    SpectralProfile,
     XASSpectrum,
 )
-from .hopping_matrix import HoppingMatrix, CrystalFieldSplitting
-from .permittivity import Permittivity
-from .fermi_surface import FermiSurface
-from .band_structure import ElectronicEigenvalues, ElectronicBandStructure

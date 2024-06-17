@@ -1,4 +1,0 @@
-plugin_type: schema
-name: schemas/nomad_simulations
-description: |
-  This is a collection of NOMAD schemas for simulation data.

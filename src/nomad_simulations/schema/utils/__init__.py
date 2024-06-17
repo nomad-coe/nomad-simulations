@@ -17,9 +17,9 @@
 # limitations under the License.
 
 from .utils import (
-    get_sibling_section,
     RussellSaundersState,
-    is_not_representative,
-    get_variables,
     get_composition,
+    get_sibling_section,
+    get_variables,
+    is_not_representative,
 )

@@ -16,20 +16,20 @@
 # limitations under the License.
 #
 
-import numpy as np
-from structlog.stdlib import BoundLogger
 from typing import Optional, Tuple, Union
+
+import numpy as np
 import pint
+from nomad.metainfo import Context, Quantity, Section, SubSection
+from structlog.stdlib import BoundLogger
 
-from nomad.metainfo import Quantity, Section, Context, SubSection
-
-from nomad_simulations.numerical_settings import KSpace
-from nomad_simulations.physical_property import (
+from nomad_simulations.schema.numerical_settings import KSpace
+from nomad_simulations.schema.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,
 )
-from nomad_simulations.properties import ElectronicBandGap, FermiSurface
-from nomad_simulations.utils import get_sibling_section
+from nomad_simulations.schema.properties import ElectronicBandGap, FermiSurface
+from nomad_simulations.schema.utils import get_sibling_section
 
 
 class BaseElectronicEigenvalues(PhysicalProperty):

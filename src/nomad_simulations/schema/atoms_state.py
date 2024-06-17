@@ -16,19 +16,19 @@
 # limitations under the License.
 #
 
-import numpy as np
+from typing import Any, Dict, Optional, Union
+
 import ase
+import numpy as np
 import pint
-from typing import Optional, Union, Dict, Any
+from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.datamodel.metainfo.basesections import Entity
+from nomad.metainfo import Context, MEnum, Quantity, Section, SubSection
+from nomad.units import ureg
 from structlog.stdlib import BoundLogger
 
-from nomad.units import ureg
-from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
-from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.basesections import Entity
-from nomad.datamodel.metainfo.annotations import ELNAnnotation
-
-from nomad_simulations.utils import RussellSaundersState
+from nomad_simulations.schema.utils import RussellSaundersState
 
 
 class OrbitalsState(Entity):
@@ -152,12 +152,12 @@ class OrbitalsState(Entity):
         self._orbitals_map: Dict[str, Any] = {
             'l_symbols': self._orbitals[-1],
             'ml_symbols': {i: self._orbitals[i] for i in range(4)},
-            'ms_symbols': dict((zip((-0.5, 0.5), ('down', 'up')))),
+            'ms_symbols': dict(zip((-0.5, 0.5), ('down', 'up'))),
             'l_numbers': {v: k for k, v in self._orbitals[-1].items()},
             'ml_numbers': {
                 k: {v: k for k, v in self._orbitals[k].items()} for k in range(4)
             },
-            'ms_numbers': dict((zip(('down', 'up'), (-0.5, 0.5)))),
+            'ms_numbers': dict(zip(('down', 'up'), (-0.5, 0.5))),
         }
 
     def validate_quantum_numbers(self, logger: BoundLogger) -> bool:

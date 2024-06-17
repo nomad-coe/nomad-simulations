@@ -16,19 +16,19 @@
 # limitations under the License.
 #
 
+from itertools import accumulate, chain, tee
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
 import pint
-from itertools import accumulate, tee, chain
-from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple, Union
-from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
-
-from nomad.units import ureg
+from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context, JSON
+from nomad.metainfo import JSON, Context, MEnum, Quantity, Section, SubSection
+from nomad.units import ureg
+from structlog.stdlib import BoundLogger
 
-from nomad_simulations.model_system import ModelSystem
-from nomad_simulations.utils import is_not_representative
+from nomad_simulations.schema.model_system import ModelSystem
+from nomad_simulations.schema.utils import is_not_representative
 
 
 class NumericalSettings(ArchiveSection):

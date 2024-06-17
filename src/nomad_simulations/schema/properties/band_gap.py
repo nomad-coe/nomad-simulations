@@ -16,14 +16,14 @@
 # limitations under the License.
 #
 
-import numpy as np
-from structlog.stdlib import BoundLogger
-import pint
 from typing import Optional
 
-from nomad.metainfo import Quantity, MEnum, Section, Context
+import numpy as np
+import pint
+from nomad.metainfo import Context, MEnum, Quantity, Section
+from structlog.stdlib import BoundLogger
 
-from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.schema.physical_property import PhysicalProperty
 
 
 class ElectronicBandGap(PhysicalProperty):
