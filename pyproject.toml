@@ -40,7 +40,15 @@ dependencies = [
 "Documentation" = "https://nomad-coe.github.io/nomad-simulations/"
 
 [project.optional-dependencies]
-dev = ["mypy==1.0.1", "ruff", "pytest", "structlog", "lxml_html_clean>=0.1.0"]
+dev = [
+    "mypy==1.0.1",
+    "ruff",
+    "pytest",
+    "pytest-timeout",
+    "pytest-cov",
+    "structlog",
+    "lxml_html_clean>=0.1.0"
+]
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.
