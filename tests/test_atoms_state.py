@@ -23,14 +23,14 @@ from typing import List, Union, Optional, Tuple
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from . import logger
-
-from nomad_simulations.atoms_state import (
+from nomad_simulations.schema.atoms_state import (
     OrbitalsState,
     CoreHole,
     HubbardInteractions,
     AtomsState,
 )
+
+from . import logger
 
 
 class TestOrbitalsState:

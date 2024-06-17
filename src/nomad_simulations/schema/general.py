@@ -31,7 +31,7 @@ from nomad_simulations.schema.outputs import Outputs
 from nomad_simulations.schema.utils import get_composition, is_not_representative
 
 configuration = config.get_plugin_entry_point(
-    'nomad_simulations_plugin.schema_packages:nomad_simulations_plugin'
+    'nomad_simulations.schema:nomad_simulations_plugin'
 )
 
 m_package = SchemaPackage()

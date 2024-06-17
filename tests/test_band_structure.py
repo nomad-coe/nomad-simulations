@@ -18,15 +18,11 @@
 
 import pytest
 import numpy as np
-from typing import Optional, Tuple, Union, List
-import pint
+from typing import Optional, Tuple, List
 
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.model_method import ModelMethod
-from nomad_simulations.numerical_settings import KSpace, BasisSet
-from nomad_simulations.outputs import Outputs
-from nomad_simulations.properties import ElectronicEigenvalues
+from nomad_simulations.schema.properties import ElectronicEigenvalues
 
 from . import logger
 from .conftest import generate_electronic_eigenvalues, generate_simulation

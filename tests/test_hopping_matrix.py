@@ -19,7 +19,7 @@
 import pytest
 from typing import Optional
 
-from nomad_simulations.properties import HoppingMatrix, CrystalFieldSplitting
+from nomad_simulations.schema.properties import HoppingMatrix, CrystalFieldSplitting
 
 from . import logger
 

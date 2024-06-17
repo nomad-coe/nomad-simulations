@@ -23,7 +23,11 @@ from typing import Optional, List
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.numerical_settings import KMesh, KLinePath, KSpaceFunctionalities
+from nomad_simulations.schema.numerical_settings import (
+    KMesh,
+    KLinePath,
+    KSpaceFunctionalities,
+)
 
 from . import logger
 from .conftest import generate_k_line_path, generate_k_space_simulation

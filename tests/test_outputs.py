@@ -21,13 +21,13 @@ from typing import Optional, List
 
 from nomad.datamodel import EntryArchive
 
+from nomad_simulations.schema.model_system import ModelSystem
+from nomad_simulations.schema.numerical_settings import SelfConsistency
+from nomad_simulations.schema.outputs import Outputs, SCFOutputs
+from nomad_simulations.schema.properties import ElectronicBandGap
+
 from . import logger
 from .conftest import generate_simulation, generate_scf_electronic_band_gap_template
-
-from nomad_simulations.model_system import ModelSystem
-from nomad_simulations.numerical_settings import SelfConsistency
-from nomad_simulations.outputs import Outputs, SCFOutputs
-from nomad_simulations.properties import ElectronicBandGap
 
 
 class TestOutputs:

@@ -17,12 +17,9 @@
 #
 
 import pytest
-import numpy as np
 from typing import Optional
 
-from nomad_simulations.properties import FermiSurface
-
-from . import logger
+from nomad_simulations.schema.properties import FermiSurface
 
 
 class TestFermiSurface:

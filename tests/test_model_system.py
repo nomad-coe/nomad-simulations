@@ -22,10 +22,10 @@ from typing import List, Optional
 
 from nomad.datamodel import EntryArchive
 
+from nomad_simulations.schema.model_system import Symmetry, ChemicalFormula, ModelSystem
+
 from . import logger
 from .conftest import generate_atomic_cell
-
-from nomad_simulations.model_system import Symmetry, ChemicalFormula, ModelSystem
 
 
 class TestAtomicCell:

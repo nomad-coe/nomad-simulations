@@ -24,13 +24,13 @@ from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
 
-from . import logger
-
-from nomad_simulations.variables import Variables
-from nomad_simulations.physical_property import (
+from nomad_simulations.schema.variables import Variables
+from nomad_simulations.schema.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,
 )
+
+from . import logger
 
 
 class DummyPhysicalProperty(PhysicalProperty):

@@ -28,7 +28,9 @@ from nomad_simulations.schema.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,
 )
-from nomad_simulations.schema.properties import ElectronicBandGap, FermiSurface
+
+from nomad_simulations.schema.properties.band_gap import ElectronicBandGap
+from nomad_simulations.schema.properties.fermi_surface import FermiSurface
 from nomad_simulations.schema.utils import get_sibling_section
 
 
