@@ -29,7 +29,7 @@ jobs:
         python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional src/nomad_simulations/schema tests
     - name: Build coverage file
       run: |
-        pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=src tests | tee pytest-coverage.txt
+        pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=src.nomad-simulations.schema tests | tee pytest-coverage.txt
     - name: Pytest coverage comment
       uses: MishaKav/pytest-coverage-comment@main
       with:
