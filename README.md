@@ -26,6 +26,11 @@ python3.9 -m venv .pyenv
 . .pyenv/bin/activate
 ```
 
+Make sure to have `pip` upgraded:
+```sh
+pip install --upgrade pip
+```
+
 We recommend installing `uv` for fast pip installation of the packages:
 ```sh
 pip install uv
@@ -34,7 +39,6 @@ pip install uv
 Install the `nomad-lab` package:
 
 ```sh
-pip install --upgrade pip
 uv pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
@@ -55,8 +59,8 @@ where the `-s` and `-v` options toggle the output verbosity.
 Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages. We suggest you to generate your own coverage reports locally by doing:
 
 ```sh
-pip install coverage coveralls
-python -m pytest --cov=src  tests
+uv pip install pytest-cov
+python -m pytest --cov=src tests
 ```
 
 You can also run the script to generate a local file `coverage.txt` with the same information by doing:
@@ -75,34 +79,6 @@ uv pip install -e .[dev] --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects
 ### Setting up plugin on your local installation
 
 Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/howto/oasis/plugins_install.html) for all details on how to deploy the plugin on your NOMAD instance.
-
-You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
-
-```yaml
-plugin_type: schema
-name: schemas/nomad_simulations
-description: |
-  This is a collection of NOMAD schemas for simulation data.
-```
-
-and define the ```nomad.yaml``` configuration file of your NOMAD instance in the root folder with the following content:
-
-```yaml
-plugins:
-  include:
-    - schemas/nomad_simulations
-  options:
-    schemas/nomad_simulations:
-      python_package: nomad_simulations
-```
-
-You also need to add the package folder to the `PYTHONPATH` of the Python environment of your local NOMAD installation. This can be done by specifying the relative path to this repository. Either run the following command every time you start a new terminal for running the appworker, or add it to your virtual environment in `<path-to-local-nomad-installation>/.pyenv/bin/activate` file:
-
-```sh
-export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>/src"
-```
-
-If you are working in this repository, you just need to activate the environment to start working using the ```nomad_simulations``` package.
 
 ### Run linting and auto-formatting
 
