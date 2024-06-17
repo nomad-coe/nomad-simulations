@@ -1,9 +1,12 @@
-name: deploy-mkdocs
+name: Deploy MkDocs Site
 
 on:
   push:
     branches:
-      - develop # Triggers deployment on push to the main branch
+      - main # Triggers deployment on push to the main branch
+ 
+permissions:
+  contents: write
 
 jobs:
   deploy:
@@ -13,16 +16,9 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.x"
-
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install mkdocs mkdocs-material==8.1.1 pymdown-extensions mkdocs-click
-
-      - name: Build and Deploy
-        run: |
-          mkdocs gh-deploy --config-file ../nomad-simulations/mkdocs.yml --force --remote-branch gh-pages
+      - name: Deploy docs
+        uses: mhausenblas/mkdocs-deploy-gh-pages@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CONFIG_FILE: mkdocs.yml
+          REQUIREMENTS: requirements_docs.txt
