@@ -16,17 +16,20 @@
 # limitations under the License.
 #
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import Quantity, SubSection
-from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema.model_system import ModelSystem
-from nomad_simulations.schema.numerical_settings import SelfConsistency
-from nomad_simulations.schema.physical_property import PhysicalProperty
-from nomad_simulations.schema.properties import (
+if TYPE_CHECKING:
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty
+from nomad_simulations.schema_packages.properties import (
     AbsorptionSpectrum,
     ChemicalPotential,
     CrystalFieldSplitting,
@@ -139,7 +142,7 @@ class Outputs(ArchiveSection):
                 return model_systems[-1]
         return None
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Set ref to the last ModelSystem if this is not set in the output
@@ -171,7 +174,7 @@ class SCFOutputs(Outputs):
         property_name: str,
         i_property: int,
         scf_parameters: Optional[SelfConsistency],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> Optional[list]:
         """
         Get the last two SCF values' magnitudes of a physical property and appends then in a list.
@@ -212,7 +215,7 @@ class SCFOutputs(Outputs):
         property_name: str,
         i_property: int,
         physical_property: PhysicalProperty,
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> bool:
         """
         Resolves if the physical property is converged or not after a SCF process. This is only ran
@@ -257,7 +260,7 @@ class SCFOutputs(Outputs):
             )
             return False
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve the `is_scf_converged` flag for all SCF obtained properties

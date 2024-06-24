@@ -17,18 +17,23 @@
 #
 
 import re
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
+
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import Context, MEnum, Quantity, Section, SubSection
-from structlog.stdlib import BoundLogger
+from nomad.metainfo import MEnum, Quantity, SubSection
 
-from nomad_simulations.schema.atoms_state import CoreHole, OrbitalsState
-from nomad_simulations.schema.model_system import ModelSystem
-from nomad_simulations.schema.numerical_settings import NumericalSettings
-from nomad_simulations.schema.utils import is_not_representative
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.atoms_state import CoreHole, OrbitalsState
+from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.numerical_settings import NumericalSettings
+from nomad_simulations.schema_packages.utils import is_not_representative
 
 
 class ModelMethod(ArchiveSection):
@@ -70,7 +75,7 @@ class ModelMethod(ArchiveSection):
 
     numerical_settings = SubSection(sub_section=NumericalSettings.m_def, repeats=True)
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -103,7 +108,7 @@ class ModelMethodElectronic(ModelMethod):
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -111,8 +116,6 @@ class XCFunctional(ArchiveSection):
     """
     A base section used to define the parameters of an exchange or correlation functional.
     """
-
-    m_def = Section(validate=False)
 
     libxc_name = Quantity(
         type=str,
@@ -157,7 +160,7 @@ class XCFunctional(ArchiveSection):
             weight_name = f'{str(weight)}*'
         return weight_name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Appending `weight` as a string to `libxc_name`
@@ -255,7 +258,7 @@ class DFT(ModelMethodElectronic):
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         self._jacobs_ladder_map = {
             'lda': 'LDA',
@@ -361,7 +364,7 @@ class DFT(ModelMethodElectronic):
                 return 0.56
         return None
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         libxc_names = self.resolve_libxc_names(self.xc_functionals)
@@ -459,7 +462,7 @@ class TB(ModelMethodElectronic):
     def resolve_orbital_references(
         self,
         model_systems: List[ModelSystem],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
         model_index: int = -1,
     ) -> Optional[List[OrbitalsState]]:
         """
@@ -518,7 +521,7 @@ class TB(ModelMethodElectronic):
                     orbitals_ref.append(orbital)
         return orbitals_ref
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Set `name` to "TB"
@@ -587,7 +590,7 @@ class Wannier(TB):
         """,
     )
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve `localization_type` from `is_maximally_localized`
@@ -654,7 +657,7 @@ class SlaterKosterBond(ArchiveSection):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # TODO extend this to cover all bond names
         self._bond_name_map = {
@@ -668,7 +671,7 @@ class SlaterKosterBond(ArchiveSection):
         orbital_1: Optional[OrbitalsState],
         orbital_2: Optional[OrbitalsState],
         bravais_vector: Optional[tuple],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> Optional[str]:
         """
         Resolves the `name` of the `SlaterKosterBond` from the references to the `OrbitalsState` sections.
@@ -706,7 +709,7 @@ class SlaterKosterBond(ArchiveSection):
                 break
         return bond_name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve the SK bond `name` from the `OrbitalsState` references and the `bravais_vector`
@@ -730,7 +733,7 @@ class SlaterKoster(TB):
 
     overlaps = SubSection(sub_section=SlaterKosterBond.m_def, repeats=True)
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -741,7 +744,7 @@ class xTB(TB):
 
     # ? Deprecate this
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -783,7 +786,7 @@ class Photon(ArchiveSection):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Add warning in case `multipole_type` and `momentum_transfer` are not consistent
@@ -836,7 +839,7 @@ class ExcitedStateMethodology(ModelMethodElectronic):
         a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -855,7 +858,7 @@ class Screening(ExcitedStateMethodology):
         a_eln=ELNAnnotation(component='NumberEditQuantity'),
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -935,7 +938,7 @@ class GW(ExcitedStateMethodology):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -994,7 +997,7 @@ class BSE(ExcitedStateMethodology):
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -1004,8 +1007,6 @@ class CoreHoleSpectra(ModelMethodElectronic):
     A base section used to define the parameters used in a core-hole spectra calculation. This
     also contains reference to the specific methodological section (DFT, BSE) used to obtain the core-hole spectra.
     """
-
-    m_def = Section(validate=False)
 
     # # TODO add examples
     # solver = Quantity(
@@ -1069,7 +1070,7 @@ class CoreHoleSpectra(ModelMethodElectronic):
 
     # TODO add normalization to obtain `edge`
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -1181,5 +1182,5 @@ class DMFT(ModelMethodElectronic):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)

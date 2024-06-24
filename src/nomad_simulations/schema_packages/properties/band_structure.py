@@ -16,22 +16,26 @@
 # limitations under the License.
 #
 
-from typing import Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 import numpy as np
 import pint
-from nomad.metainfo import Context, Quantity, Section, SubSection
-from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema.numerical_settings import KSpace
-from nomad_simulations.schema.physical_property import (
+from nomad.metainfo import Quantity, SubSection
+
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.numerical_settings import KSpace
+from nomad_simulations.schema_packages.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,
 )
-
-from nomad_simulations.schema.properties.band_gap import ElectronicBandGap
-from nomad_simulations.schema.properties.fermi_surface import FermiSurface
-from nomad_simulations.schema.utils import get_sibling_section
+from nomad_simulations.schema_packages.properties.band_gap import ElectronicBandGap
+from nomad_simulations.schema_packages.properties.fermi_surface import FermiSurface
+from nomad_simulations.schema_packages.utils import get_sibling_section
 
 
 class BaseElectronicEigenvalues(PhysicalProperty):
@@ -57,13 +61,13 @@ class BaseElectronicEigenvalues(PhysicalProperty):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! `n_bands` need to be set up during initialization of the class
         self.rank = [int(kwargs.get('n_bands'))]
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -135,7 +139,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
@@ -223,7 +227,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         return band_gap
 
     # TODO fix this method once `FermiSurface` property is implemented
-    def extract_fermi_surface(self, logger: BoundLogger) -> Optional[FermiSurface]:
+    def extract_fermi_surface(self, logger: 'BoundLogger') -> Optional[FermiSurface]:
         """
         Extract the Fermi surface for metal systems and using the `FermiLevel.value`.
 
@@ -289,7 +293,7 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
             return None
         return k_space
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve `highest_occupied` and `lowest_unoccupied` eigenvalues
@@ -320,10 +324,10 @@ class ElectronicBandStructure(ElectronicEigenvalues):
     iri = 'http://fairmat-nfdi.eu/taxonomy/ElectronicBandStructure'
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)

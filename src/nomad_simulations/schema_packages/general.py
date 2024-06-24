@@ -16,22 +16,30 @@
 # limitations under the License.
 #
 
-from typing import List
+from typing import TYPE_CHECKING, List
 
 import numpy as np
+
 from nomad.config import config
 from nomad.datamodel.data import EntryData
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Activity, Entity
 from nomad.metainfo import Datetime, Quantity, SchemaPackage, Section, SubSection
 
-from nomad_simulations.schema.model_method import ModelMethod
-from nomad_simulations.schema.model_system import ModelSystem
-from nomad_simulations.schema.outputs import Outputs
-from nomad_simulations.schema.utils import get_composition, is_not_representative
+if TYPE_CHECKING:
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.outputs import Outputs
+from nomad_simulations.schema_packages.utils import (
+    get_composition,
+    is_not_representative,
+)
 
 configuration = config.get_plugin_entry_point(
-    'nomad_simulations.schema:nomad_simulations_plugin'
+    'nomad_simulations.schema_packages:nomad_simulations_plugin'
 )
 
 m_package = SchemaPackage()
@@ -87,7 +95,7 @@ class Program(Entity):
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         pass
 
 
@@ -151,7 +159,7 @@ class BaseSimulation(Activity):
 
     program = SubSection(sub_section=Program.m_def, repeats=False)
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         pass
 
 
@@ -255,7 +263,7 @@ class Simulation(BaseSimulation, EntryData):
         )
         get_composition_recurs(system=system_parent, atom_labels=atom_labels)
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super(EntryData, self).normalize(archive, logger)
 
         # Finding which is the representative system of a calculation: typically, we will

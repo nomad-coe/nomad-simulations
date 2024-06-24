@@ -16,19 +16,24 @@
 # limitations under the License.
 #
 
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 
 import numpy as np
 import pint
-from nomad import config
-from nomad.metainfo import Context, MEnum, Quantity, Section, SubSection
-from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema.atoms_state import AtomsState, OrbitalsState
-from nomad_simulations.schema.physical_property import PhysicalProperty
-from nomad_simulations.schema.properties.band_gap import ElectronicBandGap
-from nomad_simulations.schema.utils import get_sibling_section, get_variables
-from nomad_simulations.schema.variables import Energy2 as Energy
+from nomad import config
+from nomad.metainfo import MEnum, Quantity, SubSection
+
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty
+from nomad_simulations.schema_packages.properties.band_gap import ElectronicBandGap
+from nomad_simulations.schema_packages.utils import get_sibling_section, get_variables
+from nomad_simulations.schema_packages.variables import Energy2 as Energy
 
 
 class SpectralProfile(PhysicalProperty):
@@ -44,7 +49,7 @@ class SpectralProfile(PhysicalProperty):
     )  # TODO check units and normalization_factor of DOS and Spectras and see whether they can be merged
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.rank = []
@@ -60,7 +65,7 @@ class SpectralProfile(PhysicalProperty):
             return False
         return True
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         if self.is_valid_spectral_profile() is False:
@@ -85,11 +90,11 @@ class DOSProfile(SpectralProfile):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
 
-    def resolve_pdos_name(self, logger: BoundLogger) -> Optional[str]:
+    def resolve_pdos_name(self, logger: 'BoundLogger') -> Optional[str]:
         """
         Resolve the `name` of the projected `DOSProfile` from the `entity_ref` section. This is resolved as:
             - `'atom X'` with 'X' being the chemical symbol for `AtomsState` references.
@@ -115,7 +120,7 @@ class DOSProfile(SpectralProfile):
             name = f'orbital {self.entity_ref.l_quantum_symbol}{self.entity_ref.ml_quantum_symbol} {self.entity_ref.m_parent.chemical_symbol}'
         return name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # We resolve
@@ -181,7 +186,7 @@ class ElectronicDensityOfStates(DOSProfile):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
@@ -190,7 +195,7 @@ class ElectronicDensityOfStates(DOSProfile):
         self,
         energies: pint.Quantity,
         fermi_level: Optional[pint.Quantity],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> Optional[pint.Quantity]:
         """
         Resolve the origin of reference for the energies from the sibling `ElectronicEigenvalues` section and its
@@ -313,7 +318,7 @@ class ElectronicDensityOfStates(DOSProfile):
             energies_origin = fermi_level
         return energies_origin
 
-    def resolve_normalization_factor(self, logger: BoundLogger) -> Optional[float]:
+    def resolve_normalization_factor(self, logger: 'BoundLogger') -> Optional[float]:
         """
         Resolve the `normalization_factor` for the electronic DOS to get a cell-independent intensive DOS.
 
@@ -382,7 +387,7 @@ class ElectronicDensityOfStates(DOSProfile):
         return band_gap
 
     def extract_projected_dos(
-        self, type: str, logger: BoundLogger
+        self, type: str, logger: 'BoundLogger'
     ) -> List[Optional[DOSProfile]]:
         """
         Extract the projected DOS from the `projected_dos` section and the specified `type`.
@@ -414,7 +419,7 @@ class ElectronicDensityOfStates(DOSProfile):
         return extracted_pdos
 
     def generate_from_projected_dos(
-        self, logger: BoundLogger
+        self, logger: 'BoundLogger'
     ) -> Optional[pint.Quantity]:
         """
         Generate the total `value` of the electronic DOS from the `projected_dos` contributions. If the `projected_dos`
@@ -476,7 +481,7 @@ class ElectronicDensityOfStates(DOSProfile):
             value = np.sum(atom_values, axis=0) * atom_unit
         return value
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Initial check to see if `variables` contains the required `Energy` variable
@@ -530,13 +535,13 @@ class AbsorptionSpectrum(SpectralProfile):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -564,13 +569,13 @@ class XASSpectrum(AbsorptionSpectrum):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
-    def generate_from_contributions(self, logger: BoundLogger) -> None:
+    def generate_from_contributions(self, logger: 'BoundLogger') -> None:
         """
         Generate the `value` of the XAS spectrum by concatenating the XANES and EXAFS contributions. It also concatenates
         the `Energy` grid points of the XANES and EXAFS parts.
@@ -608,7 +613,7 @@ class XASSpectrum(AbsorptionSpectrum):
                     'The XANES and EXAFS `value` have different shapes. Could not concatenate the values.'
                 )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         if self.value is None:

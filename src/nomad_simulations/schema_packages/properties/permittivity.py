@@ -16,16 +16,23 @@
 # limitations under the License.
 #
 
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 import numpy as np
-from nomad.metainfo import Context, MEnum, Quantity, Section
-from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema.physical_property import PhysicalProperty
-from nomad_simulations.schema.properties.spectral_profile import AbsorptionSpectrum
-from nomad_simulations.schema.utils import get_variables
-from nomad_simulations.schema.variables import Frequency, KMesh
+from nomad.metainfo import Quantity, MEnum
+
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty
+from nomad_simulations.schema_packages.properties.spectral_profile import (
+    AbsorptionSpectrum,
+)
+from nomad_simulations.schema_packages.utils import get_variables
+from nomad_simulations.schema_packages.variables import Frequency, KMesh
 
 # TODO add `DielectricStrength` when we have examples and understand how to extract it from the `Permittivity` tensor.
 
@@ -60,7 +67,7 @@ class Permittivity(PhysicalProperty):
     # ? `ionic` and `electronic` contributions are common in the literature.
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.rank = [3, 3]
@@ -74,7 +81,7 @@ class Permittivity(PhysicalProperty):
         return 'static'
 
     def extract_absorption_spectra(
-        self, logger: BoundLogger
+        self, logger: 'BoundLogger'
     ) -> Optional[List[AbsorptionSpectrum]]:
         """
         Extract the absorption spectrum from the imaginary part of the permittivity tensor.
@@ -105,7 +112,7 @@ class Permittivity(PhysicalProperty):
             spectra.append(absorption_spectrum)
         return spectra
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve the `type` of permittivity

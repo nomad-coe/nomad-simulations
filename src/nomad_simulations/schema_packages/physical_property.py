@@ -17,28 +17,32 @@
 #
 
 from functools import wraps
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
+
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity
 from nomad.metainfo import (
     URL,
-    Context,
     MEnum,
     Quantity,
     Reference,
-    Section,
     SectionProxy,
     SubSection,
 )
 from nomad.metainfo.metainfo import Dimension, DirectQuantity, _placeholder_quantity
 
-from nomad_simulations.schema.numerical_settings import SelfConsistency
-from nomad_simulations.schema.variables import Variables
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
 
-# We add `logger` for the `PhysicalProperty.variables_shape` method
+from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
+from nomad_simulations.schema_packages.variables import Variables
+
+# We add `logger` for the `validate_quantity_wrt_value` decorator
 logger = utils.get_logger(__name__)
 
 
@@ -255,7 +259,7 @@ class PhysicalProperty(ArchiveSection):
         )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
 
@@ -315,7 +319,7 @@ class PhysicalProperty(ArchiveSection):
             return True
         return False
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve if the physical property `is_derived` or not from another physical property.

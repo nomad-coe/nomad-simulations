@@ -17,10 +17,11 @@
 #
 
 import re
-from typing import Optional, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import ase
 import numpy as np
+
 from matid import Classifier, SymmetryAnalyzer  # pylint: disable=import-error
 from matid.classification.classifications import (
     Atom,
@@ -31,17 +32,25 @@ from matid.classification.classifications import (
     Material2D,
     Surface,
 )
+
 from nomad import config
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Entity, System
-from nomad.metainfo import Context, MEnum, Quantity, Section, SectionProxy, SubSection
+from nomad.metainfo import MEnum, Quantity, SectionProxy, SubSection
 from nomad.units import ureg
-from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema.atoms_state import AtomsState
-from nomad_simulations.schema.utils import get_sibling_section, is_not_representative
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.utils import (
+    get_sibling_section,
+    is_not_representative,
+)
 
 
 class GeometricSpace(Entity):
@@ -171,7 +180,7 @@ class GeometricSpace(Entity):
         """,
     )
 
-    def get_geometric_space_for_atomic_cell(self, logger: BoundLogger) -> None:
+    def get_geometric_space_for_atomic_cell(self, logger: 'BoundLogger') -> None:
         """
         Get the real space parameters for the atomic cell using ASE.
 
@@ -188,7 +197,7 @@ class GeometricSpace(Entity):
         )
         self.volume = cell.volume * ureg.angstrom**3
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         # Skip normalization for `Entity`
         try:
             self.get_geometric_space_for_atomic_cell(logger=logger)
@@ -277,7 +286,7 @@ class Cell(GeometricSpace):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -315,12 +324,12 @@ class AtomicCell(Cell):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
-    def to_ase_atoms(self, logger: BoundLogger) -> Optional[ase.Atoms]:
+    def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
         section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
@@ -365,7 +374,7 @@ class AtomicCell(Cell):
 
         return ase_atoms
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Set the name of the section
@@ -482,7 +491,7 @@ class Symmetry(ArchiveSection):
     )
 
     def resolve_analyzed_atomic_cell(
-        self, symmetry_analyzer: SymmetryAnalyzer, cell_type: str, logger: BoundLogger
+        self, symmetry_analyzer: SymmetryAnalyzer, cell_type: str, logger: 'BoundLogger'
     ) -> Optional[AtomicCell]:
         """
         Resolves the `AtomicCell` section from the `SymmetryAnalyzer` object and the cell_type
@@ -527,7 +536,7 @@ class Symmetry(ArchiveSection):
         return atomic_cell
 
     def resolve_bulk_symmetry(
-        self, original_atomic_cell: AtomicCell, logger: BoundLogger
+        self, original_atomic_cell: AtomicCell, logger: 'BoundLogger'
     ) -> Tuple[Optional[AtomicCell], Optional[AtomicCell]]:
         """
         Resolves the symmetry of the material being simulated using MatID and the
@@ -627,7 +636,7 @@ class Symmetry(ArchiveSection):
 
         return primitive_atomic_cell, conventional_atomic_cell
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         atomic_cell = get_sibling_section(
@@ -716,7 +725,7 @@ class ChemicalFormula(ArchiveSection):
         self.hill = formula.format(fmt='hill')
         self.anonymous = formula.format(fmt='anonymous')
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         atomic_cell = get_sibling_section(
@@ -931,7 +940,7 @@ class ModelSystem(System):
     model_system = SubSection(sub_section=SectionProxy('ModelSystem'), repeats=True)
 
     def resolve_system_type_and_dimensionality(
-        self, ase_atoms: ase.Atoms, logger: BoundLogger
+        self, ase_atoms: ase.Atoms, logger: 'BoundLogger'
     ) -> Tuple[str, int]:
         """
         Resolves the `ModelSystem.type` and `ModelSystem.dimensionality` using `MatID` classification analyzer:
@@ -987,7 +996,7 @@ class ModelSystem(System):
 
         return system_type, dimensionality
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # We don't need to normalize if the system is not representative
