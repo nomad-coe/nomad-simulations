@@ -130,4 +130,4 @@ where = ["src"]
 
 [project.entry-points.'nomad.plugin']
 
-nomad_simulations_plugin = "nomad_simulations.schema:nomad_simulations_plugin"
+nomad_simulations_plugin = "nomad_simulations.schema_packages:nomad_simulations_plugin"
