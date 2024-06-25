@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union
 import numpy as np
 import pint
 
+from nomad.config import config
 from nomad.metainfo import Quantity, SubSection
 
 if TYPE_CHECKING:
@@ -36,6 +37,10 @@ from nomad_simulations.schema_packages.physical_property import (
 from nomad_simulations.schema_packages.properties.band_gap import ElectronicBandGap
 from nomad_simulations.schema_packages.properties.fermi_surface import FermiSurface
 from nomad_simulations.schema_packages.utils import get_sibling_section
+
+configuration = config.get_plugin_entry_point(
+    'nomad_simulations.schema_packages:nomad_simulations_plugin'
+)
 
 
 class BaseElectronicEigenvalues(PhysicalProperty):
@@ -193,14 +198,18 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         sorted_value = sorted_value.magnitude
 
         # Binary search ot find the transition point between `occupation = 2` and `occupation = 0`
-        tolerance = 1e-3  # TODO add tolerance from config fields
         homo = self.highest_occupied
         lumo = self.lowest_unoccupied
-        mid = np.searchsorted(sorted_occupation <= tolerance, True) - 1
+        mid = (
+            np.searchsorted(
+                sorted_occupation <= configuration.occupation_tolerance, True
+            )
+            - 1
+        )
         if mid >= 0 and mid < len(sorted_occupation) - 1:
             if sorted_occupation[mid] > 0 and (
-                sorted_occupation[mid + 1] >= -tolerance
-                and sorted_occupation[mid + 1] <= tolerance
+                sorted_occupation[mid + 1] >= -configuration.occupation_tolerance
+                and sorted_occupation[mid + 1] <= configuration.occupation_tolerance
             ):
                 homo = sorted_value[mid] * sorted_value_unit
                 lumo = sorted_value[mid + 1] * sorted_value_unit
@@ -254,10 +263,11 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         fermi_level_value = fermi_level.value.magnitude
 
         # Extract values close to the `fermi_level.value`
-        tolerance = 1e-8  # TODO change this for a config field
         fermi_indices = np.logical_and(
-            self.value.magnitude >= (fermi_level_value - tolerance),
-            self.value.magnitude <= (fermi_level_value + tolerance),
+            self.value.magnitude
+            >= (fermi_level_value - configuration.fermi_surface_tolerance),
+            self.value.magnitude
+            <= (fermi_level_value + configuration.fermi_surface_tolerance),
         )
         fermi_values = self.value[fermi_indices]
 

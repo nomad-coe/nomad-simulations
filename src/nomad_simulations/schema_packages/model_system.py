@@ -33,7 +33,7 @@ from matid.classification.classifications import (
     Surface,
 )
 
-from nomad import config
+from nomad.config import config
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
@@ -50,6 +50,10 @@ from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.utils import (
     get_sibling_section,
     is_not_representative,
+)
+
+configuration = config.get_plugin_entry_point(
+    'nomad_simulations.schema_packages:nomad_simulations_plugin'
 )
 
 
@@ -556,7 +560,7 @@ class Symmetry(ArchiveSection):
         try:
             ase_atoms = original_atomic_cell.to_ase_atoms(logger=logger)
             symmetry_analyzer = SymmetryAnalyzer(
-                ase_atoms, symmetry_tol=config.normalize.symmetry_tolerance
+                ase_atoms, symmetry_tol=configuration.symmetry_tolerance
             )
         except ValueError as e:
             logger.debug(
@@ -955,14 +959,11 @@ class ModelSystem(System):
         """
         classification = None
         system_type, dimensionality = self.type, self.dimensionality
-        if (
-            len(ase_atoms)
-            <= config.normalize.system_classification_with_clusters_threshold
-        ):
+        if len(ase_atoms) <= configuration.limit_system_type_classification:
             try:
                 classifier = Classifier(
                     radii='covalent',
-                    cluster_threshold=config.normalize.cluster_threshold,
+                    cluster_threshold=configuration.cluster_threshold,
                 )
                 classification = classifier.classify(input_system=ase_atoms)
             except Exception as e:

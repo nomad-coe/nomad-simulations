@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional
 import numpy as np
 import pint
 
-from nomad import config
+from nomad.config import config
 from nomad.metainfo import MEnum, Quantity, SubSection
 
 if TYPE_CHECKING:
@@ -34,6 +34,10 @@ from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 from nomad_simulations.schema_packages.properties.band_gap import ElectronicBandGap
 from nomad_simulations.schema_packages.utils import get_sibling_section, get_variables
 from nomad_simulations.schema_packages.variables import Energy2 as Energy
+
+configuration = config.get_plugin_entry_point(
+    'nomad_simulations.schema_packages:nomad_simulations_plugin'
+)
 
 
 class SpectralProfile(PhysicalProperty):
@@ -234,10 +238,6 @@ class ElectronicDensityOfStates(DOSProfile):
         if lowest_unoccupied_energy is not None:
             self.m_cache['lowest_unoccupied_energy'] = lowest_unoccupied_energy
 
-        # Set thresholds for the energies and values
-        energy_threshold = config.normalize.band_structure_energy_tolerance
-        value_threshold = 1e-8  # The DOS value that is considered to be zero
-
         # Check that the closest `energies` to the energy reference is not too far away.
         # If it is very far away, normalization may be very inaccurate and we do not report it.
         dos_values = self.value.magnitude
@@ -246,7 +246,7 @@ class ElectronicDensityOfStates(DOSProfile):
         fermi_energy_closest = energies[fermi_idx]
         distance = np.abs(fermi_energy_closest - eref)
         single_peak_fermi = False
-        if distance.magnitude <= energy_threshold:
+        if distance.magnitude <= configuration.dos_energy_tolerance:
             # See if there are zero values close below the energy reference.
             idx = fermi_idx
             idx_descend = fermi_idx
@@ -256,9 +256,9 @@ class ElectronicDensityOfStates(DOSProfile):
                     energy_distance = np.abs(eref - energies[idx])
                 except IndexError:
                     break
-                if energy_distance.magnitude > energy_threshold:
+                if energy_distance.magnitude > configuration.dos_energy_tolerance:
                     break
-                if value <= value_threshold:
+                if value <= configuration.dos_intensities_threshold:
                     idx_descend = idx
                     break
                 idx -= 1
@@ -272,9 +272,9 @@ class ElectronicDensityOfStates(DOSProfile):
                     energy_distance = np.abs(eref - energies[idx])
                 except IndexError:
                     break
-                if energy_distance.magnitude > energy_threshold:
+                if energy_distance.magnitude > configuration.dos_energy_tolerance:
                     break
-                if value <= value_threshold:
+                if value <= configuration.dos_intensities_threshold:
                     idx_ascend = idx
                     break
                 idx += 1
@@ -294,7 +294,7 @@ class ElectronicDensityOfStates(DOSProfile):
                         value = dos_values[idx]
                     except IndexError:
                         break
-                    if value > value_threshold:
+                    if value > configuration.dos_intensities_threshold:
                         idx = idx if idx == idx_descend else idx + 1
                         self.m_cache['highest_occupied_energy'] = energies[idx]
                         break
@@ -306,7 +306,7 @@ class ElectronicDensityOfStates(DOSProfile):
                         value = dos_values[idx]
                     except IndexError:
                         break
-                    if value > value_threshold:
+                    if value > configuration.dos_intensities_threshold:
                         idx = idx if idx == idx_ascend else idx - 1
                         self.m_cache['highest_occupied_energy'] = energies[idx]
                         break
