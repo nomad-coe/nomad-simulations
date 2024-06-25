@@ -14,9 +14,14 @@ This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base secti
 
 ## Getting started
 
-### Install the dependencies
+`nomad-simulations` can be installed as a PyPI package using `pip`. We require features from the `nomad-lab` package which are not publicly available in PyPI, so an extra flag `--index-url` needs to be specified when pip installing this package:
+```sh
+pip install nomad-simulations --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+```
 
-Clone the project and in the workspace folder, create a virtual environment (note this project uses Python 3.9):
+## Development
+
+If you want to develop locally this package, clone the project and in the workspace folder, create a virtual environment (note this project uses Python 3.9):
 
 ```sh
 git clone https://github.com/nomad-coe/nomad-simulations.git
@@ -118,25 +123,6 @@ If using VSCode, you can add the following snippet to your `.vscode/launch.json`
 where `${workspaceFolder}` refers to the NOMAD root.
 
 The settings configuration file `.vscode/settings.json` performs automatically applies the linting upon saving the file progress.
-
-### Build the python package
-
-The `pyproject.toml` file contains everything that is necessary to turn the project
-into a pip installable python package. Run the python build tool to create a package distribution:
-
-```
-uv pip install build
-python -m build --sdist
-```
-
-You can install the package with pip:
-
-```
-uv pip install dist/nomad-simulations-0.1.0
-```
-
-Read more about python packages, `pyproject.toml`, and how to upload packages to PyPI
-on the [PyPI documentation](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 
 ### Documentation on Github pages
 
