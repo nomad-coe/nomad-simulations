@@ -16,7 +16,7 @@
 # limitations under the License.
 #
 
-from nomad_simulations.properties import FermiLevel, ChemicalPotential
+from nomad_simulations.schema_packages.properties import FermiLevel, ChemicalPotential
 
 
 class TestFermiLevel:

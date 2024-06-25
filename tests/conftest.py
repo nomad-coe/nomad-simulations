@@ -24,26 +24,26 @@ from typing import List, Optional
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from . import logger
-
-from nomad_simulations import Simulation
-from nomad_simulations.model_system import ModelSystem, AtomicCell
-from nomad_simulations.atoms_state import AtomsState, OrbitalsState
-from nomad_simulations.model_method import ModelMethod
-from nomad_simulations.numerical_settings import (
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
+from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.numerical_settings import (
     SelfConsistency,
     KSpace,
     KMesh as KMeshSettings,
     KLinePath as KLinePathSettings,
 )
-from nomad_simulations.outputs import Outputs, SCFOutputs
-from nomad_simulations.variables import Energy2 as Energy, KLinePath
-from nomad_simulations.properties import (
+from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
+from nomad_simulations.schema_packages.variables import Energy2 as Energy, KLinePath
+from nomad_simulations.schema_packages.properties import (
     ElectronicBandGap,
     DOSProfile,
     ElectronicDensityOfStates,
     ElectronicEigenvalues,
 )
+
+from . import logger
 
 if os.getenv('_PYTEST_RAISE', '0') != '0':
 

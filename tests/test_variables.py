@@ -20,9 +20,9 @@ import pytest
 
 from nomad.datamodel import EntryArchive
 
-from . import logger
+from nomad_simulations.schema_packages.variables import Variables
 
-from nomad_simulations.variables import Variables
+from . import logger
 
 
 class TestVariables:

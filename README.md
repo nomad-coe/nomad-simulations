@@ -7,11 +7,10 @@
 ![](https://img.shields.io/pypi/v/nomad-simulations)
 -->
 
-# NOMAD's Simulations Schema Plugin
-This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base sections schema definitions for materials science simulations..
+# `nomad-simulations` schema plugin
 
+This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base sections schema definitions for materials science simulations.
 
-<!-- MOVE THIS TO THE DOCUMENTATION PAGE OF THIS PLUGIN --->
 
 ## Getting started
 
@@ -26,6 +25,11 @@ python3.9 -m venv .pyenv
 . .pyenv/bin/activate
 ```
 
+Make sure to have `pip` upgraded:
+```sh
+pip install --upgrade pip
+```
+
 We recommend installing `uv` for fast pip installation of the packages:
 ```sh
 pip install uv
@@ -34,13 +38,18 @@ pip install uv
 Install the `nomad-lab` package:
 
 ```sh
-pip install --upgrade pip
 uv pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
 **Note!**
 Until we have an official pypi NOMAD release with the plugins functionality. Make
 sure to include NOMAD's internal package registry (via `--index-url` in the above command).
+
+The plugin is still under development. If you would like to contribute, install the package in editable mode (with the added `-e` flag) with the development dependencies:
+
+```sh
+uv pip install -e '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+```
 
 ### Run the tests
 
@@ -55,8 +64,8 @@ where the `-s` and `-v` options toggle the output verbosity.
 Our CI/CD pipeline produces a more comprehensive test report using `coverage` and `coveralls` packages. We suggest you to generate your own coverage reports locally by doing:
 
 ```sh
-pip install coverage coveralls
-python -m pytest --cov=src  tests
+uv pip install pytest-cov
+python -m pytest --cov=src tests
 ```
 
 You can also run the script to generate a local file `coverage.txt` with the same information by doing:
@@ -64,45 +73,9 @@ You can also run the script to generate a local file `coverage.txt` with the sam
 ./scripts/generate_coverage_txt.sh
 ```
 
-## Development
-
-The plugin is still under development. If you would like to contribute, install the package in editable mode (with the added `-e` flag) with the development dependencies:
-
-```sh
-uv pip install -e .[dev] --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
-```
-
 ### Setting up plugin on your local installation
 
 Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/howto/oasis/plugins_install.html) for all details on how to deploy the plugin on your NOMAD instance.
-
-You need to modify the ```src/nomad_simulations/nomad_plugin.yaml``` to define the plugin adding the following content:
-
-```yaml
-plugin_type: schema
-name: schemas/nomad_simulations
-description: |
-  This is a collection of NOMAD schemas for simulation data.
-```
-
-and define the ```nomad.yaml``` configuration file of your NOMAD instance in the root folder with the following content:
-
-```yaml
-plugins:
-  include:
-    - schemas/nomad_simulations
-  options:
-    schemas/nomad_simulations:
-      python_package: nomad_simulations
-```
-
-You also need to add the package folder to the `PYTHONPATH` of the Python environment of your local NOMAD installation. This can be done by specifying the relative path to this repository. Either run the following command every time you start a new terminal for running the appworker, or add it to your virtual environment in `<path-to-local-nomad-installation>/.pyenv/bin/activate` file:
-
-```sh
-export PYTHONPATH="$PYTHONPATH:<path-to-nomad-simulations-cloned-repo>/src"
-```
-
-If you are working in this repository, you just need to activate the environment to start working using the ```nomad_simulations``` package.
 
 ### Run linting and auto-formatting
 
@@ -146,6 +119,39 @@ where `${workspaceFolder}` refers to the NOMAD root.
 
 The settings configuration file `.vscode/settings.json` performs automatically applies the linting upon saving the file progress.
 
+### Build the python package
+
+The `pyproject.toml` file contains everything that is necessary to turn the project
+into a pip installable python package. Run the python build tool to create a package distribution:
+
+```
+uv pip install build
+python -m build --sdist
+```
+
+You can install the package with pip:
+
+```
+uv pip install dist/nomad-simulations-0.1.0
+```
+
+Read more about python packages, `pyproject.toml`, and how to upload packages to PyPI
+on the [PyPI documentation](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
+
+### Documentation on Github pages
+
+To deploy documentation on Github pages, make sure to [enable GitHub pages via the repo settings](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-from-a-branch).
+
+To view the documentation locally, install the documentation related packages using:
+
+```sh
+uv pip install -r requirements_docs.txt
+```
+
+Run the documentation server:
+```sh
+mkdocs serve
+```
 
 ## Main contributors
 | Name | E-mail     | Topics | Github profiles |

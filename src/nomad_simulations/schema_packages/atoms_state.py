@@ -16,19 +16,24 @@
 # limitations under the License.
 #
 
-import numpy as np
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+
 import ase
+import numpy as np
 import pint
-from typing import Optional, Union, Dict, Any
-from structlog.stdlib import BoundLogger
 
-from nomad.units import ureg
-from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.basesections import Entity
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.datamodel.metainfo.basesections import Entity
+from nomad.metainfo import MEnum, Quantity, SubSection
+from nomad.units import ureg
 
-from nomad_simulations.utils import RussellSaundersState
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.utils import RussellSaundersState
 
 
 class OrbitalsState(Entity):
@@ -127,7 +132,7 @@ class OrbitalsState(Entity):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         self._orbitals = {
             -1: dict(zip(range(4), ('s', 'p', 'd', 'f'))),
@@ -152,15 +157,15 @@ class OrbitalsState(Entity):
         self._orbitals_map: Dict[str, Any] = {
             'l_symbols': self._orbitals[-1],
             'ml_symbols': {i: self._orbitals[i] for i in range(4)},
-            'ms_symbols': dict((zip((-0.5, 0.5), ('down', 'up')))),
+            'ms_symbols': dict(zip((-0.5, 0.5), ('down', 'up'))),
             'l_numbers': {v: k for k, v in self._orbitals[-1].items()},
             'ml_numbers': {
                 k: {v: k for k, v in self._orbitals[k].items()} for k in range(4)
             },
-            'ms_numbers': dict((zip(('down', 'up'), (-0.5, 0.5)))),
+            'ms_numbers': dict(zip(('down', 'up'), (-0.5, 0.5))),
         }
 
-    def validate_quantum_numbers(self, logger: BoundLogger) -> bool:
+    def validate_quantum_numbers(self, logger: 'BoundLogger') -> bool:
         """
         Validate the quantum numbers (`n`, `l`, `ml`, `ms`) by checking if they are physically sensible.
 
@@ -193,7 +198,7 @@ class OrbitalsState(Entity):
         return True
 
     def resolve_number_and_symbol(
-        self, quantum_name: str, quantum_type: str, logger: BoundLogger
+        self, quantum_name: str, quantum_type: str, logger: 'BoundLogger'
     ) -> Optional[Union[str, int]]:
         """
         Resolves the quantum number or symbol from the `self._orbitals_map` on the passed `quantum_type`.
@@ -289,7 +294,7 @@ class OrbitalsState(Entity):
                     degeneracy += RussellSaundersState(J=jj, occ=1).degeneracy
         return degeneracy
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # General checks for physical quantum numbers and symbols
@@ -344,7 +349,7 @@ class CoreHole(ArchiveSection):
         """,
     )
 
-    def resolve_occupation(self, logger: BoundLogger) -> Optional[np.float64]:
+    def resolve_occupation(self, logger: 'BoundLogger') -> Optional[np.float64]:
         """
         Resolves the occupation of the orbital state. The occupation is resolved from the degeneracy
         and the number of excited electrons.
@@ -368,7 +373,7 @@ class CoreHole(ArchiveSection):
             return degeneracy - self.n_excited_electrons
         return None
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Check if n_excited_electrons is between 0 and 1
@@ -491,7 +496,7 @@ class HubbardInteractions(ArchiveSection):
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
-    def resolve_u_interactions(self, logger: BoundLogger) -> Optional[tuple]:
+    def resolve_u_interactions(self, logger: 'BoundLogger') -> Optional[tuple]:
         """
         Resolves the Hubbard interactions (u_interaction, u_interorbital_interaction, j_hunds_coupling)
         from the Slater integrals (F0, F2, F4) in the units defined for the Quantity.
@@ -519,7 +524,7 @@ class HubbardInteractions(ArchiveSection):
         )
         return u_interaction, u_interorbital_interaction, j_hunds_coupling
 
-    def resolve_u_effective(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+    def resolve_u_effective(self, logger: 'BoundLogger') -> Optional[pint.Quantity]:
         """
         Resolves the effective U parameter (u_interaction - j_local_exchange_interaction).
 
@@ -539,7 +544,7 @@ class HubbardInteractions(ArchiveSection):
             self.j_local_exchange_interaction = 0.0 * ureg.eV
         return self.u_interaction - self.j_local_exchange_interaction
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Obtain (u, up, j_hunds_coupling) from slater_integrals
@@ -609,7 +614,7 @@ class AtomsState(Entity):
         sub_section=HubbardInteractions.m_def, repeats=False
     )
 
-    def resolve_chemical_symbol(self, logger: BoundLogger) -> Optional[str]:
+    def resolve_chemical_symbol(self, logger: 'BoundLogger') -> Optional[str]:
         """
         Resolves the `chemical_symbol` from the `atomic_number`.
 
@@ -628,7 +633,7 @@ class AtomsState(Entity):
                 )
         return None
 
-    def resolve_atomic_number(self, logger: BoundLogger) -> Optional[int]:
+    def resolve_atomic_number(self, logger: 'BoundLogger') -> Optional[int]:
         """
         Resolves the `atomic_number` from the `chemical_symbol`.
 
@@ -647,7 +652,7 @@ class AtomsState(Entity):
                 )
         return None
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Get chemical_symbol from atomic_number and viceversa

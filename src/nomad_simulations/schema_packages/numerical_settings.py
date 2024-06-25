@@ -16,19 +16,25 @@
 # limitations under the License.
 #
 
+from itertools import accumulate, chain, tee
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+
 import numpy as np
 import pint
-from itertools import accumulate, tee, chain
-from structlog.stdlib import BoundLogger
-from typing import Optional, List, Tuple, Union
-from ase.dft.kpoints import monkhorst_pack, get_monkhorst_pack_size_and_offset
 
-from nomad.units import ureg
+from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
+
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, SubSection, MEnum, Section, Context, JSON
+from nomad.metainfo import JSON, MEnum, Quantity, SubSection
+from nomad.units import ureg
 
-from nomad_simulations.model_system import ModelSystem
-from nomad_simulations.utils import is_not_representative
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.utils import is_not_representative
 
 
 class NumericalSettings(ArchiveSection):
@@ -46,7 +52,7 @@ class NumericalSettings(ArchiveSection):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -156,7 +162,7 @@ class Mesh(ArchiveSection):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -168,7 +174,7 @@ class KSpaceFunctionalities:
     def validate_reciprocal_lattice_vectors(
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
         check_grid: Optional[bool] = False,
         grid: Optional[List[int]] = [],
     ) -> bool:
@@ -206,7 +212,7 @@ class KSpaceFunctionalities:
     def resolve_high_symmetry_points(
         self,
         model_systems: List[ModelSystem],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
         eps: float = 3e-3,
     ) -> Optional[dict]:
         """
@@ -357,7 +363,7 @@ class KMesh(Mesh):
     # TODO add extraction of `high_symmetry_points` using BandStructureNormalizer idea (left for later when defining outputs.py)
 
     def resolve_points_and_offset(
-        self, logger: BoundLogger
+        self, logger: 'BoundLogger'
     ) -> Tuple[Optional[List[np.ndarray]], Optional[np.ndarray]]:
         """
         Resolves the `points` and `offset` of the `KMesh` from the `grid` and the `center`.
@@ -391,7 +397,7 @@ class KMesh(Mesh):
         return points, offset
 
     def get_k_line_density(
-        self, reciprocal_lattice_vectors: Optional[pint.Quantity], logger: BoundLogger
+        self, reciprocal_lattice_vectors: Optional[pint.Quantity], logger: 'BoundLogger'
     ) -> Optional[np.float64]:
         """
         Gets the k-line density of the `KMesh`. This quantity is used as a precision measure
@@ -425,7 +431,7 @@ class KMesh(Mesh):
         self,
         model_systems: List[ModelSystem],
         reciprocal_lattice_vectors: pint.Quantity,
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> Optional[pint.Quantity]:
         """
         Resolves the `k_line_density` of the `KMesh` from the the list of `ModelSystem`.
@@ -462,7 +468,7 @@ class KMesh(Mesh):
                 return k_line_density
         return None
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # If `grid` is not defined, we do not normalize the KMesh
@@ -541,7 +547,7 @@ class KLinePath(ArchiveSection):
         self,
         model_systems: List[ModelSystem],
         reciprocal_lattice_vectors: pint.Quantity,
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> Optional[List[float]]:
         """
         Resolves the `high_symmetry_path_values` of the `KLinePath` from the `high_symmetry_path_names`.
@@ -578,7 +584,7 @@ class KLinePath(ArchiveSection):
         ]
         return high_symmetry_path_values
 
-    def validate_high_symmetry_path(self, logger: BoundLogger) -> bool:
+    def validate_high_symmetry_path(self, logger: 'BoundLogger') -> bool:
         """
         Validate `high_symmetry_path_names` and `high_symmetry_path_values` by checking if they are defined and have the same length.
 
@@ -609,7 +615,7 @@ class KLinePath(ArchiveSection):
     def get_high_symmetry_path_norms(
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> Optional[List[pint.Quantity]]:
         """
         Get the high symmetry path points norms from the list of dictionaries of vectors in units of the `reciprocal_lattice_vectors`.
@@ -662,7 +668,7 @@ class KLinePath(ArchiveSection):
         self,
         points_norm: Union[np.ndarray, List[float]],
         reciprocal_lattice_vectors: Optional[np.ndarray],
-        logger: BoundLogger,
+        logger: 'BoundLogger',
     ) -> None:
         """
         Resolves the `points` of the `KLinePath` from the `points_norm` and the `reciprocal_lattice_vectors`. This is useful
@@ -738,7 +744,7 @@ class KLinePath(ArchiveSection):
             logger.info('Overwriting `KLinePath.points` with the resolved points.')
         self.points = new_points
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolves `high_symmetry_path_values` from `high_symmetry_path_names`
@@ -785,13 +791,13 @@ class KSpace(NumericalSettings):
 
     k_line_path = SubSection(sub_section=KLinePath.m_def)
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
     def resolve_reciprocal_lattice_vectors(
-        self, model_systems: List[ModelSystem], logger: BoundLogger
+        self, model_systems: List[ModelSystem], logger: 'BoundLogger'
     ) -> Optional[pint.Quantity]:
         """
         Resolve the `reciprocal_lattice_vectors` of the `KSpace` from the representative `ModelSystem` section.
@@ -823,7 +829,7 @@ class KSpace(NumericalSettings):
             return 2 * np.pi * ase_atoms.get_reciprocal_cell() / ureg.angstrom
         return None
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Resolve `reciprocal_lattice_vectors` from the `ModelSystem` ASE object
@@ -877,12 +883,12 @@ class SelfConsistency(NumericalSettings):
         """,
     )
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -891,10 +897,10 @@ class BasisSet(NumericalSettings):
 
     # TODO work on this base section (@ndaelman-hu)
 
-    def __init__(self, m_def: Section = None, m_context: Context = None, **kwargs):
+    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)

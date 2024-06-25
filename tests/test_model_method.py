@@ -17,15 +17,19 @@
 #
 
 import pytest
-import numpy as np
-from typing import List, Union, Optional, Tuple
+from typing import List, Optional
 
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.model_method import TB, Wannier, SlaterKoster, SlaterKosterBond
-from nomad_simulations.atoms_state import OrbitalsState, AtomsState
-from nomad_simulations import Simulation
-from nomad_simulations.model_system import ModelSystem, AtomicCell
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_method import (
+    TB,
+    Wannier,
+    SlaterKoster,
+    SlaterKosterBond,
+)
+from nomad_simulations.schema_packages.atoms_state import OrbitalsState, AtomsState
+from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
 
 from . import logger
 from .conftest import generate_simulation

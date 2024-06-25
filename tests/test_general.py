@@ -22,14 +22,14 @@ from typing import List
 
 from nomad.datamodel import EntryArchive
 
-from . import logger
-
-from nomad_simulations.general import Simulation
-from nomad_simulations.model_system import (
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_system import (
     ModelSystem,
     AtomicCell,
     AtomsState,
 )
+
+from . import logger
 
 
 class TestSimulation:

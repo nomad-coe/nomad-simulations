@@ -17,12 +17,12 @@
 # limitations under the License.
 #
 
-import numpy as np
 from math import factorial
-from typing import Optional, List
-from structlog.stdlib import BoundLogger
+from typing import List, Optional
 
+import numpy as np
 from nomad.datamodel.data import ArchiveSection
+from structlog.stdlib import BoundLogger
 
 
 def get_sibling_section(

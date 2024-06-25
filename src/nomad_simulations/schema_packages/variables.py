@@ -16,16 +16,21 @@
 # limitations under the License.
 #
 
+from typing import TYPE_CHECKING, Optional
+
 import numpy as np
-from typing import Optional
-from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.metainfo import Quantity, Section, Context
+from nomad.metainfo import Quantity
 
-from nomad_simulations.numerical_settings import (
-    KMesh as KMeshSettings,
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.numerical_settings import (
     KLinePath as KLinePathSettings,
+    KMesh as KMeshSettings,
 )
 
 
@@ -60,7 +65,7 @@ class Variables(ArchiveSection):
 
     # ? Do we need to add `points_error`?
 
-    def get_n_points(self, logger: BoundLogger) -> Optional[int]:
+    def get_n_points(self, logger: 'BoundLogger') -> Optional[int]:
         """
         Get the number of grid points from the `points` list. If `n_points` is previously defined
         and does not coincide with the length of `points`, a warning is issued and this function re-assigns `n_points`
@@ -81,7 +86,7 @@ class Variables(ArchiveSection):
             return len(self.points)
         return self.n_points
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Setting `n_points` if these are not defined
@@ -101,12 +106,12 @@ class Temperature(Variables):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -124,12 +129,12 @@ class Energy2(Variables):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -148,12 +153,12 @@ class WignerSeitz(Variables):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -170,12 +175,12 @@ class Frequency(Variables):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -193,12 +198,12 @@ class KMesh(Variables):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -213,10 +218,10 @@ class KLinePath(Variables):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)

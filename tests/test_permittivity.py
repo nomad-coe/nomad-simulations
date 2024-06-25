@@ -20,18 +20,10 @@ import pytest
 import numpy as np
 from typing import List, Optional
 
-from nomad.units import ureg
-from nomad.datamodel import EntryArchive
+from nomad_simulations.schema_packages.properties import Permittivity
+from nomad_simulations.schema_packages.variables import Variables, KMesh, Frequency
 
 from . import logger
-
-from nomad_simulations import Simulation
-from nomad_simulations.model_system import ModelSystem, AtomicCell
-from nomad_simulations.atoms_state import AtomsState
-from nomad_simulations.outputs import Outputs
-from nomad_simulations.properties import Permittivity
-from nomad_simulations.variables import Variables, KMesh, Frequency
-
 from .conftest import generate_k_space_simulation
 
 

@@ -23,10 +23,10 @@ from typing import Optional, List, Union
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from . import logger
+from nomad_simulations.schema_packages.properties import ElectronicBandGap
+from nomad_simulations.schema_packages.variables import Temperature
 
-from nomad_simulations.properties import ElectronicBandGap
-from nomad_simulations.variables import Temperature
+from . import logger
 
 
 class TestElectronicBandGap:

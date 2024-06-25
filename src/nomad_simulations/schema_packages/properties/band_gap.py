@@ -16,14 +16,19 @@
 # limitations under the License.
 #
 
+from typing import TYPE_CHECKING, Optional
+
 import numpy as np
-from structlog.stdlib import BoundLogger
 import pint
-from typing import Optional
 
-from nomad.metainfo import Quantity, MEnum, Section, Context
+from nomad.metainfo import MEnum, Quantity
 
-from nomad_simulations.physical_property import PhysicalProperty
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 
 
 class ElectronicBandGap(PhysicalProperty):
@@ -77,13 +82,13 @@ class ElectronicBandGap(PhysicalProperty):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
         self.rank = []
 
-    def validate_values(self, logger: BoundLogger) -> Optional[pint.Quantity]:
+    def validate_values(self, logger: 'BoundLogger') -> Optional[pint.Quantity]:
         """
         Validate the electronic band gap `value` by checking if they are negative and sets them to None if they are.
 
@@ -105,7 +110,7 @@ class ElectronicBandGap(PhysicalProperty):
             value = value[0]
         return value * self.value.u
 
-    def resolve_type(self, logger: BoundLogger) -> Optional[str]:
+    def resolve_type(self, logger: 'BoundLogger') -> Optional[str]:
         """
         Resolves the `type` of the electronic band gap based on the stored `momentum_transfer` values.
 
@@ -139,7 +144,7 @@ class ElectronicBandGap(PhysicalProperty):
         else:
             return 'indirect'
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # Checks if the `value` is negative and sets it to None if it is.

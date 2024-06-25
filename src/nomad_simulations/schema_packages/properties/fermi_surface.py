@@ -16,11 +16,18 @@
 # limitations under the License.
 #
 
+from typing import TYPE_CHECKING
+
 import numpy as np
 
-from nomad.metainfo import Quantity, Section, Context
+from nomad.metainfo import Quantity
 
-from nomad_simulations.physical_property import PhysicalProperty
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 
 
 # TODO This class is not implemented yet. @JosePizarro3 will work in another PR to implement it.
@@ -41,12 +48,12 @@ class FermiSurface(PhysicalProperty):
     )
 
     def __init__(
-        self, m_def: Section = None, m_context: Context = None, **kwargs
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! `n_bands` need to be set up during initialization of the class
         self.rank = [int(kwargs.get('n_bands'))]
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
