@@ -22,8 +22,8 @@ from typing import List
 
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.schema.general import Simulation
-from nomad_simulations.schema.model_system import (
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_system import (
     ModelSystem,
     AtomicCell,
     AtomsState,

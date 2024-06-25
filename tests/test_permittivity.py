@@ -20,8 +20,8 @@ import pytest
 import numpy as np
 from typing import List, Optional
 
-from nomad_simulations.schema.properties import Permittivity
-from nomad_simulations.schema.variables import Variables, KMesh, Frequency
+from nomad_simulations.schema_packages.properties import Permittivity
+from nomad_simulations.schema_packages.variables import Variables, KMesh, Frequency
 
 from . import logger
 from .conftest import generate_k_space_simulation

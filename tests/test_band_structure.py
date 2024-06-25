@@ -22,7 +22,7 @@ from typing import Optional, Tuple, List
 
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.schema.properties import ElectronicEigenvalues
+from nomad_simulations.schema_packages.properties import ElectronicEigenvalues
 
 from . import logger
 from .conftest import generate_electronic_eigenvalues, generate_simulation

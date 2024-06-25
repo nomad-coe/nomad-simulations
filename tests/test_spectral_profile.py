@@ -23,17 +23,17 @@ from typing import List, Optional
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.schema.general import Simulation
-from nomad_simulations.schema.model_system import ModelSystem, AtomicCell
-from nomad_simulations.schema.atoms_state import AtomsState
-from nomad_simulations.schema.outputs import Outputs
-from nomad_simulations.schema.properties import (
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
+from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.outputs import Outputs
+from nomad_simulations.schema_packages.properties import (
     SpectralProfile,
     ElectronicDensityOfStates,
     AbsorptionSpectrum,
     XASSpectrum,
 )
-from nomad_simulations.schema.variables import Energy2 as Energy
+from nomad_simulations.schema_packages.variables import Energy2 as Energy
 
 from . import logger
 

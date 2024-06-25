@@ -19,7 +19,7 @@
 import pytest
 from typing import Optional
 
-from nomad_simulations.schema.properties import FermiSurface
+from nomad_simulations.schema_packages.properties import FermiSurface
 
 
 class TestFermiSurface:

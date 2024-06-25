@@ -23,7 +23,7 @@ from typing import List, Union, Optional, Tuple
 from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.schema.atoms_state import (
+from nomad_simulations.schema_packages.atoms_state import (
     OrbitalsState,
     CoreHole,
     HubbardInteractions,

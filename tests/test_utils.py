@@ -18,13 +18,17 @@
 
 import pytest
 
-from nomad_simulations.schema.utils import (
+from nomad_simulations.schema_packages.utils import (
     get_sibling_section,
     is_not_representative,
     get_variables,
 )
-from nomad_simulations.schema.model_system import ModelSystem, AtomicCell, Symmetry
-from nomad_simulations.schema.variables import Temperature, Energy2 as Energy
+from nomad_simulations.schema_packages.model_system import (
+    ModelSystem,
+    AtomicCell,
+    Symmetry,
+)
+from nomad_simulations.schema_packages.variables import Temperature, Energy2 as Energy
 
 from . import logger
 

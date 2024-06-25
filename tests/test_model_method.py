@@ -21,15 +21,15 @@ from typing import List, Optional
 
 from nomad.datamodel import EntryArchive
 
-from nomad_simulations.schema.general import Simulation
-from nomad_simulations.schema.model_method import (
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_method import (
     TB,
     Wannier,
     SlaterKoster,
     SlaterKosterBond,
 )
-from nomad_simulations.schema.atoms_state import OrbitalsState, AtomsState
-from nomad_simulations.schema.model_system import ModelSystem, AtomicCell
+from nomad_simulations.schema_packages.atoms_state import OrbitalsState, AtomsState
+from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
 
 from . import logger
 from .conftest import generate_simulation

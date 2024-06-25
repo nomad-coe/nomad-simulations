@@ -24,8 +24,8 @@ from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
 
-from nomad_simulations.schema.variables import Variables
-from nomad_simulations.schema.physical_property import (
+from nomad_simulations.schema_packages.variables import Variables
+from nomad_simulations.schema_packages.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,
 )
