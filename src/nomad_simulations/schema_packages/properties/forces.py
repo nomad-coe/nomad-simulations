@@ -45,6 +45,7 @@ from nomad_simulations.physical_property import PhysicalProperty
 # Abstract force classes
 ####################################################
 
+
 class Force(PhysicalProperty):
     """
     Abstract physical property section describing some energy of a (sub)system.
@@ -67,10 +68,12 @@ class Force(PhysicalProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+
 ######################################################
 # List of general force properties/contributions that
 # can have both classical and quantum interpretations
 ######################################################
+
 
 class TotalForce(Force):
     """
@@ -79,11 +82,10 @@ class TotalForce(Force):
     Contains the value and information regarding the total forces on the atoms
     calculated as minus gradient of energy_total.
     """
+
     # ! We need to avoid giving the precise method of calculation without also providing context, this is not necessarily true in general!
 
-    contributions = SubSection(
-        sub_section=Force.m_def, repeats=True
-    )
+    contributions = SubSection(sub_section=Force.m_def, repeats=True)
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -128,6 +130,7 @@ class RawForce(Force):
     Value of the forces acting on the atoms **not including** such as fixed atoms,
     distances, angles, dihedrals, etc.
     """
+
     # ? This is VERY imprecise, is this used regularly?
 
     def normalize(self, archive, logger) -> None:
@@ -160,4 +163,3 @@ class RawForce(Force):
 # Cartesian coordinates.  In addition, these are obtained by filtering out the
 # unitary transformations (center-of-mass translations and rigid rotations for
 # non-periodic systems, see value_raw for the unfiltered counterpart).
-
