@@ -27,7 +27,7 @@ from .energies import (
     PotentialEnergy
 )
 from .forces import BaseForce, ForceContribution, TotalForce
-from .thermodynamics import Temperature, ChemicalPotential
+from .thermodynamics import Enthalpy, Entropy, ChemicalPotential, Pressure, Virial, Temperature, Volume, Density, Hessian, HeatCapacityCV, HeatCapacityCP
 from .fermi_surface import FermiSurface
 from .hopping_matrix import CrystalFieldSplitting, HoppingMatrix
 from .permittivity import Permittivity
@@ -38,3 +38,4 @@ from .spectral_profile import (
     SpectralProfile,
     XASSpectrum,
 )
+

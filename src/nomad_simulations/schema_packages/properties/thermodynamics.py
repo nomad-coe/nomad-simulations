@@ -37,10 +37,10 @@
 import numpy as np
 from nomad.metainfo import Quantity, SubSection, MEnum
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
-from nomad_simulations.schema_packages.properties import Energy
+from nomad_simulations.schema_packages.properties import BaseEnergy
 
 
-class Enthalpy(Energy):
+class Enthalpy(BaseEnergy):
     """
     Physical property section describing the enthalpy (i.e. energy_total + pressure * volume.) of a (sub)system.
     """
@@ -66,7 +66,7 @@ class Entropy(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-class ChemicalPotential(Energy):
+class ChemicalPotential(BaseEnergy):
     """
     Free energy cost of adding or extracting a particle from a thermodynamic system.
     """
@@ -103,7 +103,7 @@ class Pressure(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-class Virial(Energy):
+class Virial(BaseEnergy):
     """
     Physical property section describing the virial (cross product between positions and forces) of a (sub)system.
     """
