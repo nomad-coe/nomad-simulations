@@ -164,7 +164,6 @@ cython_debug/
 
 # VSCode settings
 .vscode/launch.json
-.vscode/settings.json
 
 # comments scripts
 comments.py
