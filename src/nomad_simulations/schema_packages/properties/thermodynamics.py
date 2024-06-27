@@ -36,21 +36,14 @@
 
 import numpy as np
 from nomad.metainfo import Quantity, SubSection, MEnum
-from nomad_simulations.physical_property import PhysicalProperty
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty
+from nomad_simulations.schema_packages.properties import Energy
 
 
-class Enthalpy(PhysicalProperty):
+class Enthalpy(Energy):
     """
     Physical property section describing the enthalpy (i.e. energy_total + pressure * volume.) of a (sub)system.
     """
-
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The value of the enthalpy.
-        """,
-    )
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
@@ -73,20 +66,23 @@ class Entropy(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-class ChemicalPotential(PhysicalProperty):
+class ChemicalPotential(Energy):
     """
-    Physical property section describing the chemical potential of a (sub)system.
+    Free energy cost of adding or extracting a particle from a thermodynamic system.
     """
 
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The value of the chemical potential.
-        """,
-    )
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
 
-    def normalize(self, archive, logger) -> None:
+    iri = 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.rank = []
+        self.name = self.m_def.name
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -107,18 +103,10 @@ class Pressure(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-class Virial(PhysicalProperty):
+class Virial(Energy):
     """
     Physical property section describing the virial (cross product between positions and forces) of a (sub)system.
     """
-
-    value = Quantity(
-        type=np.float64,
-        unit='joule',
-        description="""
-        The value of the virial.
-        """,
-    )
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)

@@ -24,6 +24,7 @@ import numpy as np
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.basesections import Entity
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import (
     URL,
     MEnum,
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
 
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.variables import Variables
+from nomad_simulations.schema_packages.model_method import ModelMethod
 
 # We add `logger` for the `validate_quantity_wrt_value` decorator
 logger = utils.get_logger(__name__)
@@ -324,3 +326,21 @@ class PhysicalProperty(ArchiveSection):
 
         # Resolve if the physical property `is_derived` or not from another physical property.
         self.is_derived = self._is_derived()
+
+class PropertyContribution(PhysicalProperty):
+    """
+    Abstract physical property section linking a property contribution to a contribution
+    from some method.
+    """
+    model_method_ref = Quantity(
+        type=ModelMethod,
+        description="""
+        Reference to the `ModelMethod` section to which the property is linked to.
+        """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+        if not self.name:
+            self.name = self.get('model_method_ref').get('name')

@@ -36,26 +36,21 @@
 
 import numpy as np
 
-from nomad.metainfo import Quantity, Section, Context, SubSection, MEnum
-from nomad.datamodel.data import ArchiveSection
-
-from nomad_simulations.physical_property import PhysicalProperty
+from nomad.metainfo import Quantity, Section, Context, SubSection
+from nomad_simulations.schema_packages.physical_property import PhysicalProperty, PropertyContribution
 
 ####################################################
 # Abstract force classes
 ####################################################
 
+##################
+# Abstract classes
+##################
 
-class Force(PhysicalProperty):
+class BaseForce(PhysicalProperty):
     """
-    Abstract physical property section describing some energy of a (sub)system.
+    Abstract physical property section describing some force of a (sub)system.
     """
-
-    type = Quantity(
-        type=MEnum('classical', 'quantum'),
-        description="""
-        """,
-    )
 
     value = Quantity(
         type=np.dtype(np.float64),
@@ -65,101 +60,62 @@ class Force(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
-
-######################################################
-# List of general force properties/contributions that
-# can have both classical and quantum interpretations
-######################################################
-
-
-class TotalForce(Force):
+class ForceContribution(BaseForce, PropertyContribution):
     """
-    Section containing the total force of a (sub)system.
-
-    Contains the value and information regarding the total forces on the atoms
-    calculated as minus gradient of energy_total.
-    """
-
-    # ! We need to avoid giving the precise method of calculation without also providing context, this is not necessarily true in general!
-
-    contributions = SubSection(sub_section=Force.m_def, repeats=True)
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-################################
-# List of Forces Contributions #
-################################
-
-
-class FreeForce(Force):
-    """
-    Physical property section describing...
-
-    Contains the value and information regarding the forces on the atoms
-    corresponding to the minus gradient of energy_free. The (electronic) energy_free
-    contains the information on the change in (fractional) occupation of the
-    electronic eigenstates, which are accounted for in the derivatives, yielding a
-    truly energy-conserved quantity.
+    Abstract physical property section linking a property contribution to a contribution
+    from some method.
     """
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
 
-class ZeroTemperatureForce(Force):
-    """
-    Physical property section describing...
+###################################
+# List of specific force properties
+###################################
 
-    Contains the value and information regarding the forces on the atoms
-    corresponding to the minus gradient of energy_T0.
+class TotalForce(BaseForce):
     """
+    Physical property section describing the total force of a (sub)system.
+    """
+
+    contributions = SubSection(sub_section=ForceContribution.m_def, repeats=True)
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+#? See questions about corresponding energies
+# class FreeForce(Force):
+#     """
+#     Physical property section describing...
 
-class RawForce(Force):
-    """
-    Physical property section describing...
+#     Contains the value and information regarding the forces on the atoms
+#     corresponding to the minus gradient of energy_free. The (electronic) energy_free
+#     contains the information on the change in (fractional) occupation of the
+#     electronic eigenstates, which are accounted for in the derivatives, yielding a
+#     truly energy-conserved quantity.
+#     """
 
-    Value of the forces acting on the atoms **not including** such as fixed atoms,
-    distances, angles, dihedrals, etc.
-    """
-
-    # ? This is VERY imprecise, is this used regularly?
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-# ? Do we want to support custom contributions?
-# contributions = SubSection(
-#     sub_section=ForcesEntry.m_def,
-#     description="""
-#     Contains other forces contributions to the total atomic forces not already
-#     defined.
-#     """,
-#     repeats=True,
-# )
-
-# types = SubSection(
-#     sub_section=ForcesEntry.m_def,
-#     description="""
-#     Contains other types of forces not already defined.
-#     """,
-#     repeats=True,
-# )
+#     def normalize(self, archive, logger) -> None:
+#         super().normalize(archive, logger)
 
 
-# Old version of the Forces description
-# Value of the forces acting on the atoms. This is calculated as minus gradient of
-# the corresponding energy type or contribution **including** constraints, if
-# present. The derivatives with respect to displacements of nuclei are evaluated in
-# Cartesian coordinates.  In addition, these are obtained by filtering out the
-# unitary transformations (center-of-mass translations and rigid rotations for
-# non-periodic systems, see value_raw for the unfiltered counterpart).
+# class ZeroTemperatureForce(Force):
+#     """
+#     Physical property section describing...
+
+#     Contains the value and information regarding the forces on the atoms
+#     corresponding to the minus gradient of energy_T0.
+#     """
+
+#     def normalize(self, archive, logger) -> None:
+#         super().normalize(archive, logger)
