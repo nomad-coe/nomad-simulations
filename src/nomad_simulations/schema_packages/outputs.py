@@ -45,8 +45,10 @@ from nomad_simulations.schema_packages.properties import (
     Permittivity,
     XASSpectrum,
     TotalEnergy,
+    KineticEnergy,
+    PotentialEnergy,
     TotalForce,
-    Temperature,
+    Temperature
 )
 
 
@@ -125,6 +127,10 @@ class Outputs(ArchiveSection):
     xas_spectra = SubSection(sub_section=XASSpectrum.m_def, repeats=True)
 
     total_energy = SubSection(sub_section=TotalEnergy.m_def, repeats=True)
+
+    kinetic_energy = SubSection(sub_section=KineticEnergy.m_def, repeats=True)
+
+    potential_energy = SubSection(sub_section=PotentialEnergy.m_def, repeats=True)
 
     total_force = SubSection(sub_section=TotalForce.m_def, repeats=True)
 

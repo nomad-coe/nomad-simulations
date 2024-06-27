@@ -20,12 +20,13 @@ from .band_gap import ElectronicBandGap
 from .band_structure import ElectronicBandStructure, ElectronicEigenvalues
 from .energies import (
     FermiLevel,
+    BaseEnergy,
+    EnergyContribution,
     TotalEnergy,
-    Energy,
-    ClassicalEnergy,
-    QuantumEnergy,
+    KineticEnergy,
+    PotentialEnergy
 )
-from .forces import TotalForce, Force
+from .forces import BaseForce, ForceContribution, TotalForce
 from .thermodynamics import Temperature, ChemicalPotential
 from .fermi_surface import FermiSurface
 from .hopping_matrix import CrystalFieldSplitting, HoppingMatrix
