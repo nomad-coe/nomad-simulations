@@ -88,6 +88,9 @@ class BaseModelMethod(ArchiveSection):
 
     numerical_settings = SubSection(sub_section=NumericalSettings.m_def, repeats=True)
 
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
 
 class ModelMethod(BaseModelMethod):
     """
