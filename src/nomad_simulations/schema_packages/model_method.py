@@ -982,8 +982,6 @@ class BSE(ExcitedStateMethodology):
 
             H_BSE = H_diagonal + 2 * gx * Hx - gc * Hc
 
-        where gx, gc specifies the `kind`.
-
         Online resources for the theory:
         - http://exciting.wikidot.com/carbon-excited-states-from-bse#toc1
         - https://www.vasp.at/wiki/index.php/Bethe-Salpeter-equations_calculations
