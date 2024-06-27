@@ -27,11 +27,15 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema_packages.physical_property import PhysicalProperty, PropertyContribution
+from nomad_simulations.schema_packages.physical_property import (
+    PhysicalProperty,
+    PropertyContribution,
+)
 
 ##################
 # Abstract classes
 ##################
+
 
 class BaseEnergy(PhysicalProperty):
     """
@@ -49,6 +53,7 @@ class BaseEnergy(PhysicalProperty):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
+
 class EnergyContribution(BaseEnergy, PropertyContribution):
     """
     Abstract physical property section linking a property contribution to a contribution
@@ -58,9 +63,11 @@ class EnergyContribution(BaseEnergy, PropertyContribution):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
+
 ####################################
 # List of specific energy properties
 ####################################
+
 
 class FermiLevel(BaseEnergy):
     """
@@ -82,6 +89,7 @@ class FermiLevel(BaseEnergy):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
+
 #! The only issue with this structure is that total energy will never be a sum of its contributions,
 #! since kinetic energy lives separately, but I think maybe this is ok?
 class TotalEnergy(BaseEnergy):
@@ -100,7 +108,8 @@ class TotalEnergy(BaseEnergy):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-#? Separate quantities for nuclear and electronic KEs?
+
+# ? Separate quantities for nuclear and electronic KEs?
 class KineticEnergy(BaseEnergy):
     """
     Physical property section describing the kinetic energy of a (sub)system.
@@ -108,6 +117,7 @@ class KineticEnergy(BaseEnergy):
 
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
+
 
 class PotentialEnergy(BaseEnergy):
     """
@@ -119,7 +129,7 @@ class PotentialEnergy(BaseEnergy):
 
 
 #! I removed all previous contributions associated in some way with terms in the Hamiltonian.
-#? Should the remaining contributions below be incorporated into some sort of workflow results if still relevant?
+# ? Should the remaining contributions below be incorporated into some sort of workflow results if still relevant?
 
 
 # class ZeroTemperatureEnergy(QuantumEnergy):

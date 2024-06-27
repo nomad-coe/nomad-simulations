@@ -35,55 +35,13 @@
 #
 
 import numpy as np
-from nomad.metainfo import Quantity, SubSection, MEnum
+from nomad.metainfo import Quantity
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 from nomad_simulations.schema_packages.properties import BaseEnergy
 
-
-class Enthalpy(BaseEnergy):
-    """
-    Physical property section describing the enthalpy (i.e. energy_total + pressure * volume.) of a (sub)system.
-    """
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class Entropy(PhysicalProperty):
-    """
-    Physical property section describing the entropy of a (sub)system.
-    """
-
-    value = Quantity(
-        type=np.float64,
-        unit='joule / kelvin',
-        description="""
-        The value of the entropy.
-        """,
-    )
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class ChemicalPotential(BaseEnergy):
-    """
-    Free energy cost of adding or extracting a particle from a thermodynamic system.
-    """
-
-    # ! implement `iri` and `rank` as part of `m_def = Section()`
-
-    iri = 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
-
-    def __init__(
-        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
-    ) -> None:
-        super().__init__(m_def, m_context, **kwargs)
-        self.rank = []
-        self.name = self.m_def.name
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
+######################################
+# fundamental thermodynamic properties
+######################################
 
 
 class Pressure(PhysicalProperty):
@@ -96,32 +54,6 @@ class Pressure(PhysicalProperty):
         unit='pascal',
         description="""
         The value of the pressure.
-        """,
-    )
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class Virial(BaseEnergy):
-    """
-    Physical property section describing the virial (cross product between positions and forces) of a (sub)system.
-    """
-
-    def normalize(self, archive, logger) -> None:
-        super().normalize(archive, logger)
-
-
-class Temperature(PhysicalProperty):
-    """
-    Physical property section describing the temperature of a (sub)system.
-    """
-
-    value = Quantity(
-        type=np.float64,
-        unit='kelvin',
-        description="""
-        The value of the temperature.
         """,
     )
 
@@ -146,16 +78,16 @@ class Volume(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-class Density(PhysicalProperty):
+class Temperature(PhysicalProperty):
     """
-    Physical property section describing the density of a (sub)system.
+    Physical property section describing the temperature of a (sub)system.
     """
 
     value = Quantity(
         type=np.float64,
-        unit='kg / m ** 3',
+        unit='kelvin',
         description="""
-        The value of the density.
+        The value of the temperature.
         """,
     )
 
@@ -163,23 +95,94 @@ class Density(PhysicalProperty):
         super().normalize(archive, logger)
 
 
-# ? Does this go here or in energies?
-# ? Naming specific to Potential Energy?
-class Hessian(PhysicalProperty):
+class HeatAdded(BaseEnergy):
     """
-    Physical property section describing the Hessian matrix, i.e., 2nd derivatives with respect to geometric (typically particle) displacements,
-    of the potential energy of a (sub)system.
+    Physical property section describing the heat added to a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class WorkDone(BaseEnergy):
+    """
+    Physical property section describing the internal energy (i.e., heat added - work) for a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class InternalEnergy(BaseEnergy):
+    """
+    Physical property section describing the internal energy (i.e., heat added - work) for a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class Enthalpy(BaseEnergy):
+    """
+    Physical property section describing the enthalpy (i.e. internal_energy + pressure * volume.) of a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class Entropy(PhysicalProperty):
+    """
+    Physical property section describing the entropy of a (sub)system.
     """
 
     value = Quantity(
         type=np.float64,
-        unit='joule / m ** 2',
+        unit='joule / kelvin',
         description="""
-        The value of the Hessian.
+        The value of the entropy.
         """,
     )
 
     def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class GibbsFreeEnergy(BaseEnergy):
+    """
+    Physical property section describing the Gibbs free energy (i.e., enthalpy - temperature * entropy) of a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class HelmholtzFreeEnergy(BaseEnergy):
+    """
+    Physical property section describing the Gibbs free energy (i.e., internal_energy - temperature * entropy) of a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class ChemicalPotential(BaseEnergy):
+    """
+    Free energy cost of adding or extracting a particle from a thermodynamic system.
+    """
+
+    # ! implement `iri` and `rank` as part of `m_def = Section()`
+
+    iri = 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.rank = []
+        self.name = self.m_def.name
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -213,16 +216,56 @@ class HeatCapacityCP(PhysicalProperty):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-    # ? Is this ever used?
-    # internal_energy = Quantity(
-    #     type=np.dtype(np.float64),
-    #     shape=[],
-    #     unit='joule',
-    #     description="""
-    #     Value of the internal energy.
-    #     """,
-    # )
 
+################################
+# other thermodynamic properties
+################################
+
+
+class Virial(BaseEnergy):
+    """
+    Physical property section describing the virial of a (sub)system.
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class Density(PhysicalProperty):
+    """
+    Physical property section describing the density of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        unit='kg / m ** 3',
+        description="""
+        The value of the density.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+
+class Hessian(PhysicalProperty):
+    """
+    Physical property section describing the Hessian matrix, i.e., 2nd derivatives with respect to geometric (typically particle) displacements,
+    of the potential energy of a (sub)system.
+    """
+
+    value = Quantity(
+        type=np.float64,
+        unit='joule / m ** 2',
+        description="""
+        The value of the Hessian.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+    # ? Is this ever used?
     # vibrational_free_energy_at_constant_volume = Quantity(
     #     type=np.dtype(np.float64),
     #     shape=[],

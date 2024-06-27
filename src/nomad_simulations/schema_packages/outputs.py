@@ -350,6 +350,7 @@ class WorkflowOutputs(Outputs):
         """,
     )
 
+    # TODO add this in when we link to nomad-simulations-workflow schema
     # workflow_ref = Quantity(
     #     type=SimulationWorkflow,
     #     description="""

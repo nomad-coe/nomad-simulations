@@ -37,7 +37,10 @@
 import numpy as np
 
 from nomad.metainfo import Quantity, Section, Context, SubSection
-from nomad_simulations.schema_packages.physical_property import PhysicalProperty, PropertyContribution
+from nomad_simulations.schema_packages.physical_property import (
+    PhysicalProperty,
+    PropertyContribution,
+)
 
 ####################################################
 # Abstract force classes
@@ -46,6 +49,7 @@ from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 ##################
 # Abstract classes
 ##################
+
 
 class BaseForce(PhysicalProperty):
     """
@@ -63,6 +67,7 @@ class BaseForce(PhysicalProperty):
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
+
 class ForceContribution(BaseForce, PropertyContribution):
     """
     Abstract physical property section linking a property contribution to a contribution
@@ -76,6 +81,7 @@ class ForceContribution(BaseForce, PropertyContribution):
 ###################################
 # List of specific force properties
 ###################################
+
 
 class TotalForce(BaseForce):
     """
@@ -93,7 +99,8 @@ class TotalForce(BaseForce):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-#? See questions about corresponding energies
+
+# ? See questions about corresponding energies
 # class FreeForce(Force):
 #     """
 #     Physical property section describing...
