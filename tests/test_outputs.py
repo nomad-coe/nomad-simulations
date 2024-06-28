@@ -22,6 +22,7 @@ from typing import Optional, List
 from nomad.datamodel import EntryArchive
 
 from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.model_method import ModelMethod
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
 from nomad_simulations.schema_packages.properties import ElectronicBandGap
@@ -135,25 +136,62 @@ class TestOutputs:
             assert model_system_ref is None
 
     @pytest.mark.parametrize(
-        'model_system',
-        [(None), (ModelSystem(name='example'))],
+        'model_method',
+        [(None), (ModelMethod(name='example'))],
     )
-    def test_normalize(self, model_system: Optional[ModelSystem]):
+    def test_set_model_method_ref(self, model_method: Optional[ModelMethod]):
+        """
+        Test the `set_model_method_ref` method.
+
+        Args:
+            model_method (Optional[ModelMethod]): The `ModelMethod` to be tested for the `model_method_ref` reference
+            stored in `Outputs`.
+        """
+        outputs = Outputs()
+        simulation = generate_simulation(model_method=model_method, outputs=outputs)
+        model_method_ref = outputs.set_model_method_ref()
+        if model_method is not None:
+            assert model_method_ref == simulation.model_method[-1]
+            assert model_method_ref.name == 'example'
+        else:
+            assert model_method_ref is None
+
+    @pytest.mark.parametrize(
+        'model_system, model_method',
+        [
+            (None, None),
+            (ModelSystem(name='example system'), None),
+            (None, ModelMethod(name='example method')),
+            (ModelSystem(name='example system'), ModelMethod(name='example method')),
+        ],
+    )
+    def test_normalize(
+        self, model_system: Optional[ModelSystem], model_method: Optional[ModelMethod]
+    ):
         """
         Test the `normalize` method.
 
         Args:
             model_system (Optional[ModelSystem]): The expected `model_system_ref` obtained after normalization and
             initially stored under `Simulation.model_system[0]`.
+            model_method (Optional[ModelMethod]): The expected `model_method_ref` obtained after normalization and
+            initially stored under `Simulation.model_method[0]`.
         """
         outputs = Outputs()
-        simulation = generate_simulation(model_system=model_system, outputs=outputs)
+        simulation = generate_simulation(
+            model_system=model_system, model_method=model_method, outputs=outputs
+        )
         outputs.normalize(archive=EntryArchive(), logger=logger)
         if model_system is not None:
             assert outputs.model_system_ref == simulation.model_system[-1]
-            assert outputs.model_system_ref.name == 'example'
+            assert outputs.model_system_ref.name == 'example system'
         else:
             assert outputs.model_system_ref is None
+        if model_method is not None:
+            assert outputs.model_method_ref == simulation.model_method[-1]
+            assert outputs.model_method_ref.name == 'example method'
+        else:
+            assert outputs.model_method_ref is None
 
 
 class TestSCFOutputs:

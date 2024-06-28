@@ -23,10 +23,10 @@ import numpy as np
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import MEnum, Quantity, SubSection
+from nomad.metainfo import MEnum, Quantity, SubSection, URL, Section
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
+    from nomad.metainfo import Context
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
@@ -36,11 +36,25 @@ from nomad_simulations.schema_packages.numerical_settings import NumericalSettin
 from nomad_simulations.schema_packages.utils import is_not_representative
 
 
-class ModelMethod(ArchiveSection):
+class BaseModelMethod(ArchiveSection):
     """
-    Model method input parameters and numerical settings used to simulate materials properties.
+    A base section used to define the abstract class of a Hamiltonian section. This section is an
+    abstraction of the `ModelMethod` section, which contains the settings and parameters used in
+    the mathematical model solved in a simulation. This abstraction is needed in order to allow
+    `ModelMethod` to be divided into specific `terms`, so that the total Hamiltonian is specified in
+    `ModelMethod`, while its contributions are defined in `ModelMethod.terms`.
 
-    # ! add more description once section is finished
+    Example: a custom model Hamiltonian containing two terms:
+        $H = H_{V_{1}(r)}+H_{V_{2}(r)}$
+    where $H_{V_{1}(r)}$ and $H_{V_{2}(r)}$ are the contributions of two different potentials written in
+    real space coordinates $r$. These potentials could be defined in terms of a combination of parameters
+    $(a_{1}, b_{1}, c_{1}...)$ for $V_{1}(r)$ and $(a_{2}, b_{2}, c_{2}...)$ for $V_{2}(r)$. If we name the
+    total Hamiltonian as `'FF1'`:
+        `ModelMethod.name = 'FF1'`
+        `ModelMethod.contributions = [BaseModelMethod(name='V1', parameters=[a1, b1, c1]), BaseModelMethod(name='V2', parameters=[a2, b2, c2])]`
+
+    Note: quantities such as `name`, `type`, `external_reference` should be descriptive enough so that the
+    total Hamiltonian model or each of the terms or contributions can be identified.
     """
 
     normalizer_level = 1
@@ -48,9 +62,8 @@ class ModelMethod(ArchiveSection):
     name = Quantity(
         type=str,
         description="""
-        Name of the model method. This is typically used to easy identification of the `ModelMethod` section.
-
-        Suggested values: 'DFT', 'TB', 'GE', 'BSE', 'DMFT', 'NMR', 'kMC'.
+        Name of the mathematical model. This is typically used to identify the model Hamiltonian used in the
+        simulation. Typical standard names: 'DFT', 'TB', 'GW', 'BSE', 'DMFT', 'NMR', 'kMC'.
         """,
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
@@ -58,7 +71,7 @@ class ModelMethod(ArchiveSection):
     type = Quantity(
         type=str,
         description="""
-        Identifier used to further specify the type of model Hamiltonian. Example: a TB
+        Identifier used to further specify the kind or sub-type of model Hamiltonian. Example: a TB
         model can be 'Wannier', 'DFTB', 'xTB' or 'Slater-Koster'. This quantity should be
         rewritten to a MEnum when inheriting from this class.
         """,
@@ -66,7 +79,7 @@ class ModelMethod(ArchiveSection):
     )
 
     external_reference = Quantity(
-        type=str,
+        type=URL,
         description="""
         External reference to the model e.g. DOI, URL.
         """,
@@ -74,6 +87,25 @@ class ModelMethod(ArchiveSection):
     )
 
     numerical_settings = SubSection(sub_section=NumericalSettings.m_def, repeats=True)
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class ModelMethod(BaseModelMethod):
+    """
+    A base section containing the mathematical model parameters. These are both the parameters of
+    the model and the settings used in the simulation. Optionally, this section can be decomposed
+    in a series of contributions by storing them under the `contributions` quantity.
+    """
+
+    contributions = SubSection(
+        sub_section=BaseModelMethod.m_def,
+        repeats=True,
+        description="""
+        Contribution or sub-term of the total model Hamiltonian.
+        """,
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -199,6 +231,7 @@ class DFT(ModelMethodElectronic):
         """,
     )
 
+    # ? This could be moved under `contributions`, @ndaelman-hu
     xc_functionals = SubSection(sub_section=XCFunctional.m_def, repeats=True)
 
     exact_exchange_mixing_factor = Quantity(
@@ -399,7 +432,8 @@ class TB(ModelMethodElectronic):
         type=MEnum('DFTB', 'xTB', 'Wannier', 'SlaterKoster', 'unavailable'),
         default='unavailable',
         description="""
-        Tight-binding model type.
+        Tight-binding model Hamiltonian type. The default is set to `'unavailable'` in case none of the
+        standard types can be recognized. These can be:
 
         | Value | Reference |
         | --------- | ----------------------- |
@@ -407,6 +441,7 @@ class TB(ModelMethodElectronic):
         | `'xTB'` | https://xtb-docs.readthedocs.io/en/latest/ |
         | `'Wannier'` | https://www.wanniertools.org/theory/tight-binding-model/ |
         | `'SlaterKoster'` | https://journals.aps.org/pr/abstract/10.1103/PhysRev.94.1498 |
+        | `'unavailable'` | - |
         """,
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
@@ -806,14 +841,6 @@ class ExcitedStateMethodology(ModelMethodElectronic):
     DFT Hamiltonian. These are: GW, TDDFT, BSE.
     """
 
-    type = Quantity(
-        type=str,
-        description="""
-        Identifier used to further specify the type of model Hamiltonian.
-        """,
-        a_eln=ELNAnnotation(component='StringEditQuantity'),
-    )
-
     n_states = Quantity(
         type=np.int32,
         description="""
@@ -951,11 +978,9 @@ class BSE(ExcitedStateMethodology):
     type = Quantity(
         type=MEnum('Singlet', 'Triplet', 'IP', 'RPA'),
         description="""
-        Type of BSE hamiltonian solved:
+        Type of the BSE Hamiltonian solved:
 
             H_BSE = H_diagonal + 2 * gx * Hx - gc * Hc
-
-        where gx, gc specifies the type.
 
         Online resources for the theory:
         - http://exciting.wikidot.com/carbon-excited-states-from-bse#toc1
@@ -1007,6 +1032,8 @@ class CoreHoleSpectra(ModelMethodElectronic):
     A base section used to define the parameters used in a core-hole spectra calculation. This
     also contains reference to the specific methodological section (DFT, BSE) used to obtain the core-hole spectra.
     """
+
+    m_def = Section(a_eln={'hide': ['type']})
 
     # # TODO add examples
     # solver = Quantity(
@@ -1078,6 +1105,8 @@ class DMFT(ModelMethodElectronic):
     """
     A base section used to define the parameters of a DMFT calculation.
     """
+
+    m_def = Section(a_eln={'hide': ['type']})
 
     impurity_solver = Quantity(
         type=MEnum(

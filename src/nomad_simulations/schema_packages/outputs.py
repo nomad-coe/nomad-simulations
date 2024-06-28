@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.model_method import ModelMethod
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 from nomad_simulations.schema_packages.properties import (
@@ -61,8 +62,15 @@ class Outputs(ArchiveSection):
     model_system_ref = Quantity(
         type=ModelSystem,
         description="""
-        Reference to the `ModelSystem` section to which the output property references to and on
-        on which the simulation is performed.
+        Reference to the `ModelSystem` section in which the output physical properties were calculated.
+        """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
+    model_method_ref = Quantity(
+        type=ModelMethod,
+        description="""
+        Reference to the `ModelMethod` section in which the output physical properties were calculated.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
@@ -130,11 +138,11 @@ class Outputs(ArchiveSection):
 
     def set_model_system_ref(self) -> Optional[ModelSystem]:
         """
-        Set the reference to the last ModelSystem if this is not set in the output. This is only
-        valid if there is only one ModelSystem in the parent section.
+        Set the reference to the last `ModelSystem` if this is not set in the output. This is only
+        valid if there is only one `ModelSystem` in the parent section.
 
         Returns:
-            (Optional[ModelSystem]): The reference to the last ModelSystem.
+            (Optional[ModelSystem]): The reference to the last `ModelSystem`.
         """
         if self.m_parent is not None:
             model_systems = self.m_parent.model_system
@@ -142,12 +150,30 @@ class Outputs(ArchiveSection):
                 return model_systems[-1]
         return None
 
+    def set_model_method_ref(self) -> Optional[ModelMethod]:
+        """
+        Set the reference to the last `ModelMethod` if this is not set in the output. This is only
+        valid if there is only one `ModelMethod` in the parent section.
+
+        Returns:
+            (Optional[ModelMethod]): The reference to the last `ModelMethod`.
+        """
+        if self.m_parent is not None:
+            model_methods = self.m_parent.model_method
+            if model_methods is not None and len(model_methods) == 1:
+                return model_methods[-1]
+        return None
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
-        # Set ref to the last ModelSystem if this is not set in the output
+        # Set ref to the last `ModelSystem` if this is not set in the output
         if self.model_system_ref is None:
             self.model_system_ref = self.set_model_system_ref()
+
+        # Set ref to the last `ModelMethod` if this is not set in the output
+        if self.model_method_ref is None:
+            self.model_method_ref = self.set_model_method_ref()
 
 
 class SCFOutputs(Outputs):
