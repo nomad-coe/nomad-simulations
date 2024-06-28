@@ -76,16 +76,8 @@ class Outputs(ArchiveSection):
     model_method_ref = Quantity(
         type=ModelMethod,
         description="""
-        Reference to the `ModelMethod` section in which the output physical properties were calculated.
-        """,
-        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
-    )
-
-    model_method_ref = Quantity(
-        type=ModelMethod,
-        description="""
-        Reference to the `ModelMethod` section to which the output property references to
-        and on which the simulation is performed.
+        Reference to the `ModelMethod` section containing the details with which the
+        output physical properties were calculated.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )

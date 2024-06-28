@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.variables import Variables
-from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_method import BaseModelMethod
 
 # We add `logger` for the `validate_quantity_wrt_value` decorator
 logger = utils.get_logger(__name__)
@@ -335,7 +335,7 @@ class PropertyContribution(PhysicalProperty):
     """
 
     model_method_ref = Quantity(
-        type=ModelMethod,
+        type=BaseModelMethod,
         description="""
         Reference to the `ModelMethod` section to which the property is linked to.
         """,
