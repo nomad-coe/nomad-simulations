@@ -60,7 +60,7 @@ class EnergyContribution(BaseEnergy, PropertyContribution):
     from some method.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -105,7 +105,7 @@ class TotalEnergy(BaseEnergy):
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -115,7 +115,7 @@ class KineticEnergy(BaseEnergy):
     Physical property section describing the kinetic energy of a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -124,7 +124,7 @@ class PotentialEnergy(BaseEnergy):
     Physical property section describing the potential energy of a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 

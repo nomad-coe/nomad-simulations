@@ -34,8 +34,17 @@
 # limitations under the License.
 #
 
+from typing import TYPE_CHECKING
+
 import numpy as np
+
 from nomad.metainfo import Quantity
+
+if TYPE_CHECKING:
+    from nomad.metainfo import Section, Context
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 from nomad_simulations.schema_packages.properties import BaseEnergy
 
@@ -57,7 +66,7 @@ class Pressure(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -74,7 +83,7 @@ class Volume(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -91,7 +100,7 @@ class Temperature(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -100,7 +109,7 @@ class HeatAdded(BaseEnergy):
     Physical property section describing the heat added to a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -109,7 +118,7 @@ class WorkDone(BaseEnergy):
     Physical property section describing the internal energy (i.e., heat added - work) for a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -118,7 +127,7 @@ class InternalEnergy(BaseEnergy):
     Physical property section describing the internal energy (i.e., heat added - work) for a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -127,7 +136,7 @@ class Enthalpy(BaseEnergy):
     Physical property section describing the enthalpy (i.e. internal_energy + pressure * volume.) of a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -144,7 +153,7 @@ class Entropy(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -153,7 +162,7 @@ class GibbsFreeEnergy(BaseEnergy):
     Physical property section describing the Gibbs free energy (i.e., enthalpy - temperature * entropy) of a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -162,7 +171,7 @@ class HelmholtzFreeEnergy(BaseEnergy):
     Physical property section describing the Gibbs free energy (i.e., internal_energy - temperature * entropy) of a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -199,6 +208,9 @@ class HeatCapacityCV(PhysicalProperty):
         """,
     )
 
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
 
 class HeatCapacityCP(PhysicalProperty):
     """
@@ -213,7 +225,7 @@ class HeatCapacityCP(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -227,7 +239,7 @@ class Virial(BaseEnergy):
     Physical property section describing the virial of a (sub)system.
     """
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -244,7 +256,7 @@ class Density(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
@@ -263,7 +275,7 @@ class Hessian(PhysicalProperty):
         """,
     )
 
-    def normalize(self, archive, logger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
     # ? Is this ever used?
