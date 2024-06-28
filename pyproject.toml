@@ -47,7 +47,8 @@ dev = [
     "pytest-timeout",
     "pytest-cov",
     "structlog",
-    "lxml_html_clean>=0.1.0"
+    "lxml_html_clean>=0.1.0",
+    "graphviz",
 ]
 
 [tool.ruff]
