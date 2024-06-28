@@ -48,6 +48,7 @@ if TYPE_CHECKING:
 from nomad_simulations.schema_packages.physical_property import (
     PhysicalProperty,
     PropertyContribution,
+)
 
 ####################################################
 # Abstract force classes
