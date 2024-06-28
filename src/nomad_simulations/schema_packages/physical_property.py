@@ -327,11 +327,13 @@ class PhysicalProperty(ArchiveSection):
         # Resolve if the physical property `is_derived` or not from another physical property.
         self.is_derived = self._is_derived()
 
+
 class PropertyContribution(PhysicalProperty):
     """
     Abstract physical property section linking a property contribution to a contribution
     from some method.
     """
+
     model_method_ref = Quantity(
         type=ModelMethod,
         description="""

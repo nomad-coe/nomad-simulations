@@ -55,6 +55,7 @@ class TestTotalEnergy:
         assert total_energy.name == 'TotalEnergy'
         assert total_energy.rank == []
 
+
 class TestKineticEnergy:
     """
     Test the `KineticEnergy` class defined in `properties/energies.py`.
@@ -69,6 +70,7 @@ class TestKineticEnergy:
         assert kinetic_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/KineticEnergy'
         assert kinetic_energy.name == 'KineticEnergy'
         assert kinetic_energy.rank == []
+
 
 class TestPotentialEnergy:
     """

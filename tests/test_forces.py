@@ -18,6 +18,7 @@
 
 from nomad_simulations.schema_packages.properties import TotalForce
 
+
 class TestTotalForce:
     """
     Test the `TotalForce` class defined in `properties/forces.py`.

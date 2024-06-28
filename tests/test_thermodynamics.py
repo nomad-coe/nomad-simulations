@@ -34,6 +34,8 @@ from nomad_simulations.schema_packages.properties import (
     Density,
     Hessian,
 )
+
+
 class TestPressure:
     """
     Test the `Pressure` class defined in `properties/thermodynamics.py`.
@@ -48,6 +50,7 @@ class TestPressure:
         assert pressure.iri == 'http://fairmat-nfdi.eu/taxonomy/Pressure'
         assert pressure.name == 'Pressure'
         assert pressure.rank == []
+
 
 class TestVolume:
     """
@@ -64,6 +67,7 @@ class TestVolume:
         assert volume.name == 'Volume'
         assert volume.rank == []
 
+
 class TestTemperature:
     """
     Test the `Temperature` class defined in `properties/thermodynamics.py`.
@@ -78,6 +82,7 @@ class TestTemperature:
         assert temperature.iri == 'http://fairmat-nfdi.eu/taxonomy/Temperature'
         assert temperature.name == 'Temperature'
         assert temperature.rank == []
+
 
 class TestHeatAdded:
     """
@@ -94,6 +99,7 @@ class TestHeatAdded:
         assert heat_added.name == 'HeatAdded'
         assert heat_added.rank == []
 
+
 class TestWorkDone:
     """
     Test the `WorkDone` class defined in `properties/thermodynamics.py`.
@@ -109,6 +115,7 @@ class TestWorkDone:
         assert work_done.name == 'WorkDone'
         assert work_done.rank == []
 
+
 class TestInternalEnergy:
     """
     Test the `InternalEnergy` class defined in `properties/thermodynamics.py`.
@@ -123,6 +130,7 @@ class TestInternalEnergy:
         assert internal_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/InternalEnergy'
         assert internal_energy.name == 'InternalEnergy'
         assert internal_energy.rank == []
+
 
 class TestEnthalpy:
     """
@@ -155,6 +163,7 @@ class TestEntropy:
         assert entropy.name == 'Entropy'
         assert entropy.rank == []
 
+
 class TestGibbsFreeEnergy:
     """
     Test the `GibbsFreeEnergy` class defined in `properties/thermodynamics.py`.
@@ -166,9 +175,12 @@ class TestGibbsFreeEnergy:
         Test the default quantities assigned when creating an instance of the `GibbsFreeEnergy` class.
         """
         gibbs_free_energy = GibbsFreeEnergy()
-        assert gibbs_free_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/GibbsFreeEnergy'
+        assert (
+            gibbs_free_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/GibbsFreeEnergy'
+        )
         assert gibbs_free_energy.name == 'GibbsFreeEnergy'
         assert gibbs_free_energy.rank == []
+
 
 class TestHelmholtzFreeEnergy:
     """
@@ -181,9 +193,13 @@ class TestHelmholtzFreeEnergy:
         Test the default quantities assigned when creating an instance of the `HelmholtzFreeEnergy` class.
         """
         helmholtz_free_energy = HelmholtzFreeEnergy()
-        assert helmholtz_free_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/HelmholtzFreeEnergy'
+        assert (
+            helmholtz_free_energy.iri
+            == 'http://fairmat-nfdi.eu/taxonomy/HelmholtzFreeEnergy'
+        )
         assert helmholtz_free_energy.name == 'HelmholtzFreeEnergy'
         assert helmholtz_free_energy.rank == []
+
 
 class TestChemicalPotential:
     """
@@ -235,6 +251,7 @@ class TestHeatCapacityCP:
         assert heat_capacity_cp.name == 'HeatCapacityCP'
         assert heat_capacity_cp.rank == []
 
+
 class TestVirial:
     """
     Test the `Virial` class defined in `properties/thermodynamics.py`.
@@ -281,5 +298,3 @@ class TestHessian:
         assert hessian.iri == 'http://fairmat-nfdi.eu/taxonomy/Hessian'
         assert hessian.name == 'Hessian'
         assert hessian.rank == []
-
-

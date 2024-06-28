@@ -248,6 +248,7 @@ class Density(PhysicalProperty):
         super().normalize(archive, logger)
 
 
+# ? I think this may fit better elsewhere
 class Hessian(PhysicalProperty):
     """
     Physical property section describing the Hessian matrix, i.e., 2nd derivatives with respect to geometric (typically particle) displacements,

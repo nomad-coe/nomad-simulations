@@ -48,7 +48,7 @@ from nomad_simulations.schema_packages.properties import (
     KineticEnergy,
     PotentialEnergy,
     TotalForce,
-    Temperature
+    Temperature,
 )
 
 
