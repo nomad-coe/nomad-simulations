@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING, List
 import numpy as np
 
 from nomad.config import config
-from nomad.datamodel.data import EntryData
+from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Activity, Entity
 from nomad.metainfo import Datetime, Quantity, SchemaPackage, Section, SubSection
@@ -163,7 +163,7 @@ class BaseSimulation(Activity):
         pass
 
 
-class Simulation(BaseSimulation, EntryData):
+class Simulation(BaseSimulation, Schema):
     """
     A `Simulation` is a computational calculation that produces output data from a given input model system
     and input (model) methodological parameters. The output properties obtained from the simulation are stored
@@ -264,7 +264,7 @@ class Simulation(BaseSimulation, EntryData):
         get_composition_recurs(system=system_parent, atom_labels=atom_labels)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super(EntryData, self).normalize(archive, logger)
+        super(Schema, self).normalize(archive, logger)
 
         # Finding which is the representative system of a calculation: typically, we will
         # define it as the last system reported (TODO CHECK THIS!).

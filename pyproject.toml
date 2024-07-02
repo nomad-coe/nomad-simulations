@@ -8,9 +8,6 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "License :: OSI Approved :: Apache Software License",
 ]
 name = "nomad-simulations"
@@ -30,7 +27,7 @@ maintainers = [
 ]
 license = { file = "LICENSE" }
 dependencies = [
-    "nomad-lab>=1.2.2dev578",
+    "nomad-lab>=1.3.0",
     "matid>=2.0.0.dev2",
 ]
 
@@ -47,7 +44,6 @@ dev = [
     "pytest-timeout",
     "pytest-cov",
     "structlog",
-    "lxml_html_clean>=0.1.0"
 ]
 
 [tool.ruff]
