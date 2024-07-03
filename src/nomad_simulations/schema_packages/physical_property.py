@@ -332,6 +332,10 @@ class PropertyContribution(PhysicalProperty):
     """
     Abstract physical property section linking a property contribution to a contribution
     from some method.
+
+    Abstract class for incorporating specific contributions of a physical property, while
+    linking this contribution to a specific component (of class `BaseModelMethod`) of the
+    over `ModelMethod` using the `model_method_ref` quantity.
     """
 
     model_method_ref = Quantity(

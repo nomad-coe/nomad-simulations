@@ -48,7 +48,6 @@ class BaseEnergy(PhysicalProperty):
         type=np.float64,
         unit='joule',
         description="""
-        The amount of the energy.
         """,
     )
 

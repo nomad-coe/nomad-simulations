@@ -49,7 +49,6 @@ class BaseForce(PhysicalProperty):
         type=np.dtype(np.float64),
         unit='newton',
         description="""
-        The amount of force.
         """,
     )
 

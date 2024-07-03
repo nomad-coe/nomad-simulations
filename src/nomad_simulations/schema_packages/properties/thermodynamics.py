@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
-from nomad_simulations.schema_packages.properties import BaseEnergy
+from nomad_simulations.schema_packages.properties.energies import BaseEnergy
 
 ######################################
 # fundamental thermodynamic properties
@@ -47,7 +47,6 @@ class Pressure(PhysicalProperty):
         type=np.float64,
         unit='pascal',
         description="""
-        The value of the pressure.
         """,
     )
 
@@ -69,7 +68,6 @@ class Volume(PhysicalProperty):
         type=np.float64,
         unit='m ** 3',
         description="""
-        The value of the volume.
         """,
     )
 
@@ -86,7 +84,6 @@ class Temperature(PhysicalProperty):
         type=np.float64,
         unit='kelvin',
         description="""
-        The value of the temperature.
         """,
     )
 
@@ -152,7 +149,6 @@ class Entropy(PhysicalProperty):
         type=np.float64,
         unit='joule / kelvin',
         description="""
-        The value of the entropy.
         """,
     )
 
@@ -209,7 +205,6 @@ class HeatCapacity(PhysicalProperty):
         type=np.float64,
         unit='joule / kelvin',
         description="""
-        The value of the heat capacity.
         """,
     )
 
@@ -251,7 +246,6 @@ class MassDensity(PhysicalProperty):
         type=np.float64,
         unit='kg / m ** 3',
         description="""
-        The value of the mass density.
         """,
     )
 
@@ -270,7 +264,6 @@ class Hessian(PhysicalProperty):
         type=np.float64,
         unit='joule / m ** 2',
         description="""
-        The value of the Hessian.
         """,
     )
 
