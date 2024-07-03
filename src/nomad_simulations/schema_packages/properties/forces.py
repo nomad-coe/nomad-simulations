@@ -37,6 +37,7 @@ from nomad_simulations.schema_packages.physical_property import (
 # Abstract classes
 ##################
 
+
 class BaseForce(PhysicalProperty):
     """
     Abstract class used to define a common `value` quantity with the appropriate units
@@ -97,4 +98,3 @@ class TotalForce(BaseForce):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-
