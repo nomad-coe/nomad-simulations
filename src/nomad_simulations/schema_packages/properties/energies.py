@@ -39,14 +39,16 @@ from nomad_simulations.schema_packages.physical_property import (
 
 class BaseEnergy(PhysicalProperty):
     """
-    Abstract physical property section describing some energy of a (sub)system.
+    Abstract class used to define a common `value` quantity with the appropriate units
+    for different types of energies, which avoids repeating the definitions for each
+    energy class.
     """
 
     value = Quantity(
         type=np.float64,
         unit='joule',
         description="""
-        The value of the energy.
+        The amount of the energy.
         """,
     )
 
@@ -56,10 +58,21 @@ class BaseEnergy(PhysicalProperty):
 
 class EnergyContribution(BaseEnergy, PropertyContribution):
     """
-    Abstract physical property section linking a property contribution to a contribution
-    from some method.
+    Abstract class for incorporating specific energy contributions to the `TotalEnergy`.
+    The inheritance from `PropertyContribution` allows to link this contribution to a
+    specific component (of class `BaseModelMethod`) of the over `ModelMethod` using the
+    `model_method_ref` quantity.
+
+    For example, for a force field calculation, the `model_method_ref` may point to a
+    particular potential type (e.g., a Lennard-Jones potential between atom types X and Y),
+    while for a DFT calculation, it may point to a particular electronic interaction term
+    (e.g., 'XC' for the exchange-correlation term, or 'Hartree' for the Hartree term).
+    Then, the contribution will be named according to this model component and the `value`
+    quantity will contain the energy contribution from this component evaluated over all
+    relevant atoms or electrons or as a function of them.
     """
 
+    # TODO address the dual parent normalization explicity
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
@@ -71,8 +84,7 @@ class EnergyContribution(BaseEnergy, PropertyContribution):
 
 class FermiLevel(BaseEnergy):
     """
-    Physical property section describing the Fermi level, i.e., the energy required to add or extract a charge from a material at zero temperature.
-    It can be also defined as the chemical potential at zero temperature.
+    Energy required to add or extract a charge from a material at zero temperature. It can be also defined as the chemical potential at zero temperature.
     """
 
     # ! implement `iri` and `rank` as part of `m_def = Section()`
@@ -94,9 +106,11 @@ class FermiLevel(BaseEnergy):
 #! since kinetic energy lives separately, but I think maybe this is ok?
 class TotalEnergy(BaseEnergy):
     """
-    Physical property section describing the total energy of a (sub)system.
+    The total energy of a system. `contributions` specify individual energetic
+    contributions to the `TotalEnergy`.
     """
 
+    # ? add a generic contributions quantity to PhysicalProperty
     contributions = SubSection(sub_section=EnergyContribution.m_def, repeats=True)
 
     def __init__(
@@ -126,51 +140,3 @@ class PotentialEnergy(BaseEnergy):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-
-
-#! I removed all previous contributions associated in some way with terms in the Hamiltonian.
-# ? Should the remaining contributions below be incorporated into some sort of workflow results if still relevant?
-
-
-# class ZeroTemperatureEnergy(QuantumEnergy):
-#     """
-#     Physical property section describing the total energy of a (sub)system extrapolated to $T=0$, based on a free-electron gas argument.
-#     """
-
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
-
-
-# class ZeroPointEnergy(QuantumEnergy):
-#     """
-#     Physical property section describing the zero-point vibrational energy of a (sub)system,
-#     calculated using the method described in zero_point_method.
-#     """
-
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
-
-
-# madelung = SubSection(
-#     sub_section=EnergyEntry.m_def,
-#     description="""
-#     Contains the value and information regarding the Madelung energy.
-#     """,
-# )
-
-# free = SubSection(
-#     sub_section=EnergyEntry.m_def,
-#     description="""
-#     Contains the value and information regarding the free energy (nuclei + electrons)
-#     (whose minimum gives the smeared occupation density calculated with
-#     smearing_kind).
-#     """,
-# )
-
-# sum_eigenvalues = SubSection(
-#     sub_section=EnergyEntry.m_def,
-#     description="""
-#     Contains the value and information regarding the sum of the eigenvalues of the
-#     Hamiltonian matrix.
-#     """,
-# )

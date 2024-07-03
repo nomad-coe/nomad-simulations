@@ -20,7 +20,6 @@ from .band_gap import ElectronicBandGap
 from .band_structure import ElectronicBandStructure, ElectronicEigenvalues
 from .energies import (
     FermiLevel,
-    BaseEnergy,
     EnergyContribution,
     TotalEnergy,
     KineticEnergy,
@@ -31,18 +30,17 @@ from .thermodynamics import (
     Pressure,
     Volume,
     Temperature,
-    HeatAdded,
-    WorkDone,
+    Heat,
+    Work,
     InternalEnergy,
     Enthalpy,
     Entropy,
     GibbsFreeEnergy,
     HelmholtzFreeEnergy,
     ChemicalPotential,
-    HeatCapacityCV,
-    HeatCapacityCP,
-    Virial,
-    Density,
+    HeatCapacity,
+    VirialTensor,
+    MassDensity,
     Hessian,
 )
 from .fermi_surface import FermiSurface

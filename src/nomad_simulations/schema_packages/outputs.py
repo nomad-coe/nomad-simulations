@@ -76,8 +76,8 @@ class Outputs(ArchiveSection):
     model_method_ref = Quantity(
         type=ModelMethod,
         description="""
-        Reference to the `ModelMethod` section containing the details with which the
-        output physical properties were calculated.
+        Reference to the `ModelMethod` section containing the details of the mathematical
+        model with which the output physical properties were calculated.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
@@ -332,7 +332,8 @@ class SCFOutputs(Outputs):
 class WorkflowOutputs(Outputs):
     """
     This section contains output properties that depend on a single system, but were
-    calculated as part of a workflow. Examples include geometry optimization and molecular dynamics.
+    calculated as part of a workflow (e.g., the energies from a geometry optimization),
+    and thus may include step information.
     """
 
     step = Quantity(
@@ -343,6 +344,7 @@ class WorkflowOutputs(Outputs):
     )
 
     # TODO add this in when we link to nomad-simulations-workflow schema
+    # ? check potential circular imports problems when the nomad-simulations-workflow schema is transferred here
     # workflow_ref = Quantity(
     #     type=SimulationWorkflow,
     #     description="""
@@ -358,7 +360,8 @@ class WorkflowOutputs(Outputs):
 class TrajectoryOutputs(WorkflowOutputs):
     """
     This section contains output properties that depend on a single system, but were
-    calculated as part of a workflow. Examples include geometry optimization and molecular dynamics.
+    calculated as part of a trajectory (e.g., temperatures from a molecular dynamics
+    simulation), and thus may include time information.
     """
 
     time = Quantity(

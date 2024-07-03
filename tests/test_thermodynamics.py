@@ -20,18 +20,17 @@ from nomad_simulations.schema_packages.properties import (
     Pressure,
     Volume,
     Temperature,
-    HeatAdded,
-    WorkDone,
+    Heat,
+    Work,
     InternalEnergy,
     Enthalpy,
     Entropy,
     GibbsFreeEnergy,
     HelmholtzFreeEnergy,
     ChemicalPotential,
-    HeatCapacityCV,
-    HeatCapacityCP,
-    Virial,
-    Density,
+    HeatCapacity,
+    VirialTensor,
+    MassDensity,
     Hessian,
 )
 
@@ -84,36 +83,36 @@ class TestTemperature:
         assert temperature.rank == []
 
 
-class TestHeatAdded:
+class TestHeat:
     """
-    Test the `HeatAdded` class defined in `properties/thermodynamics.py`.
-    """
-
-    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
-    def test_default_quantities(self):
-        """
-        Test the default quantities assigned when creating an instance of the `HeatAdded` class.
-        """
-        heat_added = HeatAdded()
-        assert heat_added.iri == 'http://fairmat-nfdi.eu/taxonomy/HeatAdded'
-        assert heat_added.name == 'HeatAdded'
-        assert heat_added.rank == []
-
-
-class TestWorkDone:
-    """
-    Test the `WorkDone` class defined in `properties/thermodynamics.py`.
+    Test the `Heat` class defined in `properties/thermodynamics.py`.
     """
 
     # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
     def test_default_quantities(self):
         """
-        Test the default quantities assigned when creating an instance of the `WorkDone` class.
+        Test the default quantities assigned when creating an instance of the `Heat` class.
         """
-        work_done = WorkDone()
-        assert work_done.iri == 'http://fairmat-nfdi.eu/taxonomy/WorkDone'
-        assert work_done.name == 'WorkDone'
-        assert work_done.rank == []
+        heat = Heat()
+        assert heat.iri == 'http://fairmat-nfdi.eu/taxonomy/Heat'
+        assert heat.name == 'Heat'
+        assert heat.rank == []
+
+
+class TestWork:
+    """
+    Test the `Work` class defined in `properties/thermodynamics.py`.
+    """
+
+    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
+    def test_default_quantities(self):
+        """
+        Test the default quantities assigned when creating an instance of the `Work` class.
+        """
+        work = Work()
+        assert work.iri == 'http://fairmat-nfdi.eu/taxonomy/Work'
+        assert work.name == 'Work'
+        assert work.rank == []
 
 
 class TestInternalEnergy:
@@ -220,68 +219,52 @@ class TestChemicalPotential:
         assert chemical_potential.rank == []
 
 
-class TestHeatCapacityCV:
+class TestHeatCapacity:
     """
-    Test the `HeatCapacityCV` class defined in `properties/thermodynamics.py`.
-    """
-
-    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
-    def test_default_quantities(self):
-        """
-        Test the default quantities assigned when creating an instance of the `HeatCapacityCV` class.
-        """
-        heat_capacity_cv = HeatCapacityCV()
-        assert heat_capacity_cv.iri == 'http://fairmat-nfdi.eu/taxonomy/HeatCapacityCV'
-        assert heat_capacity_cv.name == 'HeatCapacityCV'
-        assert heat_capacity_cv.rank == []
-
-
-class TestHeatCapacityCP:
-    """
-    Test the `HeatCapacityCP` class defined in `properties/thermodynamics.py`.
+    Test the `HeatCapacity` class defined in `properties/thermodynamics.py`.
     """
 
     # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
     def test_default_quantities(self):
         """
-        Test the default quantities assigned when creating an instance of the `HeatCapacityCP` class.
+        Test the default quantities assigned when creating an instance of the `HeatCapacity` class.
         """
-        heat_capacity_cp = HeatCapacityCP()
-        assert heat_capacity_cp.iri == 'http://fairmat-nfdi.eu/taxonomy/HeatCapacityCP'
-        assert heat_capacity_cp.name == 'HeatCapacityCP'
-        assert heat_capacity_cp.rank == []
+        heat_capacity = HeatCapacity()
+        assert heat_capacity.iri == 'http://fairmat-nfdi.eu/taxonomy/HeatCapacity'
+        assert heat_capacity.name == 'HeatCapacity'
+        assert heat_capacity.rank == []
 
 
-class TestVirial:
+class TestVirialTensor:
     """
-    Test the `Virial` class defined in `properties/thermodynamics.py`.
-    """
-
-    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
-    def test_default_quantities(self):
-        """
-        Test the default quantities assigned when creating an instance of the `Virial` class.
-        """
-        virial = Virial()
-        assert virial.iri == 'http://fairmat-nfdi.eu/taxonomy/Virial'
-        assert virial.name == 'Virial'
-        assert virial.rank == []
-
-
-class TestDensity:
-    """
-    Test the `Density` class defined in `properties/thermodynamics.py`.
+    Test the `VirialTensor` class defined in `properties/thermodynamics.py`.
     """
 
     # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
     def test_default_quantities(self):
         """
-        Test the default quantities assigned when creating an instance of the `Density` class.
+        Test the default quantities assigned when creating an instance of the `VirialTensor` class.
         """
-        density = Density()
-        assert density.iri == 'http://fairmat-nfdi.eu/taxonomy/Density'
-        assert density.name == 'Density'
-        assert density.rank == []
+        virial_tensor = VirialTensor()
+        assert virial_tensor.iri == 'http://fairmat-nfdi.eu/taxonomy/VirialTensor'
+        assert virial_tensor.name == 'VirialTensor'
+        assert virial_tensor.rank == []
+
+
+class TestMassDensity:
+    """
+    Test the `MassDensity` class defined in `properties/thermodynamics.py`.
+    """
+
+    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
+    def test_default_quantities(self):
+        """
+        Test the default quantities assigned when creating an instance of the `MassDensity` class.
+        """
+        mass_density = MassDensity()
+        assert mass_density.iri == 'http://fairmat-nfdi.eu/taxonomy/MassDensity'
+        assert mass_density.name == 'MassDensity'
+        assert mass_density.rank == []
 
 
 class TestHessian:
