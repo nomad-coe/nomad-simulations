@@ -16,12 +16,12 @@
 # limitations under the License.
 #
 
-import pytest
 from typing import Optional
 
+import pytest
 from nomad_simulations.schema_packages.properties import (
-    HoppingMatrix,
     CrystalFieldSplitting,
+    HoppingMatrix,
 )
 
 
@@ -47,7 +47,7 @@ class TestHoppingMatrix:
                 hopping_matrix = HoppingMatrix(n_orbitals=n_orbitals)
             assert (
                 str(exc_info.value)
-                == f'`n_orbitals` is not defined during initialization of the class.'
+                == '`n_orbitals` is not defined during initialization of the class.'
             )
         else:
             hopping_matrix = HoppingMatrix(n_orbitals=n_orbitals)
@@ -78,7 +78,7 @@ class TestCrystalFieldSplitting:
                 crystal_field = CrystalFieldSplitting(n_orbitals=n_orbitals)
             assert (
                 str(exc_info.value)
-                == f'`n_orbitals` is not defined during initialization of the class.'
+                == '`n_orbitals` is not defined during initialization of the class.'
             )
         else:
             crystal_field = CrystalFieldSplitting(n_orbitals=n_orbitals)

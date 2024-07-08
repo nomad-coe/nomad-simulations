@@ -17,31 +17,35 @@
 #
 
 import os
+from typing import Optional
+
 import numpy as np
 import pytest
-from typing import List, Optional
-
-from nomad.units import ureg
 from nomad.datamodel import EntryArchive
-
-from nomad_simulations.schema_packages.general import Simulation
-from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
+from nomad.units import ureg
 from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
+from nomad_simulations.schema_packages.general import Simulation
 from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
 from nomad_simulations.schema_packages.numerical_settings import (
-    SelfConsistency,
-    KSpace,
-    KMesh as KMeshSettings,
     KLinePath as KLinePathSettings,
 )
+from nomad_simulations.schema_packages.numerical_settings import (
+    KMesh as KMeshSettings,
+)
+from nomad_simulations.schema_packages.numerical_settings import (
+    KSpace,
+    SelfConsistency,
+)
 from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
-from nomad_simulations.schema_packages.variables import Energy2 as Energy, KLinePath
 from nomad_simulations.schema_packages.properties import (
-    ElectronicBandGap,
     DOSProfile,
+    ElectronicBandGap,
     ElectronicDensityOfStates,
     ElectronicEigenvalues,
 )
+from nomad_simulations.schema_packages.variables import Energy2 as Energy
+from nomad_simulations.schema_packages.variables import KLinePath
 
 from . import logger
 
@@ -79,12 +83,12 @@ def generate_simulation(
 def generate_model_system(
     type: str = 'original',
     system_type: str = 'bulk',
-    positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
-    lattice_vectors: List[List[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-    chemical_symbols: List[str] = ['Ga', 'As'],
-    orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
+    positions: list[list[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
+    lattice_vectors: list[list[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    chemical_symbols: list[str] = ['Ga', 'As'],
+    orbitals_symbols: list[list[str]] = [['s'], ['px', 'py']],
     is_representative: bool = True,
-    pbc: List[bool] = [False, False, False],
+    pbc: list[bool] = [False, False, False],
 ) -> Optional[ModelSystem]:
     """
     Generate a `ModelSystem` section with the given parameters.
@@ -120,11 +124,11 @@ def generate_model_system(
 
 
 def generate_atomic_cell(
-    lattice_vectors: List[List[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    lattice_vectors: list[list[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
     positions: Optional[list] = None,
-    periodic_boundary_conditions: List[bool] = [False, False, False],
-    chemical_symbols: List[str] = ['H', 'H', 'O'],
-    atomic_numbers: List[int] = [1, 1, 8],
+    periodic_boundary_conditions: list[bool] = [False, False, False],
+    chemical_symbols: list[str] = ['H', 'H', 'O'],
+    atomic_numbers: list[int] = [1, 1, 8],
 ) -> AtomicCell:
     """
     Generate an `AtomicCell` section with the given parameters.
@@ -192,7 +196,7 @@ def generate_scf_electronic_band_gap_template(
 
 
 def generate_simulation_electronic_dos(
-    energy_points: List[int] = [-3, -2, -1, 0, 1, 2, 3],
+    energy_points: list[int] = [-3, -2, -1, 0, 1, 2, 3],
 ) -> Simulation:
     """
     Generate a `Simulation` section with an `ElectronicDensityOfStates` section under `Outputs`. It uses
@@ -232,8 +236,8 @@ def generate_simulation_electronic_dos(
 
 
 def generate_k_line_path(
-    high_symmetry_path_names: List[str] = ['Gamma', 'X', 'Y', 'Gamma'],
-    high_symmetry_path_values: List[List[float]] = [
+    high_symmetry_path_names: list[str] = ['Gamma', 'X', 'Y', 'Gamma'],
+    high_symmetry_path_values: list[list[float]] = [
         [0, 0, 0],
         [0.5, 0, 0],
         [0, 0.5, 0],
@@ -249,24 +253,24 @@ def generate_k_line_path(
 def generate_k_space_simulation(
     system_type: str = 'bulk',
     is_representative: bool = True,
-    positions: List[List[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
-    lattice_vectors: List[List[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-    chemical_symbols: List[str] = ['Ga', 'As'],
-    orbitals_symbols: List[List[str]] = [['s'], ['px', 'py']],
-    pbc: List[bool] = [False, False, False],
-    reciprocal_lattice_vectors: Optional[List[List[float]]] = [
+    positions: list[list[float]] = [[0, 0, 0], [0.5, 0.5, 0.5]],
+    lattice_vectors: list[list[float]] = [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+    chemical_symbols: list[str] = ['Ga', 'As'],
+    orbitals_symbols: list[list[str]] = [['s'], ['px', 'py']],
+    pbc: list[bool] = [False, False, False],
+    reciprocal_lattice_vectors: Optional[list[list[float]]] = [
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
     ],
-    high_symmetry_path_names: List[str] = ['Gamma', 'X', 'Y', 'Gamma'],
-    high_symmetry_path_values: List[List[float]] = [
+    high_symmetry_path_names: list[str] = ['Gamma', 'X', 'Y', 'Gamma'],
+    high_symmetry_path_values: list[list[float]] = [
         [0, 0, 0],
         [0.5, 0, 0],
         [0, 0.5, 0],
         [0, 0, 0],
     ],
-    klinepath_points: Optional[List[float]] = None,
+    klinepath_points: Optional[list[float]] = None,
     grid=[6, 6, 6],
 ) -> Simulation:
     model_system = generate_model_system(
@@ -302,7 +306,7 @@ def generate_k_space_simulation(
 
 
 def generate_electronic_eigenvalues(
-    reciprocal_lattice_vectors: Optional[List[List[float]]] = [
+    reciprocal_lattice_vectors: Optional[list[list[float]]] = [
         [1, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
@@ -351,7 +355,7 @@ def generate_electronic_eigenvalues(
     model_method = ModelMethod(numerical_settings=[k_space])
     if reciprocal_lattice_vectors is not None and len(reciprocal_lattice_vectors) > 0:
         k_space.reciprocal_lattice_vectors = reciprocal_lattice_vectors
-    simulation = generate_simulation(
+    _ = generate_simulation(
         model_system=generate_model_system(),
         model_method=model_method,
         outputs=outputs,

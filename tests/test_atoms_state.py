@@ -16,18 +16,17 @@
 # limitations under the License.
 #
 
-import pytest
+from typing import Optional, Union
+
 import numpy as np
-from typing import List, Union, Optional, Tuple
-
-from nomad.units import ureg
+import pytest
 from nomad.datamodel import EntryArchive
-
+from nomad.units import ureg
 from nomad_simulations.schema_packages.atoms_state import (
-    OrbitalsState,
+    AtomsState,
     CoreHole,
     HubbardInteractions,
-    AtomsState,
+    OrbitalsState,
 )
 
 from . import logger
@@ -44,8 +43,8 @@ class TestOrbitalsState:
         l_number: int,
         ml_number: Optional[int],
         ms_number: Optional[float],
-        j_number: Optional[List[float]],
-        mj_number: Optional[List[float]],
+        j_number: Optional[list[float]],
+        mj_number: Optional[list[float]],
     ) -> None:
         """Adds l and ml quantum numbers to the `OrbitalsState` section."""
         orbital_state.l_quantum_number = l_number
@@ -65,7 +64,7 @@ class TestOrbitalsState:
         ],
     )
     def test_validate_quantum_numbers(
-        self, number_label: str, values: List[int], results: List[bool]
+        self, number_label: str, values: list[int], results: list[bool]
     ):
         """
         Test the `validate_quantum_numbers` method.
@@ -149,8 +148,8 @@ class TestOrbitalsState:
         self,
         l_quantum_number: int,
         ml_quantum_number: Optional[int],
-        j_quantum_number: Optional[List[float]],
-        mj_quantum_number: Optional[List[float]],
+        j_quantum_number: Optional[list[float]],
+        mj_quantum_number: Optional[list[float]],
         ms_quantum_number: Optional[float],
         degeneracy: int,
     ):
@@ -160,8 +159,8 @@ class TestOrbitalsState:
         Args:
             l_quantum_number (int): The angular momentum quantum number.
             ml_quantum_number (Optional[int]): The magnetic quantum number.
-            j_quantum_number (Optional[List[float]]): The total angular momentum quantum number.
-            mj_quantum_number (Optional[List[float]]): The magnetic quantum number for the total angular momentum.
+            j_quantum_number (Optional[list[float]]): The total angular momentum quantum number.
+            mj_quantum_number (Optional[list[float]]): The magnetic quantum number for the total angular momentum.
             ms_quantum_number (Optional[float]): The spin quantum number.
             degeneracy (int): The expected degeneracy of the orbital state.
         """
@@ -252,7 +251,7 @@ class TestCoreHole:
         orbital_ref: Optional[OrbitalsState],
         n_excited_electrons: Optional[float],
         dscf_state: Optional[str],
-        results: Tuple[Optional[float], Optional[float], Optional[float]],
+        results: tuple[Optional[float], Optional[float], Optional[float]],
     ):
         """
         Test the normalization of the `CoreHole`. Inputs are defined as the quantities of the `CoreHole` section.
@@ -261,7 +260,7 @@ class TestCoreHole:
             orbital_ref (Optional[OrbitalsState]): The orbital reference of the core hole.
             n_excited_electrons (Optional[float]): The number of excited electrons.
             dscf_state (Optional[str]): The DSCF state of the core hole.
-            results (Tuple[Optional[float], Optional[float], Optional[float]]): The expected results after normalization.
+            results (tuple[Optional[float], Optional[float], Optional[float]]): The expected results after normalization.
         """
         core_hole = CoreHole(
             orbital_ref=orbital_ref,
@@ -290,15 +289,15 @@ class TestHubbardInteractions:
     )
     def test_u_interactions(
         self,
-        slater_integrals: Optional[List[float]],
-        results: Tuple[Optional[float], Optional[float], Optional[float]],
+        slater_integrals: Optional[list[float]],
+        results: tuple[Optional[float], Optional[float], Optional[float]],
     ):
         """
         Test the Hubbard interactions `U`, `U'`, and `J` for a given set of Slater integrals.
 
         Args:
-            slater_integrals (Optional[List[float]]): The Slater integrals of the Hubbard interactions.
-            results (Tuple[Optional[float], Optional[float], Optional[float]]): The expected results of the Hubbard interactions.
+            slater_integrals (Optional[list[float]]): The Slater integrals of the Hubbard interactions.
+            results (tuple[Optional[float], Optional[float], Optional[float]]): The expected results of the Hubbard interactions.
         """
         # Adding `slater_integrals` to the `HubbardInteractions` section
         hubbard_interactions = HubbardInteractions()

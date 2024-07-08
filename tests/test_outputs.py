@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
+from typing import Optional
+
 import pytest
-from typing import Optional, List
-
 from nomad.datamodel import EntryArchive
-
-from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
 from nomad_simulations.schema_packages.properties import ElectronicBandGap
 
 from . import logger
-from .conftest import generate_simulation, generate_scf_electronic_band_gap_template
+from .conftest import generate_scf_electronic_band_gap_template, generate_simulation
 
 
 class TestOutputs:
@@ -83,19 +82,19 @@ class TestOutputs:
     )
     def test_extract_spin_polarized_properties(
         self,
-        band_gaps: List[ElectronicBandGap],
-        values: List[float],
+        band_gaps: list[ElectronicBandGap],
+        values: list[float],
         result_length: int,
-        result: List[ElectronicBandGap],
+        result: list[ElectronicBandGap],
     ):
         """
         Test the `extract_spin_polarized_property` method.
 
         Args:
-            band_gaps (List[ElectronicBandGap]): The `ElectronicBandGap` sections to be stored under `Outputs`.
-            values (List[float]): The values to be assigned to the `ElectronicBandGap` sections.
+            band_gaps (list[ElectronicBandGap]): The `ElectronicBandGap` sections to be stored under `Outputs`.
+            values (list[float]): The values to be assigned to the `ElectronicBandGap` sections.
             result_length (int): The expected length extracted from `extract_spin_polarized_property`.
-            result (List[ElectronicBandGap]): The expected result of the `extract_spin_polarized_property` method.
+            result (list[ElectronicBandGap]): The expected result of the `extract_spin_polarized_property` method.
         """
         outputs = Outputs()
 
@@ -256,11 +255,11 @@ class TestSCFOutputs:
     )
     def test_get_last_scf_steps_value(
         self,
-        scf_last_steps: List[Outputs],
+        scf_last_steps: list[Outputs],
         i_property: int,
-        values: List[float],
+        values: list[float],
         scf_parameters: Optional[SelfConsistency],
-        result: List[float],
+        result: list[float],
     ):
         scf_outputs = SCFOutputs()
         for i, scf_step in enumerate(scf_last_steps):

@@ -16,20 +16,19 @@
 # limitations under the License.
 #
 
+from typing import Optional
+
 import pytest
-from typing import List, Optional
-
 from nomad.datamodel import EntryArchive
-
+from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.schema_packages.general import Simulation
 from nomad_simulations.schema_packages.model_method import (
     TB,
-    Wannier,
     SlaterKoster,
     SlaterKosterBond,
+    Wannier,
 )
-from nomad_simulations.schema_packages.atoms_state import OrbitalsState, AtomsState
-from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
+from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
 
 from . import logger
 from .conftest import generate_simulation
@@ -146,17 +145,17 @@ class TestTB:
     )
     def test_resolve_orbital_references(
         self,
-        model_systems: Optional[List[ModelSystem]],
+        model_systems: Optional[list[ModelSystem]],
         model_index: int,
-        result: Optional[List[OrbitalsState]],
+        result: Optional[list[OrbitalsState]],
     ):
         """
         Test the `resolve_orbital_references` method.
 
         Args:
-            model_systems (Optional[List[ModelSystem]]): The `model_system` section to add to `Simulation`.
+            model_systems (Optional[list[ModelSystem]]): The `model_system` section to add to `Simulation`.
             model_index (int): The index of the `ModelSystem` section to resolve the orbital references from.
-            result (Optional[List[OrbitalsState]]): The expected orbital references.
+            result (Optional[list[OrbitalsState]]): The expected orbital references.
         """
         tb_method = TB()
         simulation = generate_simulation(model_method=tb_method)
@@ -302,8 +301,8 @@ class TestTB:
         self,
         tb_section: TB,
         result_type: Optional[str],
-        model_systems: Optional[List[ModelSystem]],
-        result: Optional[List[OrbitalsState]],
+        model_systems: Optional[list[ModelSystem]],
+        result: Optional[list[OrbitalsState]],
     ):
         """
         Test the `resolve_orbital_references` method.
@@ -311,8 +310,8 @@ class TestTB:
         Args:
             tb_section (TB): The TB section to resolve the type from.
             result_type (Optional[str]): The expected type of the TB section.
-            model_systems (Optional[List[ModelSystem]]): The `model_system` section to add to `Simulation`.
-            result (Optional[List[OrbitalsState]]): The expected orbital references.
+            model_systems (Optional[list[ModelSystem]]): The `model_system` section to add to `Simulation`.
+            result (Optional[list[OrbitalsState]]): The expected orbital references.
         """
         simulation = generate_simulation(model_method=tb_section)
         simulation.model_system = model_systems
@@ -467,7 +466,7 @@ class TestSlaterKosterBond:
         """
         sk_bond = SlaterKosterBond()
         atoms_state = AtomsState()
-        simulation = Simulation(
+        _ = Simulation(
             model_system=[ModelSystem(cell=[AtomicCell(atoms_state=[atoms_state])])]
         )
         if orbital_1 is not None:

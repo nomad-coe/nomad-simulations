@@ -17,20 +17,18 @@
 #
 
 from itertools import accumulate, chain, tee
-from typing import TYPE_CHECKING, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 import pint
-
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
-
 from nomad.datamodel.data import ArchiveSection
 from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.model_system import ModelSystem
@@ -176,7 +174,7 @@ class KSpaceFunctionalities:
         reciprocal_lattice_vectors: Optional[pint.Quantity],
         logger: 'BoundLogger',
         check_grid: Optional[bool] = False,
-        grid: Optional[List[int]] = [],
+        grid: Optional[list[int]] = [],
     ) -> bool:
         """
         Validate the `reciprocal_lattice_vectors` by checking if they exist and if they have the same dimensionality as `grid`.
@@ -185,7 +183,7 @@ class KSpaceFunctionalities:
             reciprocal_lattice_vectors (Optional[pint.Quantity]): The reciprocal lattice vectors of the atomic cell.
             logger (BoundLogger): The logger to log messages.
             check_grid (bool, optional): Flag to check the `grid` is set to True. Defaults to False.
-            grid (Optional[List[int]], optional): The grid of the `KMesh`. Defaults to [].
+            grid (Optional[list[int]], optional): The grid of the `KMesh`. Defaults to [].
 
         Returns:
             (bool): True if the `reciprocal_lattice_vectors` exist. If `check_grid_too` is set to True, it also checks if the
@@ -211,7 +209,7 @@ class KSpaceFunctionalities:
 
     def resolve_high_symmetry_points(
         self,
-        model_systems: List[ModelSystem],
+        model_systems: list[ModelSystem],
         logger: 'BoundLogger',
         eps: float = 3e-3,
     ) -> Optional[dict]:
@@ -221,7 +219,7 @@ class KSpaceFunctionalities:
         special (high symmetry) points information.
 
         Args:
-            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            model_systems (list[ModelSystem]): The list of `ModelSystem` sections.
             logger (BoundLogger): The logger to log messages.
             eps (float, optional): Tolerance factor to define the `lattice` ASE object. Defaults to 3e-3.
 
@@ -364,7 +362,7 @@ class KMesh(Mesh):
 
     def resolve_points_and_offset(
         self, logger: 'BoundLogger'
-    ) -> Tuple[Optional[List[np.ndarray]], Optional[np.ndarray]]:
+    ) -> tuple[Optional[list[np.ndarray]], Optional[np.ndarray]]:
         """
         Resolves the `points` and `offset` of the `KMesh` from the `grid` and the `center`.
 
@@ -372,7 +370,7 @@ class KMesh(Mesh):
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[List[pint.Quantity, pint.Quantity]]): The resolved `points` and `offset` of the `KMesh`.
+            (tuple[Optional[list[np.ndarray]], Optional[np.ndarray]]): The resolved `points` and `offset` of the `KMesh`.
         """
         if self.grid is None:
             logger.warning('Could not find `KMesh.grid`.')
@@ -429,7 +427,7 @@ class KMesh(Mesh):
 
     def resolve_k_line_density(
         self,
-        model_systems: List[ModelSystem],
+        model_systems: list[ModelSystem],
         reciprocal_lattice_vectors: pint.Quantity,
         logger: 'BoundLogger',
     ) -> Optional[pint.Quantity]:
@@ -437,7 +435,7 @@ class KMesh(Mesh):
         Resolves the `k_line_density` of the `KMesh` from the the list of `ModelSystem`.
 
         Args:
-            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            model_systems (list[ModelSystem]): The list of `ModelSystem` sections.
             logger (BoundLogger): The logger to log messages.
 
         Returns:
@@ -545,20 +543,20 @@ class KLinePath(ArchiveSection):
 
     def resolve_high_symmetry_path_values(
         self,
-        model_systems: List[ModelSystem],
+        model_systems: list[ModelSystem],
         reciprocal_lattice_vectors: pint.Quantity,
         logger: 'BoundLogger',
-    ) -> Optional[List[float]]:
+    ) -> Optional[list[float]]:
         """
         Resolves the `high_symmetry_path_values` of the `KLinePath` from the `high_symmetry_path_names`.
 
         Args:
-            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            model_systems (list[ModelSystem]): The list of `ModelSystem` sections.
             reciprocal_lattice_vectors (pint.Quantity): The reciprocal lattice vectors of the atomic cell.
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[List[float]]): The resolved `high_symmetry_path_values`.
+            (Optional[list[float]]): The resolved `high_symmetry_path_values`.
         """
         # Initial check on the `reciprocal_lattice_vectors`
         if not KSpaceFunctionalities().validate_reciprocal_lattice_vectors(
@@ -616,7 +614,7 @@ class KLinePath(ArchiveSection):
         self,
         reciprocal_lattice_vectors: Optional[pint.Quantity],
         logger: 'BoundLogger',
-    ) -> Optional[List[pint.Quantity]]:
+    ) -> Optional[list[pint.Quantity]]:
         """
         Get the high symmetry path points norms from the list of dictionaries of vectors in units of the `reciprocal_lattice_vectors`.
         The norms are accummulated, such that the first high symmetry point in the path list has a norm of 0, while the others sum the
@@ -628,7 +626,7 @@ class KLinePath(ArchiveSection):
             logger (BoundLogger): The logger to log messages.
 
         Returns:
-            (Optional[List[pint.Quantity]]): The high symmetry points norms list, e.g. in a cubic lattice:
+            (Optional[list[pint.Quantity]]): The high symmetry points norms list, e.g. in a cubic lattice:
                 `high_symmetry_path_value_norms = [0, 0.5, 0.5 + 1 / np.sqrt(2), 1 + 1 / np.sqrt(2)]`
         """
         # Checking the high symmetry path quantities
@@ -666,7 +664,7 @@ class KLinePath(ArchiveSection):
 
     def resolve_points(
         self,
-        points_norm: Union[np.ndarray, List[float]],
+        points_norm: Union[np.ndarray, list[float]],
         reciprocal_lattice_vectors: Optional[np.ndarray],
         logger: 'BoundLogger',
     ) -> None:
@@ -675,7 +673,7 @@ class KLinePath(ArchiveSection):
         when a list of points norms and the list of dictionaries of the high symmetry path are passed to resolve the `KLinePath.points`.
 
         Args:
-            points_norm (List[float]): List of points norms in the k-line path.
+            points_norm (list[float]): List of points norms in the k-line path.
             reciprocal_lattice_vectors (Optional[np.ndarray]): The reciprocal lattice vectors of the atomic cell.
             logger (BoundLogger): The logger to log messages.
         """
@@ -797,13 +795,13 @@ class KSpace(NumericalSettings):
         self.name = self.m_def.name
 
     def resolve_reciprocal_lattice_vectors(
-        self, model_systems: List[ModelSystem], logger: 'BoundLogger'
+        self, model_systems: list[ModelSystem], logger: 'BoundLogger'
     ) -> Optional[pint.Quantity]:
         """
         Resolve the `reciprocal_lattice_vectors` of the `KSpace` from the representative `ModelSystem` section.
 
         Args:
-            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            model_systems (list[ModelSystem]): The list of `ModelSystem` sections.
             logger (BoundLogger): The logger to log messages.
 
         Returns:

@@ -16,15 +16,14 @@
 # limitations under the License.
 #
 
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
-
-from nomad.metainfo import Quantity, MEnum
+from nomad.metainfo import MEnum, Quantity
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
@@ -82,7 +81,7 @@ class Permittivity(PhysicalProperty):
 
     def extract_absorption_spectra(
         self, logger: 'BoundLogger'
-    ) -> Optional[List[AbsorptionSpectrum]]:
+    ) -> Optional[list[AbsorptionSpectrum]]:
         """
         Extract the absorption spectrum from the imaginary part of the permittivity tensor.
         """

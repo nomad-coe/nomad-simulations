@@ -16,10 +16,9 @@
 # limitations under the License.
 #
 
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import numpy as np
-
 from nomad.config import config
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
@@ -204,15 +203,15 @@ class Simulation(BaseSimulation, Schema):
         """
 
         def set_composition_formula(
-            system: ModelSystem, subsystems: List[ModelSystem], atom_labels: List[str]
+            system: ModelSystem, subsystems: list[ModelSystem], atom_labels: list[str]
         ) -> None:
             """Determine the composition formula for `system` based on its `subsystems`.
             If `system` has no children, the atom_labels are used to determine the formula.
 
             Args:
                 system (ModelSystem): The system under consideration.
-                subsystems (List[ModelSystem]): The children of system.
-                atom_labels (List[str]): The global list of atom labels corresponding
+                subsystems (list[ModelSystem]): The children of system.
+                atom_labels (list[str]): The global list of atom labels corresponding
                 to the atom indices stored in system.
             """
             if not subsystems:
@@ -236,13 +235,13 @@ class Simulation(BaseSimulation, Schema):
                     children_names=subsystem_labels
                 )
 
-        def get_composition_recurs(system: ModelSystem, atom_labels: List[str]) -> None:
+        def get_composition_recurs(system: ModelSystem, atom_labels: list[str]) -> None:
             """Traverse the system hierarchy downward and set the branch composition for
             all (sub)systems at each level.
 
             Args:
                 system (ModelSystem): The system to traverse downward.
-                atom_labels (List[str]): The global list of atom labels corresponding
+                atom_labels (list[str]): The global list of atom labels corresponding
                 to the atom indices stored in system.
             """
             subsystems = system.model_system

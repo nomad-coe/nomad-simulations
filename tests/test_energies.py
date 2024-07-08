@@ -18,9 +18,9 @@
 
 from nomad_simulations.schema_packages.properties import (
     FermiLevel,
-    TotalEnergy,
     KineticEnergy,
     PotentialEnergy,
+    TotalEnergy,
 )
 
 

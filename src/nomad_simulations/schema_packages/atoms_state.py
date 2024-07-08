@@ -16,12 +16,11 @@
 # limitations under the License.
 #
 
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 import ase
 import numpy as np
 import pint
-
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Entity
@@ -29,8 +28,8 @@ from nomad.metainfo import MEnum, Quantity, SubSection
 from nomad.units import ureg
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.utils import RussellSaundersState
@@ -154,7 +153,7 @@ class OrbitalsState(Entity):
                 )
             ),
         }
-        self._orbitals_map: Dict[str, Any] = {
+        self._orbitals_map: dict[str, Any] = {
             'l_symbols': self._orbitals[-1],
             'ml_symbols': {i: self._orbitals[i] for i in range(4)},
             'ms_symbols': dict(zip((-0.5, 0.5), ('down', 'up'))),

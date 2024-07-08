@@ -16,16 +16,15 @@
 # limitations under the License.
 #
 
-import pytest
+from typing import Optional
+
 import numpy as np
-from typing import List, Optional
-
+import pytest
 from nomad.datamodel import EntryArchive
-
 from nomad_simulations.schema_packages.model_system import (
-    Symmetry,
     ChemicalFormula,
     ModelSystem,
+    Symmetry,
 )
 
 from . import logger
@@ -84,23 +83,23 @@ class TestAtomicCell:
     )
     def test_generate_ase_atoms(
         self,
-        chemical_symbols: List[str],
-        atomic_numbers: List[int],
+        chemical_symbols: list[str],
+        atomic_numbers: list[int],
         formula: str,
-        lattice_vectors: List[List[float]],
-        positions: List[List[float]],
-        periodic_boundary_conditions: List[bool],
+        lattice_vectors: list[list[float]],
+        positions: list[list[float]],
+        periodic_boundary_conditions: list[bool],
     ):
         """
         Test the creation of `ase.Atoms` from `AtomicCell`.
 
         Args:
-            chemical_symbols (List[str]): List of chemical symbols.
-            atomic_numbers (List[int]): List of atomic numbers.
+            chemical_symbols (list[str]): List of chemical symbols.
+            atomic_numbers (list[int]): List of atomic numbers.
             formula (str): Chemical formula.
-            lattice_vectors (List[List[float]]): Lattice vectors.
-            positions (List[List[float]]): Atomic positions.
-            periodic_boundary_conditions (List[bool]): Periodic boundary conditions.
+            lattice_vectors (list[list[float]]): Lattice vectors.
+            positions (list[list[float]]): Atomic positions.
+            periodic_boundary_conditions (list[bool]): Periodic boundary conditions.
         """
         atomic_cell = generate_atomic_cell(
             lattice_vectors=lattice_vectors,
@@ -185,24 +184,24 @@ class TestAtomicCell:
     )
     def test_geometric_space(
         self,
-        chemical_symbols: List[str],
-        atomic_numbers: List[int],
-        lattice_vectors: List[List[float]],
-        positions: List[List[float]],
-        vectors_results: List[Optional[float]],
-        angles_results: List[Optional[float]],
+        chemical_symbols: list[str],
+        atomic_numbers: list[int],
+        lattice_vectors: list[list[float]],
+        positions: list[list[float]],
+        vectors_results: list[Optional[float]],
+        angles_results: list[Optional[float]],
         volume: Optional[float],
     ):
         """
         Test the `GeometricSpace` quantities normalization from `AtomicCell`.
 
         Args:
-            chemical_symbols (List[str]): List of chemical symbols.
-            atomic_numbers (List[int]): List of atomic numbers.
-            lattice_vectors (List[List[float]]): Lattice vectors.
-            positions (List[List[float]]): Atomic positions.
-            vectors_results (List[Optional[float]]): Expected lengths of cell vectors.
-            angles_results (List[Optional[float]]): Expected angles between cell vectors.
+            chemical_symbols (list[str]): List of chemical symbols.
+            atomic_numbers (list[int]): List of atomic numbers.
+            lattice_vectors (list[list[float]]): Lattice vectors.
+            positions (list[list[float]]): Atomic positions.
+            vectors_results (list[Optional[float]]): Expected lengths of cell vectors.
+            angles_results (list[Optional[float]]): Expected angles between cell vectors.
             volume (Optional[float]): Expected volume of the cell.
         """
         atomic_cell = generate_atomic_cell(
@@ -281,17 +280,17 @@ class TestModelSystem:
     )
     def test_chemical_formula(
         self,
-        chemical_symbols: List[str],
-        atomic_numbers: List[int],
-        formulas: List[str],
+        chemical_symbols: list[str],
+        atomic_numbers: list[int],
+        formulas: list[str],
     ):
         """
         Test the `ChemicalFormula` normalization if a sibling `AtomicCell` is created, and thus the `Formula` class can be used.
 
         Args:
-            chemical_symbols (List[str]): List of chemical symbols.
-            atomic_numbers (List[int]): List of atomic numbers.
-            formulas (List[str]): List of expected formulas.
+            chemical_symbols (list[str]): List of chemical symbols.
+            atomic_numbers (list[int]): List of atomic numbers.
+            formulas (list[str]): List of expected formulas.
         """
         atomic_cell = generate_atomic_cell(
             chemical_symbols=chemical_symbols, atomic_numbers=atomic_numbers
@@ -342,8 +341,8 @@ class TestModelSystem:
     )
     def test_system_type_and_dimensionality(
         self,
-        positions: List[List[float]],
-        pbc: Optional[List[bool]],
+        positions: list[list[float]],
+        pbc: Optional[list[bool]],
         system_type: str,
         dimensionality: int,
     ):
@@ -351,8 +350,8 @@ class TestModelSystem:
         Test the `ModelSystem` normalization of `type` and `dimensionality` from `AtomicCell`.
 
         Args:
-            positions (List[List[float]]): Atomic positions.
-            pbc (Optional[List[bool]]): Periodic boundary conditions.
+            positions (list[list[float]]): Atomic positions.
+            pbc (Optional[list[bool]]): Periodic boundary conditions.
             system_type (str): Expected system type.
             dimensionality (int): Expected dimensionality.
         """

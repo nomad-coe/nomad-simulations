@@ -17,21 +17,21 @@
 #
 
 from nomad_simulations.schema_packages.properties import (
-    Pressure,
-    Volume,
-    Temperature,
-    Heat,
-    Work,
-    InternalEnergy,
+    ChemicalPotential,
     Enthalpy,
     Entropy,
     GibbsFreeEnergy,
-    HelmholtzFreeEnergy,
-    ChemicalPotential,
+    Heat,
     HeatCapacity,
-    VirialTensor,
-    MassDensity,
+    HelmholtzFreeEnergy,
     Hessian,
+    InternalEnergy,
+    MassDensity,
+    Pressure,
+    Temperature,
+    VirialTensor,
+    Volume,
+    Work,
 )
 
 

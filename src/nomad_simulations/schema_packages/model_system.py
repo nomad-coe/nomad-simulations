@@ -17,11 +17,10 @@
 #
 
 import re
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 import ase
 import numpy as np
-
 from matid import Classifier, SymmetryAnalyzer  # pylint: disable=import-error
 from matid.classification.classifications import (
     Atom,
@@ -32,9 +31,8 @@ from matid.classification.classifications import (
     Material2D,
     Surface,
 )
-
-from nomad.config import config
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
+from nomad.config import config
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Entity, System
@@ -42,8 +40,8 @@ from nomad.metainfo import MEnum, Quantity, SectionProxy, SubSection
 from nomad.units import ureg
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -541,7 +539,7 @@ class Symmetry(ArchiveSection):
 
     def resolve_bulk_symmetry(
         self, original_atomic_cell: AtomicCell, logger: 'BoundLogger'
-    ) -> Tuple[Optional[AtomicCell], Optional[AtomicCell]]:
+    ) -> tuple[Optional[AtomicCell], Optional[AtomicCell]]:
         """
         Resolves the symmetry of the material being simulated using MatID and the
         originally parsed data under original_atomic_cell. It generates two other
@@ -553,8 +551,7 @@ class Symmetry(ArchiveSection):
             uses to in MatID.SymmetryAnalyzer().
             logger (BoundLogger): The logger to log messages.
         Returns:
-            primitive_atomic_cell (Optional[AtomicCell]): The primitive `AtomicCell` section.
-            conventional_atomic_cell (Optional[AtomicCell]): The standarized `AtomicCell` section.
+            primitive_atomic_cell, conventional_atomic_cell (tuple[Optional[AtomicCell], Optional[AtomicCell]]): The primitive and standardized `AtomicCell` sections.
         """
         symmetry = {}
         try:
@@ -945,7 +942,7 @@ class ModelSystem(System):
 
     def resolve_system_type_and_dimensionality(
         self, ase_atoms: ase.Atoms, logger: 'BoundLogger'
-    ) -> Tuple[str, int]:
+    ) -> tuple[str, int]:
         """
         Resolves the `ModelSystem.type` and `ModelSystem.dimensionality` using `MatID` classification analyzer:
 
@@ -954,8 +951,7 @@ class ModelSystem(System):
         Args:
             ase.Atoms: The ASE Atoms structure to analyse.
         Returns:
-            system_type (str): The system type as determined by MatID.
-            dimensionality (str): The system dimensionality as determined by MatID.
+            system_type, dimensionality (tuple[str]): The system type and dimensionality as determined by MatID.
         """
         classification = None
         system_type, dimensionality = self.type, self.dimensionality

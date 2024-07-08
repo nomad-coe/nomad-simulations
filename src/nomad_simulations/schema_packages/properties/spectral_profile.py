@@ -16,17 +16,16 @@
 # limitations under the License.
 #
 
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 import pint
-
 from nomad.config import config
 from nomad.metainfo import MEnum, Quantity, SubSection
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
@@ -388,7 +387,7 @@ class ElectronicDensityOfStates(DOSProfile):
 
     def extract_projected_dos(
         self, type: str, logger: 'BoundLogger'
-    ) -> List[Optional[DOSProfile]]:
+    ) -> list[Optional[DOSProfile]]:
         """
         Extract the projected DOS from the `projected_dos` section and the specified `type`.
 
@@ -448,7 +447,7 @@ class ElectronicDensityOfStates(DOSProfile):
 
         # Extract `atom_projected` from `orbital_projected` by summing up the `orbital_projected` contributions for each atom
         if len(atom_projected) == 0:
-            atom_data: Dict[AtomsState, List[DOSProfile]] = {}
+            atom_data: dict[AtomsState, list[DOSProfile]] = {}
             for orb_pdos in orbital_projected:
                 # `entity_ref` is the `OrbitalsState` section, whose parent is `AtomsState`
                 entity_ref = orb_pdos.entity_ref.m_parent

@@ -19,12 +19,11 @@
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 from nomad.metainfo import Quantity
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
