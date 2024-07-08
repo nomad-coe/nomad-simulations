@@ -23,7 +23,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 if TYPE_CHECKING:
-    from typing import List, Optional
+    from typing import Optional
+
     from nomad.datamodel.data import ArchiveSection
     from structlog.stdlib import BoundLogger
 
@@ -136,17 +137,17 @@ def is_not_representative(model_system, logger: 'BoundLogger'):
 
 # cannot define typing with `Variables` due to circular import issue
 def get_variables(
-    variables: 'Optional[List[ArchiveSection]]', variable_cls: 'ArchiveSection'
-) -> 'List[ArchiveSection]':
+    variables: 'Optional[list[ArchiveSection]]', variable_cls: 'ArchiveSection'
+) -> 'list[ArchiveSection]':
     """
     Get the list of variables which are of type `variable_cls` and appear under `variables`.
 
     Args:
-        variables (Optional[List[Variables]]): The list of variables to check.
+        variables (Optional[list[Variables]]): The list of variables to check.
         variable_cls (Variables): The class of the variables to get.
 
     Returns:
-        (List[Variables]): The list of variables which are of type `variable_cls`.
+        (list[Variables]): The list of variables which are of type `variable_cls`.
     """
     if variables is None:
         return []
@@ -158,7 +159,7 @@ def get_variables(
 
 
 # TODO remove function in nomad.atomutils
-def get_composition(children_names: 'List[str]') -> str:
+def get_composition(children_names: 'list[str]') -> str:
     """
     Generates a generalized "chemical formula" based on the provided list `children_names`,
     with the format X(m)Y(n) for children_names X and Y of quantities m and n, respectively.
