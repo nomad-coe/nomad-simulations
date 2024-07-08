@@ -16,6 +16,7 @@
 # limitations under the License.
 #
 
+import numpy as np
 from typing import TYPE_CHECKING, List, Optional
 
 from nomad.datamodel.data import ArchiveSection
@@ -43,6 +44,11 @@ from nomad_simulations.schema_packages.properties import (
     HoppingMatrix,
     Permittivity,
     XASSpectrum,
+    TotalEnergy,
+    KineticEnergy,
+    PotentialEnergy,
+    TotalForce,
+    Temperature,
 )
 
 
@@ -70,7 +76,8 @@ class Outputs(ArchiveSection):
     model_method_ref = Quantity(
         type=ModelMethod,
         description="""
-        Reference to the `ModelMethod` section in which the output physical properties were calculated.
+        Reference to the `ModelMethod` section containing the details of the mathematical
+        model with which the output physical properties were calculated.
         """,
         a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
     )
@@ -110,6 +117,16 @@ class Outputs(ArchiveSection):
     absorption_spectra = SubSection(sub_section=AbsorptionSpectrum.m_def, repeats=True)
 
     xas_spectra = SubSection(sub_section=XASSpectrum.m_def, repeats=True)
+
+    total_energy = SubSection(sub_section=TotalEnergy.m_def, repeats=True)
+
+    kinetic_energy = SubSection(sub_section=KineticEnergy.m_def, repeats=True)
+
+    potential_energy = SubSection(sub_section=PotentialEnergy.m_def, repeats=True)
+
+    total_force = SubSection(sub_section=TotalForce.m_def, repeats=True)
+
+    temperature = SubSection(sub_section=Temperature.m_def, repeats=True)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -310,3 +327,50 @@ class SCFOutputs(Outputs):
                     physical_property=phys_property,
                     logger=logger,
                 )
+
+
+class WorkflowOutputs(Outputs):
+    """
+    This section contains output properties that depend on a single system, but were
+    calculated as part of a workflow (e.g., the energies from a geometry optimization),
+    and thus may include step information.
+    """
+
+    step = Quantity(
+        type=np.int32,
+        description="""
+        The step number with respect to the workflow.
+        """,
+    )
+
+    # TODO add this in when we link to nomad-simulations-workflow schema
+    # ? check potential circular imports problems when the nomad-simulations-workflow schema is transferred here
+    # workflow_ref = Quantity(
+    #     type=SimulationWorkflow,
+    #     description="""
+    #     Reference to the `SelfConsistency` section that defines the numerical settings to converge the
+    #     output property.
+    #     """,
+    # )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class TrajectoryOutputs(WorkflowOutputs):
+    """
+    This section contains output properties that depend on a single system, but were
+    calculated as part of a trajectory (e.g., temperatures from a molecular dynamics
+    simulation), and thus may include time information.
+    """
+
+    time = Quantity(
+        type=np.float64,
+        unit='ps',
+        description="""
+        The elapsed simulated physical time since the start of the trajectory.
+        """,
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)

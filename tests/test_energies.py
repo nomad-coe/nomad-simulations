@@ -16,7 +16,12 @@
 # limitations under the License.
 #
 
-from nomad_simulations.schema_packages.properties import FermiLevel, ChemicalPotential
+from nomad_simulations.schema_packages.properties import (
+    FermiLevel,
+    TotalEnergy,
+    KineticEnergy,
+    PotentialEnergy,
+)
 
 
 class TestFermiLevel:
@@ -35,20 +40,49 @@ class TestFermiLevel:
         assert fermi_level.rank == []
 
 
-class TestChemicalPotential:
+class TestTotalEnergy:
     """
-    Test the `ChemicalPotential` class defined in `properties/energies.py`.
+    Test the `TotalEnergy` class defined in `properties/energies.py`.
     """
 
     # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
     def test_default_quantities(self):
         """
-        Test the default quantities assigned when creating an instance of the `ChemicalPotential` class.
+        Test the default quantities assigned when creating an instance of the `TotalEnergy` class.
         """
-        chemical_potential = ChemicalPotential()
-        assert (
-            chemical_potential.iri
-            == 'http://fairmat-nfdi.eu/taxonomy/ChemicalPotential'
-        )
-        assert chemical_potential.name == 'ChemicalPotential'
-        assert chemical_potential.rank == []
+        total_energy = TotalEnergy()
+        assert total_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/TotalEnergy'
+        assert total_energy.name == 'TotalEnergy'
+        assert total_energy.rank == []
+
+
+class TestKineticEnergy:
+    """
+    Test the `KineticEnergy` class defined in `properties/energies.py`.
+    """
+
+    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
+    def test_default_quantities(self):
+        """
+        Test the default quantities assigned when creating an instance of the `KineticEnergy` class.
+        """
+        kinetic_energy = KineticEnergy()
+        assert kinetic_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/KineticEnergy'
+        assert kinetic_energy.name == 'KineticEnergy'
+        assert kinetic_energy.rank == []
+
+
+class TestPotentialEnergy:
+    """
+    Test the `PotentialEnergy` class defined in `properties/energies.py`.
+    """
+
+    # ! Include this initial `test_default_quantities` method when testing your PhysicalProperty classes
+    def test_default_quantities(self):
+        """
+        Test the default quantities assigned when creating an instance of the `PotentialEnergy` class.
+        """
+        potential_energy = PotentialEnergy()
+        assert potential_energy.iri == 'http://fairmat-nfdi.eu/taxonomy/PotentialEnergy'
+        assert potential_energy.name == 'PotentialEnergy'
+        assert potential_energy.rank == []
