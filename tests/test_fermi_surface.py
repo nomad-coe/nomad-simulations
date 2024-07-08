@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-import pytest
 from typing import Optional
 
+import pytest
 from nomad_simulations.schema_packages.properties import FermiSurface
 
 
@@ -44,7 +44,7 @@ class TestFermiSurface:
                 fermi_surface = FermiSurface(n_bands=n_bands)
             assert (
                 str(exc_info.value)
-                == f'`n_bands` is not defined during initialization of the class.'
+                == '`n_bands` is not defined during initialization of the class.'
             )
         else:
             fermi_surface = FermiSurface(n_bands=n_bands)

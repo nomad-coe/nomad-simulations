@@ -16,21 +16,20 @@
 # limitations under the License.
 #
 
-import pytest
+from typing import Optional
+
 import numpy as np
-from typing import List, Optional
-
-from nomad.units import ureg
+import pytest
 from nomad.datamodel import EntryArchive
-
-from nomad_simulations.schema_packages.general import Simulation
-from nomad_simulations.schema_packages.model_system import ModelSystem, AtomicCell
+from nomad.units import ureg
 from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs
 from nomad_simulations.schema_packages.properties import (
-    SpectralProfile,
-    ElectronicDensityOfStates,
     AbsorptionSpectrum,
+    ElectronicDensityOfStates,
+    SpectralProfile,
     XASSpectrum,
 )
 from nomad_simulations.schema_packages.variables import Energy2 as Energy
@@ -196,8 +195,8 @@ class TestElectronicDensityOfStates:
     def test_generate_from_pdos(
         self,
         simulation_electronic_dos: Simulation,
-        value: Optional[List[float]],
-        result: List[float],
+        value: Optional[list[float]],
+        result: list[float],
     ):
         """
         Test the `generate_from_projected_dos` method.
@@ -281,9 +280,9 @@ class TestXASSpectrum:
     )
     def test_generate_from_contributions(
         self,
-        xanes_energies: Optional[List[float]],
-        exafs_energies: Optional[List[float]],
-        xas_values: Optional[List[float]],
+        xanes_energies: Optional[list[float]],
+        exafs_energies: Optional[list[float]],
+        xas_values: Optional[list[float]],
     ):
         """
         Test the `generate_from_contributions` method.

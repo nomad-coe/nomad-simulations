@@ -16,17 +16,14 @@
 # limitations under the License.
 #
 
-import pytest
 import numpy as np
-from typing import List
-
+import pytest
 from nomad.datamodel import EntryArchive
-
 from nomad_simulations.schema_packages.general import Simulation
 from nomad_simulations.schema_packages.model_system import (
-    ModelSystem,
     AtomicCell,
     AtomsState,
+    ModelSystem,
 )
 
 from . import logger
@@ -71,14 +68,14 @@ class TestSimulation:
         ],
     )
     def test_set_system_branch_depth(
-        self, system: List[ModelSystem], result: List[int]
+        self, system: list[ModelSystem], result: list[int]
     ):
         """
         Test the `_set_system_branch_depth` method.
 
         Args:
-            system (List[ModelSystem]): The system hierarchy to set the branch depths for.
-            result (List[int]): The expected branch depths for each system in the hierarchy.
+            system (list[ModelSystem]): The system hierarchy to set the branch depths for.
+            result (list[int]): The expected branch depths for each system in the hierarchy.
         """
         simulation = Simulation(model_system=system)
         for system_parent in simulation.model_system:
@@ -189,11 +186,11 @@ class TestSimulation:
         self,
         is_representative: bool,
         has_atom_indices: bool,
-        mol_label_list: List[str],
-        n_mol_list: List[int],
-        atom_labels_list: List[str],
-        composition_formula_list: List[str],
-        custom_formulas: List[str],
+        mol_label_list: list[str],
+        n_mol_list: list[int],
+        atom_labels_list: list[str],
+        composition_formula_list: list[str],
+        custom_formulas: list[str],
     ):
         """
         Test the `Simulation` normalization for obtaining `Model.System.composition_formula` for atoms and molecules.
@@ -204,12 +201,12 @@ class TestSimulation:
             has_atom_indices (bool): Specifies if the atom_indices should be populated during parsing.
             Without atom_indices, the composition formulas for the deepest level of the hierarchy
             should not be populated.
-            mol_label_list (List[str]): Molecule types for generating the hierarchy.
-            n_mol_list (List[int]): Number of molecules for each molecule type. Should be same
+            mol_label_list (list[str]): Molecule types for generating the hierarchy.
+            n_mol_list (list[int]): Number of molecules for each molecule type. Should be same
             length as mol_label_list.
-            atom_labels_list (List[str]): Atom labels for each molecule type. Should be same length as
+            atom_labels_list (list[str]): Atom labels for each molecule type. Should be same length as
             mol_label_list, with each entry being a list of corresponding atom labels.
-            composition_formula_list (List[str]): Resulting composition formulas after normalization. The
+            composition_formula_list (list[str]): Resulting composition formulas after normalization. The
             ordering is dictated by the recursive traversing of the hierarchy in get_system_recurs(),
             which follows each branch to its deepest level before moving to the next branch, i.e.,
                 [model_system.composition_formula,
@@ -217,7 +214,7 @@ class TestSimulation:
                 model_system.model_system[0].model_system[0].composition_formula,
                 model_system.model_system[0].model_system[1].composition_formula, ...,
                 model_system.model_system[1].composition_formula, ...]
-            custom_formulas (List[str]): Custom composition formulas that can be set in the generation
+            custom_formulas (list[str]): Custom composition formulas that can be set in the generation
             of the hierarchy, which will cause the normalize to ignore (i.e., not overwrite) these formula entries.
             The ordering is as described above.
         """
@@ -278,7 +275,7 @@ class TestSimulation:
         ctr_comp = 1
 
         # TODO move this into its own method to handle `ModelSystem` hierarchies (see above `get_flat_depths`)
-        def get_system_recurs(systems: List[ModelSystem], ctr_comp: int) -> int:
+        def get_system_recurs(systems: list[ModelSystem], ctr_comp: int) -> int:
             for sys in systems:
                 assert sys.composition_formula == composition_formula_list[ctr_comp]
                 ctr_comp += 1
@@ -287,6 +284,4 @@ class TestSimulation:
                     ctr_comp = get_system_recurs(subsystems, ctr_comp)
             return ctr_comp
 
-        new_ctr_comp = get_system_recurs(
-            systems=model_system.model_system, ctr_comp=ctr_comp
-        )
+        _ = get_system_recurs(systems=model_system.model_system, ctr_comp=ctr_comp)

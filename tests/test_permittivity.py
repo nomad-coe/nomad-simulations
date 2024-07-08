@@ -16,12 +16,12 @@
 # limitations under the License.
 #
 
-import pytest
-import numpy as np
-from typing import List, Optional
+from typing import Optional
 
+import numpy as np
+import pytest
 from nomad_simulations.schema_packages.properties import Permittivity
-from nomad_simulations.schema_packages.variables import Variables, KMesh, Frequency
+from nomad_simulations.schema_packages.variables import Frequency, KMesh, Variables
 
 from . import logger
 from .conftest import generate_k_space_simulation
@@ -53,7 +53,7 @@ class TestPermittivity:
     )
     def test_resolve_type(
         self,
-        kmesh_grid: Optional[List[int]],
+        kmesh_grid: Optional[list[int]],
         variables: Optional[Variables],
         result: str,
     ):
@@ -118,10 +118,10 @@ class TestPermittivity:
     )
     def test_extract_absorption_spectra(
         self,
-        kmesh_grid: Optional[List[int]],
-        frequencies_points: Optional[List[float]],
+        kmesh_grid: Optional[list[int]],
+        frequencies_points: Optional[list[float]],
         value: Optional[np.ndarray],
-        result: Optional[List[float]],
+        result: Optional[list[float]],
     ):
         """
         Test the `extract_absorption_spectra` method. The `result` in the last valid case corresponds to the imaginary part of

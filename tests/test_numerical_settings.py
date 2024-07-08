@@ -16,16 +16,15 @@
 # limitations under the License.
 #
 
-import pytest
+from typing import Optional
+
 import numpy as np
-from typing import Optional, List
-
-from nomad.units import ureg
+import pytest
 from nomad.datamodel import EntryArchive
-
+from nomad.units import ureg
 from nomad_simulations.schema_packages.numerical_settings import (
-    KMesh,
     KLinePath,
+    KMesh,
     KSpaceFunctionalities,
 )
 
@@ -56,8 +55,8 @@ class TestKSpace:
         self,
         system_type: Optional[str],
         is_representative: bool,
-        reciprocal_lattice_vectors: Optional[List[List[float]]],
-        result: List[List[float]],
+        reciprocal_lattice_vectors: Optional[list[list[float]]],
+        result: list[list[float]],
     ):
         """
         Test the `normalize` method. This also test the `resolve_reciprocal_lattice_vectors` method.
@@ -96,9 +95,9 @@ class TestKSpaceFunctionalities:
     )
     def test_validate_reciprocal_lattice_vectors(
         self,
-        reciprocal_lattice_vectors: Optional[List[List[float]]],
+        reciprocal_lattice_vectors: Optional[list[list[float]]],
         check_grid: bool,
-        grid: Optional[List[int]],
+        grid: Optional[list[int]],
         result: bool,
     ):
         """
@@ -238,8 +237,8 @@ class TestKMesh:
         self,
         system_type: Optional[str],
         is_representative: bool,
-        grid: Optional[List[int]],
-        reciprocal_lattice_vectors: Optional[List[List[float]]],
+        grid: Optional[list[int]],
+        reciprocal_lattice_vectors: Optional[list[list[float]]],
         result_get_k_line_density: Optional[float],
         result_k_line_density: Optional[float],
     ):
@@ -298,8 +297,8 @@ class TestKLinePath:
     )
     def test_validate_high_symmetry_path(
         self,
-        high_symmetry_path_names: List[str],
-        high_symmetry_path_values: List[List[float]],
+        high_symmetry_path_names: list[str],
+        high_symmetry_path_values: list[list[float]],
         result: bool,
     ):
         """
@@ -325,9 +324,9 @@ class TestKLinePath:
     )
     def test_resolve_high_symmetry_path_values(
         self,
-        reciprocal_lattice_vectors: Optional[List[List[float]]],
-        high_symmetry_path_names: List[str],
-        result: List[float],
+        reciprocal_lattice_vectors: Optional[list[list[float]]],
+        high_symmetry_path_names: list[str],
+        result: list[float],
     ):
         """
         Test the `resolve_high_symmetry_path_values` method. Only testing the valid situation in which the `ModelSystem` normalization worked.

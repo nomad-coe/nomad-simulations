@@ -16,13 +16,12 @@
 # limitations under the License.
 #
 
-import pytest
+from typing import Optional, Union
+
 import numpy as np
-from typing import Optional, List, Union
-
-from nomad.units import ureg
+import pytest
 from nomad.datamodel import EntryArchive
-
+from nomad.units import ureg
 from nomad_simulations.schema_packages.properties import ElectronicBandGap
 from nomad_simulations.schema_packages.variables import Temperature
 
@@ -56,7 +55,7 @@ class TestElectronicBandGap:
             ([1.0, 2.0, -1.0], None),
         ],
     )
-    def test_validate_values(self, value: Union[List[float], float], result: float):
+    def test_validate_values(self, value: Union[list[float], float], result: float):
         """
         Test the `validate_values` method.
         """
@@ -94,7 +93,7 @@ class TestElectronicBandGap:
         ],
     )
     def test_resolve_type(
-        self, momentum_transfer: Optional[List[float]], type: str, result: Optional[str]
+        self, momentum_transfer: Optional[list[float]], type: str, result: Optional[str]
     ):
         """
         Test the `resolve_type` method.

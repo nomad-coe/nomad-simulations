@@ -20,11 +20,10 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
-
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.basesections import Entity
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.datamodel.metainfo.basesections import Entity
 from nomad.metainfo import (
     URL,
     MEnum,
@@ -36,13 +35,13 @@ from nomad.metainfo import (
 from nomad.metainfo.metainfo import Dimension, DirectQuantity, _placeholder_quantity
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
+from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.variables import Variables
-from nomad_simulations.schema_packages.model_method import BaseModelMethod
 
 # We add `logger` for the `validate_quantity_wrt_value` decorator
 logger = utils.get_logger(__name__)

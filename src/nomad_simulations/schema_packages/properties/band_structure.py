@@ -16,17 +16,16 @@
 # limitations under the License.
 #
 
-from typing import TYPE_CHECKING, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 import pint
-
 from nomad.config import config
 from nomad.metainfo import Quantity, SubSection
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Section, Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.numerical_settings import KSpace
@@ -150,13 +149,13 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         self.name = self.m_def.name
 
     @validate_quantity_wrt_value(name='occupation')
-    def order_eigenvalues(self) -> Union[bool, Tuple[pint.Quantity, np.ndarray]]:
+    def order_eigenvalues(self) -> Union[bool, tuple[pint.Quantity, np.ndarray]]:
         """
         Order the eigenvalues based on the `value` and `occupation`. The return `value` and
         `occupation` are flattened.
 
         Returns:
-            (Union[bool, Tuple[pint.Quantity, np.ndarray]]): The flattened and sorted `value` and `occupation`. If validation
+            (Union[bool, tuple[pint.Quantity, np.ndarray]]): The flattened and sorted `value` and `occupation`. If validation
             fails, then it returns `False`.
         """
         total_shape = np.prod(self.value.shape)
@@ -178,14 +177,14 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
 
     def resolve_homo_lumo_eigenvalues(
         self,
-    ) -> Tuple[Optional[pint.Quantity], Optional[pint.Quantity]]:
+    ) -> tuple[Optional[pint.Quantity], Optional[pint.Quantity]]:
         """
         Resolve the `highest_occupied` and `lowest_unoccupied` eigenvalues by performing a binary search on the
         flattened and sorted `value` and `occupation`. If these quantities already exist, overwrite them or return
         them if it is not possible to resolve from `value` and `occupation`.
 
         Returns:
-            (Tuple[Optional[pint.Quantity], Optional[pint.Quantity]]): The `highest_occupied` and
+            (tuple[Optional[pint.Quantity], Optional[pint.Quantity]]): The `highest_occupied` and
             `lowest_unoccupied` eigenvalues.
         """
         # Sorting `value` and `occupation`

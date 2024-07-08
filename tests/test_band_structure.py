@@ -16,12 +16,11 @@
 # limitations under the License.
 #
 
-import pytest
+from typing import Optional
+
 import numpy as np
-from typing import Optional, Tuple, List
-
+import pytest
 from nomad.datamodel import EntryArchive
-
 from nomad_simulations.schema_packages.properties import ElectronicEigenvalues
 
 from . import logger
@@ -50,7 +49,7 @@ class TestElectronicEigenvalues:
                 electronic_eigenvalues = ElectronicEigenvalues(n_bands=n_bands)
             assert (
                 str(exc_info.value)
-                == f'`n_bands` is not defined during initialization of the class.'
+                == '`n_bands` is not defined during initialization of the class.'
             )
         else:
             electronic_eigenvalues = ElectronicEigenvalues(n_bands=n_bands)
@@ -160,7 +159,7 @@ class TestElectronicEigenvalues:
         occupation: Optional[list],
         value: Optional[list],
         result_validation: bool,
-        result: Tuple[list, list],
+        result: tuple[list, list],
     ):
         """
         Test the `order_eigenvalues` method.
@@ -263,7 +262,7 @@ class TestElectronicEigenvalues:
         value: Optional[list],
         highest_occupied: Optional[float],
         lowest_unoccupied: Optional[float],
-        result: Tuple[Optional[float], Optional[float]],
+        result: tuple[Optional[float], Optional[float]],
     ):
         """
         Test the `resolve_homo_lumo_eigenvalues` method.
@@ -407,8 +406,8 @@ class TestElectronicEigenvalues:
     )
     def test_resolve_reciprocal_cell(
         self,
-        reciprocal_lattice_vectors: Optional[List[List[float]]],
-        result: Optional[List[List[float]]],
+        reciprocal_lattice_vectors: Optional[list[list[float]]],
+        result: Optional[list[list[float]]],
     ):
         """
         Test the `resolve_reciprocal_cell` method. This is done via the `normalize` function because `reciprocal_cell` is a

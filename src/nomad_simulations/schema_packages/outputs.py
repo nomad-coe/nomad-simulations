@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
-import numpy as np
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
+import numpy as np
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import Quantity, SubSection
@@ -27,8 +27,8 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.numerical_settings import SelfConsistency
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 from nomad_simulations.schema_packages.properties import (
@@ -42,13 +42,13 @@ from nomad_simulations.schema_packages.properties import (
     FermiLevel,
     FermiSurface,
     HoppingMatrix,
-    Permittivity,
-    XASSpectrum,
-    TotalEnergy,
     KineticEnergy,
+    Permittivity,
     PotentialEnergy,
-    TotalForce,
     Temperature,
+    TotalEnergy,
+    TotalForce,
+    XASSpectrum,
 )
 
 
@@ -133,7 +133,7 @@ class Outputs(ArchiveSection):
 
     def extract_spin_polarized_property(
         self, property_name: str
-    ) -> List[PhysicalProperty]:
+    ) -> list[PhysicalProperty]:
         """
         Extracts the spin-polarized properties if present from the property name and returns them as a list of two elements in
         which each element refers to each `spin_channel`. If the return list is empty, it means that the simulation is not
@@ -143,7 +143,7 @@ class Outputs(ArchiveSection):
             property_name (str): The name of the property to be extracted.
 
         Returns:
-            (List[PhysicalProperty]): The list of spin-polarized properties.
+            (list[PhysicalProperty]): The list of spin-polarized properties.
         """
         spin_polarized_properties = []
         properties = getattr(self, property_name)
@@ -213,7 +213,7 @@ class SCFOutputs(Outputs):
 
     def get_last_scf_steps_value(
         self,
-        scf_last_steps: List[Outputs],
+        scf_last_steps: list[Outputs],
         property_name: str,
         i_property: int,
         scf_parameters: Optional[SelfConsistency],
@@ -223,7 +223,7 @@ class SCFOutputs(Outputs):
         Get the last two SCF values' magnitudes of a physical property and appends then in a list.
 
         Args:
-            scf_last_steps (List[Outputs]): The list of SCF steps. This must be of length 2 in order to the method to work.
+            scf_last_steps (list[Outputs]): The list of SCF steps. This must be of length 2 in order to the method to work.
             property_name (str): The name of the physical property.
             i_property (int): The index of the physical property.
             scf_parameters (Optional[SelfConsistency]): The self-consistency parameters section stored under `ModelMethod`.

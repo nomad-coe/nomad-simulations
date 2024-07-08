@@ -17,17 +17,16 @@
 #
 
 import re
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
-
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import MEnum, Quantity, SubSection, URL, Section
+from nomad.metainfo import URL, MEnum, Quantity, Section, SubSection
 
 if TYPE_CHECKING:
-    from nomad.metainfo import Context
     from nomad.datamodel.datamodel import EntryArchive
+    from nomad.metainfo import Context
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import CoreHole, OrbitalsState
@@ -302,16 +301,16 @@ class DFT(ModelMethodElectronic):
         }
 
     def resolve_libxc_names(
-        self, xc_functionals: List[XCFunctional]
-    ) -> Optional[List[str]]:
+        self, xc_functionals: list[XCFunctional]
+    ) -> Optional[list[str]]:
         """
         Resolves the `libxc_names` and sorts them from the list of `XCFunctional` sections.
 
         Args:
-            xc_functionals (List[XCFunctional]): The list of `XCFunctional` sections.
+            xc_functionals (list[XCFunctional]): The list of `XCFunctional` sections.
 
         Returns:
-            (Optional[List[str]]): The resolved and sorted `libxc_names`.
+            (Optional[list[str]]): The resolved and sorted `libxc_names`.
         """
         return sorted(
             [
@@ -323,13 +322,13 @@ class DFT(ModelMethodElectronic):
 
     def resolve_jacobs_ladder(
         self,
-        libxc_names: List[str],
+        libxc_names: list[str],
     ) -> str:
         """
         Resolves the `jacobs_ladder` from the `libxc_names`. The mapping (libxc -> NOMAD) is set in `self._jacobs_ladder_map`.
 
         Args:
-            libxc_names (List[str]): The list of `libxc_names`.
+            libxc_names (list[str]): The list of `libxc_names`.
 
         Returns:
             (str): The resolved `jacobs_ladder`.
@@ -356,14 +355,14 @@ class DFT(ModelMethodElectronic):
         return self._jacobs_ladder_map.get(highest_rung_abbrev, 'unavailable')
 
     def resolve_exact_exchange_mixing_factor(
-        self, xc_functionals: List[XCFunctional], libxc_names: List[str]
+        self, xc_functionals: list[XCFunctional], libxc_names: list[str]
     ) -> Optional[float]:
         """
         Resolves the `exact_exchange_mixing_factor` from the `xc_functionals` and `libxc_names`.
 
         Args:
-            xc_functionals (List[XCFunctional]): The list of `XCFunctional` sections.
-            libxc_names (List[str]): The list of `libxc_names`.
+            xc_functionals (list[XCFunctional]): The list of `XCFunctional` sections.
+            libxc_names (list[str]): The list of `libxc_names`.
 
         Returns:
             (Optional[float]): The resolved `exact_exchange_mixing_factor`.
@@ -373,7 +372,7 @@ class DFT(ModelMethodElectronic):
             if functional.name == 'hybrid':
                 return functional.parameters.get('exact_exchange_mixing_factor')
 
-        def _scan_patterns(patterns: List[str], xc_name: str) -> bool:
+        def _scan_patterns(patterns: list[str], xc_name: str) -> bool:
             return any(x for x in patterns if re.search('_' + x + '$', xc_name))
 
         for xc_name in libxc_names:
@@ -496,20 +495,20 @@ class TB(ModelMethodElectronic):
 
     def resolve_orbital_references(
         self,
-        model_systems: List[ModelSystem],
+        model_systems: list[ModelSystem],
         logger: 'BoundLogger',
         model_index: int = -1,
-    ) -> Optional[List[OrbitalsState]]:
+    ) -> Optional[list[OrbitalsState]]:
         """
         Resolves the references to the `OrbitalsState` sections from the child `ModelSystem` section.
 
         Args:
-            model_systems (List[ModelSystem]): The list of `ModelSystem` sections.
+            model_systems (list[ModelSystem]): The list of `ModelSystem` sections.
             logger (BoundLogger): The logger to log messages.
             model_index (int, optional): The `ModelSystem` section index from which resolve the references. Defaults to -1.
 
         Returns:
-            Optional[List[OrbitalsState]]: The resolved references to the `OrbitalsState` sections.
+            Optional[list[OrbitalsState]]: The resolved references to the `OrbitalsState` sections.
         """
         try:
             model_system = model_systems[model_index]

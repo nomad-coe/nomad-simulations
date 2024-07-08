@@ -16,19 +16,18 @@
 # limitations under the License.
 #
 
+from typing import Optional, Union
+
 import numpy as np
 import pytest
-from typing import Union, Optional
-
-from nomad.units import ureg
 from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
-
-from nomad_simulations.schema_packages.variables import Variables
+from nomad.units import ureg
 from nomad_simulations.schema_packages.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,
 )
+from nomad_simulations.schema_packages.variables import Variables
 
 from . import logger
 
