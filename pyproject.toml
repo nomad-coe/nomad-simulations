@@ -28,6 +28,11 @@ maintainers = [
     { name = "Joseph F. Rudzinski", email = "joseph.rudzinski@physik.hu-berlin.de" }
 ]
 license = { file = "LICENSE" }
+# dependencies = [
+#     "nomad-lab>=1.3.0",
+#     "matid>=2.0.0.dev2",
+#     "nomad-simulations@file:///home/bmohr/software/nomad-simulations",
+# ]
 dependencies = [
     "nomad-lab>=1.3.0",
     "matid>=2.0.0.dev2",
