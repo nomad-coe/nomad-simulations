@@ -19,6 +19,7 @@
 from itertools import accumulate, chain, tee
 from typing import TYPE_CHECKING, Optional, Union
 
+from nomad_simulations.schema_packages.atoms_state import AtomsState
 import numpy as np
 import pint
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
@@ -926,6 +927,31 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+
+
+class AtomCenteredFunction(ArchiveSection):
+    """
+    Specifies a single function in an atom-centered basis set.
+    """
+
+
+class AtomCenteredBasisSet(BasisSet):
+    """
+    Defines an atom-centered basis set.
+    """
+
+    atoms = SubSection(sub_section=AtomsState.m_def, repeats=True)
+    # ? @JosePizarro3: are we ensure that the atoms_state is always set? can you point me to any normalizer?
+
+    functional_composition = SubSection(
+        sub_section=AtomCenteredFunction.m_def, repeats=True
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        # self.name = self.m_def.name
+        # TODO: set name based on basis functions
+        # ? use naming BSE
 
 
 class BasisSetContainer(NumericalSettings):
