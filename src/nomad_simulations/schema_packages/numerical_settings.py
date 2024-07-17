@@ -23,6 +23,7 @@ import numpy as np
 import pint
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
 from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
@@ -890,15 +891,69 @@ class SelfConsistency(NumericalSettings):
         super().normalize(archive, logger)
 
 
-class BasisSet(NumericalSettings):
-    """"""
-
-    # TODO work on this base section (@ndaelman-hu)
+class BasisSet(ArchiveSection):
+    """A type section denoting a basis set component of a simulation.
+    Should be used as a base section for more specialized sections."""
 
     def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
 
+
+class PlaneWaveBasisSet(BasisSet, Mesh):
+    """
+    Defines a plane-wave basis set over a singular mesh.
+    """
+
+    cutoff_energy = Quantity(
+        type=np.float64,
+        unit='joule',
+        description="""
+        Cutoff energy for the plane-wave basis set. The simulation uses plane waves with energies below this cutoff.
+        """,
+    )
+
+    smearing_method = Quantity(
+        type=MEnum('Fermi-Dirac', 'Gaussian', 'Methfessel-Paxton'),
+        description="""
+        Method used to smear the occupation numbers in the plane-wave basis set.
+        """,
+    )
+
+    sampling_mesh = SubSection(sub_section=Mesh.m_def)
+    # mesh definitions that specify the sampling points in the reciprocal space
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+
+
+class BasisSetContainer(NumericalSettings):
+    """Section providing an overview of the full basis set.
+    The basis set may contain multiple basis sets specifications `BasisSet`,
+    each with their own parameters."""
+
+    native_tier = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Code-specific tag indicating the precision used
+        for the basis set and meshes of numerical routines.
+        """,
+    )
+
+    electronic_structure = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Electronic structure method used for the calculation.
+        """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
+    basis_sets = SubSection(sub_section=BasisSet.m_def, repeats=True)
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        # self.name = self.m_def.name
+        # TODO: set name based on basis sets
