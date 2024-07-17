@@ -17,9 +17,9 @@
 #
 
 from itertools import accumulate, chain, tee
-from typing import TYPE_CHECKING, Optional, Union
+from typing import TYPE_CHECKING, Optional, Self, Union
 
-from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
 import numpy as np
 import pint
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
@@ -940,7 +940,7 @@ class AtomCenteredBasisSet(BasisSet):
     Defines an atom-centered basis set.
     """
 
-    atoms = SubSection(sub_section=AtomsState.m_def, repeats=True)
+    atom_state = SubSection(sub_section=AtomsState.m_def)
     # ? @JosePizarro3: are we ensure that the atoms_state is always set? can you point me to any normalizer?
 
     functional_composition = SubSection(
@@ -952,6 +952,79 @@ class AtomCenteredBasisSet(BasisSet):
         # self.name = self.m_def.name
         # TODO: set name based on basis functions
         # ? use naming BSE
+
+
+class LocalAPWBasisSet(BasisSet):
+    orbitals = SubSection(sub_section=OrbitalsState.m_def)
+
+    core_level = Quantity(
+        type=bool,
+        description="""
+        Boolean denoting whether the orbital is treated differently from valence orbitals.
+        """,
+    )
+
+    energy_parameter = Quantity(
+        type=np.float64,
+        unit='joule',
+        description="""
+        Reference energy parameter for the augmented plane wave (APW) basis set.
+        Is used to set the energy parameter for each state.
+        """,
+    )  # TODO: add approximation formula from energy parameter n
+
+    energy_parameter_n = Quantity(
+        type=np.int32,
+        description="""
+        Reference number of radial nodes for the augmented plane wave (APW) basis set.
+        This is used to derive the `energy_parameter`.
+        """,
+    )
+
+    order = Quantity(
+        type=np.int32,
+        description="""
+        Derivative order of the radial wavefunction term.
+        """,
+    )  # TODO: add check non-negative
+
+    boundary_condition_order = Quantity(
+        type=np.int32,
+        description="""
+        Differential order to which the radial wavefunction is matched at the boundary.
+        """,
+    )
+
+    update = Quantity(
+        type=bool,
+        description="""
+        Allow the code to optimize the initial energy parameter.
+        """,
+    )  # ? retain
+
+    updated = Quantity(
+        type=bool,
+        shape=[],
+        description="""
+        Initial energy parameter after code optimization.
+        """,
+    )  # ? retain
+
+    def _unroll_lapw(self) -> list[Self]:
+        """Split LAPW orbital up into its constituents."""
+        orders = range(2)
+        return [
+            Self(
+                energy_parameter=self.energy_parameter,
+                energy_parameter_n=self.energy_parameter_n,
+                order=order,
+                boundary_condition_order=self.boundary_condition_order,
+                update=self.update,
+                updated=self.updated,
+                core_level=self.core_level,
+            )
+            for order in orders
+        ]
 
 
 class BasisSetContainer(NumericalSettings):
