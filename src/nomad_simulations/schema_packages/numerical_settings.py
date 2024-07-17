@@ -17,6 +17,7 @@
 #
 
 from itertools import accumulate, chain, tee
+import re
 from typing import TYPE_CHECKING, Optional, Self, Union
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
@@ -955,13 +956,25 @@ class AtomCenteredBasisSet(BasisSet):
 
 
 class LocalAPWBasisSet(BasisSet):
-    orbitals = SubSection(sub_section=OrbitalsState.m_def)
+    """
+    Description of the (L)APW basis set at an individual (wave)function level.
+    Applies solely to valence electrons.
+    """
 
-    core_level = Quantity(
-        type=bool,
+    atom = Quantity(
+        type=str,
         description="""
-        Boolean denoting whether the orbital is treated differently from valence orbitals.
+        The atom for which the basis set is defined.
         """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
+    orbital = Quantity(
+        type=str,
+        description="""
+        The orbital for which the basis set is defined.
+        """,
+        a_el=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     energy_parameter = Quantity(
@@ -1010,7 +1023,7 @@ class LocalAPWBasisSet(BasisSet):
         """,
     )  # ? retain
 
-    def _unroll_lapw(self) -> list[Self]:
+    def _unroll_lapw(self) -> list[Self]:  # TODO: extend to more LAPW types
         """Split LAPW orbital up into its constituents."""
         orders = range(2)
         return [
@@ -1025,6 +1038,26 @@ class LocalAPWBasisSet(BasisSet):
             )
             for order in orders
         ]
+
+    def __init__(self, **kwargs):
+        atom_params = ('chemical_symbol', 'atomic_number')
+        re_orb_par = r'^.+_quantum_(?:number|symbol)|occupation|degeneracy'
+
+        orbital_instantiation = {k: w for k, w in kwargs if re.match(re_orb_par, k)}
+        atom_instantiation = {par: kwargs.pop(par, None) for par in atom_params}
+        AtomsState(
+            orbitals_state=[OrbitalsState(**orbital_instantiation)],
+            **atom_instantiation,
+        )  # TODO: write to Simulation
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.order < 0:
+            logger.error('`LocalAPWBasisSet.order` must be non-negative.')
+        if self.boundary_condition_order < 0:
+            logger.error(
+                '`LocalAPWBasisSet.boundary_condition_order` must be non-negative'
+            )
 
 
 class BasisSetContainer(NumericalSettings):
