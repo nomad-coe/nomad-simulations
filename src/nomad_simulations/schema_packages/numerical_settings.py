@@ -17,7 +17,6 @@
 #
 
 from itertools import accumulate, chain, tee
-import re
 from typing import TYPE_CHECKING, Optional, Self, Union
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
@@ -36,6 +35,7 @@ if TYPE_CHECKING:
 
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.utils import is_not_representative
+from abc import ABC, abstractmethod
 
 
 class NumericalSettings(ArchiveSection):
@@ -59,13 +59,29 @@ class NumericalSettings(ArchiveSection):
 
 class Mesh(ArchiveSection):
     """
-    A base section used to specify the settings of a sampling mesh. It supports uniformly-spaced
-    meshes and symmetry-reduced representations.
+    A base section used to specify the settings of a sampling mesh.
+    It supports uniformly-spaced meshes and symmetry-reduced representations.
     """
+
+    type = Quantity(
+        type=MEnum('Cuboid', 'Spherical', 'Cylindrical', 'Custom'),
+        default='Cuboid',
+        description="""
+        Type of the mesh. Defaults to 'Cuboid' if not defined. It can take the values:
+        | Name      | Description                      |
+        | --------- | -------------------------------- |
+        | `'Cuboid'`  | Mesh under Cartesian (fixed angle) coordinates: x, y, z |
+        | `'Spherical'`  | Mesh under spherical coordinates: radial, theta, phi |
+        | `'Cylindrical'`  | Mesh under cylindrical coordinates: radial, theta, longitudinal |
+        | `'Custom'`  | Mesh under custom coordinates. |
+
+        Note that 'Spherical' and 'Cylindrical' meshes converge to the same coordinate system in 2D.
+        """,
+    )
 
     spacing = Quantity(
         type=MEnum('Equidistant', 'Logarithmic', 'Tan'),
-        default='Equidistant',
+        shape=['dimensionality'],
         description="""
         Identifier for the spacing of the Mesh. Defaults to 'Equidistant' if not defined. It can take the values:
 
@@ -88,7 +104,7 @@ class Mesh(ArchiveSection):
         | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
         | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
         """,
-    )
+    )  # ! This should go under KMesh
 
     quadrature = Quantity(
         type=MEnum(
@@ -108,7 +124,7 @@ class Mesh(ArchiveSection):
         | `'Clenshaw-Curtis'`  | Quadrature rule for integration using Chebyshev polynomials using discrete cosine transformations |
         | `'Gauss-Hermite'`  | Quadrature rule for integration using Hermite polynomials |
         """,
-    )
+    )  # ! I think that this is separate from the spacing
 
     n_points = Quantity(
         type=np.int32,
@@ -118,10 +134,10 @@ class Mesh(ArchiveSection):
     )
 
     dimensionality = Quantity(
-        type=np.int32,
+        type=MEnum(1, 2, 3),
         default=3,
         description="""
-        Dimensionality of the mesh: 1, 2, or 3. If not defined, it is assumed to be 3.
+        Dimensionality of the mesh: 1, 2, or 3. Defaults to 3.
         """,
     )
 
@@ -129,9 +145,9 @@ class Mesh(ArchiveSection):
         type=np.int32,
         shape=['dimensionality'],
         description="""
-        Amount of mesh point sampling along each axis, i.e. [nx, ny, nz].
+        Amount of mesh point sampling along each axis. See `type` for the axes definition.
         """,
-    )
+    )  # ? @JosePizzaro3: should the mesh also contain its boundary information
 
     points = Quantity(
         type=np.complex128,
@@ -156,7 +172,7 @@ class Mesh(ArchiveSection):
         type=np.float64,
         shape=['n_points'],
         description="""
-        Weight of each point. A value smaller than 1, typically indicates a symmtery operation that was
+        Weight of each point. A value smaller than 1, typically indicates a symmetry operation that was
         applied to the mesh. This quantity is equivalent to `multiplicities`:
 
             weights = 1 / multiplicities
@@ -844,7 +860,7 @@ class KSpace(NumericalSettings):
 class SelfConsistency(NumericalSettings):
     """
     A base section used to define the convergence settings of self-consistent field (SCF) calculation.
-    It determines the condictions for `is_scf_converged` in `SCFOutputs` (see outputs.py). The convergence
+    It determines the conditions for `is_scf_converged` in `SCFOutputs` (see outputs.py). The convergence
     criteria covered are:
 
         1. The number of iterations is smaller than or equal to `n_max_iterations`.
@@ -923,26 +939,31 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         """,
     )
 
-    sampling_mesh = SubSection(sub_section=Mesh.m_def)
-    # mesh definitions that specify the sampling points in the reciprocal space
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
 
+class LocalizedBasisSet(BasisSet):
+    """
+    Section that connects a basis set to a localized unit, often an atom.
+    """
+
+    species_definition = SubSection(sub_section=AtomsState.m_def)
+    # ? @JosePizarro3: are we ensure that the atoms_state is always set? can you point me to any normalizer?
+
+    # TODO: add atom index-based instantiator for species if not present
+
+
 class AtomCenteredFunction(ArchiveSection):
     """
-    Specifies a single function in an atom-centered basis set.
+    Specifies a single function (term) in an atom-centered basis set.
     """
 
 
-class AtomCenteredBasisSet(BasisSet):
+class AtomCenteredBasisSet(LocalizedBasisSet):
     """
     Defines an atom-centered basis set.
     """
-
-    atom_state = SubSection(sub_section=AtomsState.m_def)
-    # ? @JosePizarro3: are we ensure that the atoms_state is always set? can you point me to any normalizer?
 
     functional_composition = SubSection(
         sub_section=AtomCenteredFunction.m_def, repeats=True
@@ -955,26 +976,34 @@ class AtomCenteredBasisSet(BasisSet):
         # ? use naming BSE
 
 
-class LocalAPWBasisSet(BasisSet):
+class APWWavefunction(ArchiveSection, ABC):
+    """Abstract base section for APW and local orbital component wavefunctions."""
+
+    @abstractmethod
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        # Add any additional normalization logic specific to APWWavefunction subclasses
+        pass
+
+
+class APWOrbital(APWWavefunction):
     """
-    Description of the (L)APW basis set at an individual (wave)function level.
-    Applies solely to valence electrons.
+    Section capturing the foundational APW basis sets parameters.
     """
 
-    atom = Quantity(
-        type=str,
+    type = Quantity(
+        type=MEnum('APW', 'LAPW', 'SLAPW', 'spherical Dirac'),
         description="""
-        The atom for which the basis set is defined.
-        """,
-        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
-    )
+        Type of augmentation contribution. Abbreviations stand for:
+        | name | description | radial product |
+        |------|-------------|----------------|
+        | APW  | augmented plane wave with a frozen energy parameter | $A_{lm, k_n} u_l (r, E_l)$ |
+        | LAPW | linearized augmented plane wave with an optimized energy parameter | $A_{lm, k_n} u_l (r, E_l) + B_{lm, k_n} /dot{u}_{lm} (r, E_l^')$ |
+        | SLAPW | super linearized augmented plane wave | -- |
+        | spherical Dirac | spherical Dirac basis set | -- |
 
-    orbital = Quantity(
-        type=str,
-        description="""
-        The orbital for which the basis set is defined.
+        * http://susi.theochem.tuwien.ac.at/lapw/
         """,
-        a_el=ELNAnnotation(component='ReferenceEditQuantity'),
     )
 
     energy_parameter = Quantity(
@@ -994,70 +1023,153 @@ class LocalAPWBasisSet(BasisSet):
         """,
     )
 
-    order = Quantity(
+    energy_status = Quantity(
+        type=MEnum('fixed', 'pre-optimization', 'post-optimization'),
+        description="""
+        Allow the code to optimize the initial energy parameter.
+        """,
+    )
+
+    differential_order = Quantity(
         type=np.int32,
         description="""
         Derivative order of the radial wavefunction term.
         """,
-    )  # TODO: add check non-negative
+    )  # TODO: add check non-negative # ? to remove
 
-    boundary_condition_order = Quantity(
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if self.differential_order < 0:
+            logger.error('`APWLOrbital.differential_order` must be non-negative.')
+
+
+class APWLocalOrbital(APWWavefunction):
+    """
+    Section capturing a local orbital extending a foundational APW basis set                                                 .
+    """
+
+    type = Quantity(
+        type=MEnum('lo', 'LO', 'custom'),
+        description="""
+        Type of augmentation contribution. Abbreviations stand for:
+        | name | description | radial product |
+        |------|-------------|----------------|
+        | lo   | 2-parameter local orbital | $A_l u_l (r, E_l) + B_l /dot{u}_l (r, E_l^')$ |
+        | LO   | 3-parameter local orbital | $A_l u_l (r, E_l) + B_l /dot{u}_l (r, E_l^') + C_l /dot{u}_l (r, E_l^{''})$ |
+        | custom | local orbital of a different formula |
+
+        * http://susi.theochem.tuwien.ac.at/lapw/
+        """,
+    )
+
+    n_terms = Quantity(
         type=np.int32,
+        description="""
+        Number of terms in the local orbital.
+        """,
+    )
+
+    energy_parameters = Quantity(
+        type=np.float64,
+        shape=['n_terms'],
+        unit='joule',
+        description="""
+        Reference energy parameter for the augmented plane wave (APW) basis set.
+        Is used to set the energy parameter for each state.
+        """,
+    )  # TODO: add approximation formula from energy parameter n
+
+    energy_parameters_n = Quantity(
+        type=np.int32,
+        shape=['n_terms'],
+        description="""
+        Reference number of radial nodes for the augmented plane wave (APW) basis set.
+        This is used to derive the `energy_parameter`.
+        """,
+    )
+
+    energy_statuses = Quantity(
+        type=MEnum('fixed', 'pre-optimization', 'post-optimization'),
+        shape=['n_terms'],
+        description="""
+        Allow the code to optimize the initial energy parameter.
+        """,
+    )
+
+    differential_orders = Quantity(
+        type=np.int32,
+        shape=['n_terms'],
+        description="""
+        Derivative order of the radial wavefunction term.
+        """,
+    )  # TODO: add check non-negative # ? to remove
+
+    boundary_orders = Quantity(
+        type=np.int32,
+        shape=['n_terms'],
         description="""
         Differential order to which the radial wavefunction is matched at the boundary.
         """,
     )
 
-    update = Quantity(
-        type=bool,
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        if np.any(np.isneginf(self.differential_orders)):
+            logger.error('`APWLOrbital.differential_order` must be non-negative.')
+        if np.any(np.isneginf(self.boundary_orders)):
+            logger.error('`APWLOrbital.boundary_orders` must be non-negative.')
+
+
+class APWLChannel(ArchiveSection):
+    """
+    Channel of the angular momentum ($l$),
+    containing all orbitals that contribute to its description.
+    """
+
+    name = Quantity(
+        type=np.int32,
         description="""
-        Allow the code to optimize the initial energy parameter.
+        Angular momentum quantum number of the local orbital.
         """,
-    )  # ? retain
+    )
 
-    updated = Quantity(
-        type=bool,
-        shape=[],
+    n_wavefunctions = Quantity(
+        type=np.int32,
         description="""
-        Initial energy parameter after code optimization.
+        Number of wavefunctions in the l-channel, i.e. $(2l + 1) n_orbitals$.
         """,
-    )  # ? retain
+    )
 
-    def _unroll_lapw(self) -> list[Self]:  # TODO: extend to more LAPW types
-        """Split LAPW orbital up into its constituents."""
-        orders = range(2)
-        return [
-            Self(
-                energy_parameter=self.energy_parameter,
-                energy_parameter_n=self.energy_parameter_n,
-                order=order,
-                boundary_condition_order=self.boundary_condition_order,
-                update=self.update,
-                updated=self.updated,
-                core_level=self.core_level,
-            )
-            for order in orders
-        ]
-
-    def __init__(self, **kwargs):
-        atom_params = ('chemical_symbol', 'atomic_number')
-        re_orb_par = r'^.+_quantum_(?:number|symbol)|occupation|degeneracy'
-
-        orbital_instantiation = {k: w for k, w in kwargs if re.match(re_orb_par, k)}
-        atom_instantiation = {par: kwargs.pop(par, None) for par in atom_params}
-        AtomsState(
-            orbitals_state=[OrbitalsState(**orbital_instantiation)],
-            **atom_instantiation,
-        )  # TODO: write to Simulation
+    orbitals = SubSection(sub_section=APWWavefunction.m_def, repeats=True)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        if self.order < 0:
-            logger.error('`LocalAPWBasisSet.order` must be non-negative.')
-        if self.boundary_condition_order < 0:
-            logger.error(
-                '`LocalAPWBasisSet.boundary_condition_order` must be non-negative'
-            )
+        # self.name = self.m_def.name
+        self.n_wavefunctions = len(self.orbitals) * (2 * self.name + 1)
+
+
+class MuffinTinRegion(LocalizedBasisSet, Mesh):
+    """
+    Muffin-tin region around atoms, containing the augmented part of the APW basis set.
+    """
+
+    # there are 2 main ways of structuring the APW basis set
+    # either as APW and lo in the MT region
+    # or by l-channel in the MT region
+
+    l_max = Quantity(
+        type=np.int32,
+        description="""
+        Maximum angular momentum quantum number that is sampled.
+        Starts at 0.
+        """,
+    )
+
+    l_channels = SubSection(sub_section=APWLChannel.m_def, repeats=True)
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        self.type = 'Spherical'
 
 
 class BasisSetContainer(NumericalSettings):
