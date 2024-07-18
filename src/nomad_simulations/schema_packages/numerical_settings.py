@@ -17,9 +17,8 @@
 #
 
 from itertools import accumulate, chain, tee
-from typing import TYPE_CHECKING, Optional, Self, Union
+from typing import TYPE_CHECKING, Optional, Union
 
-from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
 import numpy as np
 import pint
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
@@ -28,14 +27,17 @@ from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
+from nomad_simulations.schema_packages.atoms_state import AtomsState
+
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
+from abc import ABC, abstractmethod
+
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.utils import is_not_representative
-from abc import ABC, abstractmethod
 
 
 class NumericalSettings(ArchiveSection):
