@@ -23,7 +23,6 @@ import numpy as np
 import pint
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
@@ -33,8 +32,6 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
-
-from abc import ABC, abstractmethod
 
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.utils import is_not_representative
@@ -59,27 +56,25 @@ class NumericalSettings(ArchiveSection):
         super().normalize(archive, logger)
 
 
+class Smearing(NumericalSettings):
+    """
+    Section specifying the smearing of the occupation numbers to
+    either simulate temperature effects or improve SCF convergence.
+    """
+
+    name = Quantity(
+        type=MEnum('Fermi-Dirac', 'Gaussian', 'Methfessel-Paxton'),
+        description="""
+        Smearing routine employed.
+        """,
+    )
+
+
 class Mesh(ArchiveSection):
     """
     A base section used to specify the settings of a sampling mesh.
     It supports uniformly-spaced meshes and symmetry-reduced representations.
     """
-
-    type = Quantity(
-        type=MEnum('Cuboid', 'Spherical', 'Cylindrical', 'Custom'),
-        default='Cuboid',
-        description="""
-        Type of the mesh. Defaults to 'Cuboid' if not defined. It can take the values:
-        | Name      | Description                      |
-        | --------- | -------------------------------- |
-        | `'Cuboid'`  | Mesh under Cartesian (fixed angle) coordinates: x, y, z |
-        | `'Spherical'`  | Mesh under spherical coordinates: radial, theta, phi |
-        | `'Cylindrical'`  | Mesh under cylindrical coordinates: radial, theta, longitudinal |
-        | `'Custom'`  | Mesh under custom coordinates. |
-
-        Note that 'Spherical' and 'Cylindrical' meshes converge to the same coordinate system in 2D.
-        """,
-    )
 
     spacing = Quantity(
         type=MEnum('Equidistant', 'Logarithmic', 'Tan'),
@@ -94,19 +89,6 @@ class Mesh(ArchiveSection):
         | `'Tan'`  | Non-uniform tan mesh for grids. More dense at low abs values of the points, while less dense for higher values |
         """,
     )
-
-    center = Quantity(
-        type=MEnum('Gamma-centered', 'Monkhorst-Pack', 'Gamma-offcenter'),
-        description="""
-        Identifier for the center of the Mesh:
-
-        | Name      | Description                      |
-        | --------- | -------------------------------- |
-        | `'Gamma-centered'` | Regular mesh is centered around Gamma. No offset. |
-        | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
-        | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
-        """,
-    )  # ! This should go under KMesh
 
     quadrature = Quantity(
         type=MEnum(
@@ -126,7 +108,7 @@ class Mesh(ArchiveSection):
         | `'Clenshaw-Curtis'`  | Quadrature rule for integration using Chebyshev polynomials using discrete cosine transformations |
         | `'Gauss-Hermite'`  | Quadrature rule for integration using Hermite polynomials |
         """,
-    )  # ! I think that this is separate from the spacing
+    )  # ! @JosePizarro3 I think that this is separate from the spacing
 
     n_points = Quantity(
         type=np.int32,
@@ -164,9 +146,9 @@ class Mesh(ArchiveSection):
         shape=['n_points'],
         description="""
         The amount of times the same point reappears. A value larger than 1, typically indicates
-        a symmtery operation that was applied to the `Mesh`. This quantity is equivalent to `weights`:
+        a symmetry operation that was applied to the `Mesh`. This quantity is equivalent to `weights`:
 
-            multiplicities = 1 / weights
+            multiplicities = n_points * weights
         """,
     )
 
@@ -177,7 +159,7 @@ class Mesh(ArchiveSection):
         Weight of each point. A value smaller than 1, typically indicates a symmetry operation that was
         applied to the mesh. This quantity is equivalent to `multiplicities`:
 
-            weights = 1 / multiplicities
+            weights = multiplicities / n_points
         """,
     )
 
@@ -330,11 +312,24 @@ class KMesh(Mesh):
     """
 
     label = Quantity(
-        type=MEnum('k-mesh', 'q-mesh'),
+        type=MEnum('k-mesh', 'q-mesh'),  # ? add g-mesh for LAPW
         default='k-mesh',
         description="""
         Label used to identify the `KMesh` with the reciprocal vector used. In linear response, `k` is used for
         refering to the wave-vector of electrons, while `q` is used for the scattering effect of the Coulomb potential.
+        """,
+    )
+
+    center = Quantity(
+        type=MEnum('Gamma-centered', 'Monkhorst-Pack', 'Gamma-offcenter'),
+        description="""
+        Identifier for the center of the Mesh:
+
+        | Name      | Description                      |
+        | --------- | -------------------------------- |
+        | `'Gamma-centered'` | Regular mesh is centered around Gamma. No offset. |
+        | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
+        | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
         """,
     )
 
@@ -913,7 +908,11 @@ class SelfConsistency(NumericalSettings):
 
 class BasisSet(ArchiveSection):
     """A type section denoting a basis set component of a simulation.
-    Should be used as a base section for more specialized sections."""
+    Should be used as a base section for more specialized sections.
+    Examples include:
+    - mesh-based basis sets, e.g. (projector-)(augmented) plane-wave basis sets
+    - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
+    """
 
     def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
@@ -923,7 +922,11 @@ class BasisSet(ArchiveSection):
 
 class PlaneWaveBasisSet(BasisSet, Mesh):
     """
-    Defines a plane-wave basis set over a singular mesh.
+    Basis set over a reciprocal mesh, where each point $k_n$ represents a planar-wave basis function $\frac{1}{\sqrt{\omega}} e^{i k_n r}$.
+    Typically the grid itself is cartesian with only points within a designated sphere considered.
+    The cutoff radius may be defined by a reciprocal length, or more commonly, the equivalent kinetic energy for a free particle.
+
+    * D. J. Singh and L. Nordström, \"Why Planewaves\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 24-26.
     """
 
     cutoff_energy = Quantity(
@@ -934,24 +937,24 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         """,
     )
 
-    smearing_method = Quantity(
-        type=MEnum('Fermi-Dirac', 'Gaussian', 'Methfessel-Paxton'),
-        description="""
-        Method used to smear the occupation numbers in the plane-wave basis set.
-        """,
-    )
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
+        super(BasisSet, self).normalize(archive, logger)
+        super(Mesh, self).normalize(archive, logger)
 
 
 class LocalizedBasisSet(BasisSet):
     """
-    Section that connects a basis set to a localized unit, often an atom.
+    Abstract base section that connects a basis set to a localized unit, often an atom.
     """
 
-    species_definition = SubSection(sub_section=AtomsState.m_def)
-    # ? @JosePizarro3: are we ensure that the atoms_state is always set? can you point me to any normalizer?
+    species_definition = Quantity(
+        type=AtomsState,
+        shape=['*'],
+        description="""
+        Reference to the section `AtomsState` containing the information
+        of the states of the atoms used for the localized basis set.
+        """,
+    )
 
     # TODO: add atom index-based instantiator for species if not present
 
@@ -960,6 +963,10 @@ class AtomCenteredFunction(ArchiveSection):
     """
     Specifies a single function (term) in an atom-centered basis set.
     """
+
+    pass
+
+    # TODO: design system for writing basis functions like gaussian or slater orbitals
 
 
 class AtomCenteredBasisSet(LocalizedBasisSet):
@@ -978,19 +985,20 @@ class AtomCenteredBasisSet(LocalizedBasisSet):
         # ? use naming BSE
 
 
-class APWWavefunction(ArchiveSection, ABC):
-    """Abstract base section for APW and local orbital component wavefunctions."""
+class APWWavefunction(ArchiveSection):
+    """Abstract base section for (S)(L)APW and local orbital component wavefunctions.
+    It helps defines the interface with `APWLChannel`."""
 
-    @abstractmethod
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-        # Add any additional normalization logic specific to APWWavefunction subclasses
-        pass
+    pass
 
 
 class APWOrbital(APWWavefunction):
     """
-    Section capturing the foundational APW basis sets parameters.
+    Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\sum_{lm} \left[ \sum_o c_{lmo} \frac{\partial}{\partial r}u_l(r, \epsilon_l) \right] Y_lm$.
+    The energy parameter $\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
+    This representation then has to match the plane-wave $k_n$ points within the muffin-tin sphere.
+
+    * D. J. Singh and L. Nordström, \"INTRODUCTION TO THE LAPW METHOD,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 43-52.
     """
 
     type = Quantity(
@@ -1000,7 +1008,7 @@ class APWOrbital(APWWavefunction):
         | name | description | radial product |
         |------|-------------|----------------|
         | APW  | augmented plane wave with a frozen energy parameter | $A_{lm, k_n} u_l (r, E_l)$ |
-        | LAPW | linearized augmented plane wave with an optimized energy parameter | $A_{lm, k_n} u_l (r, E_l) + B_{lm, k_n} /dot{u}_{lm} (r, E_l^')$ |
+        | LAPW | linearized augmented plane wave with an optimized energy parameter | $A_{lm, k_n} u_l (r, E_l) + B_{lm, k_n} \dot{u}_{lm} (r, E_l^')$ |
         | SLAPW | super linearized augmented plane wave | -- |
         | spherical Dirac | spherical Dirac basis set | -- |
 
@@ -1047,7 +1055,11 @@ class APWOrbital(APWWavefunction):
 
 class APWLocalOrbital(APWWavefunction):
     """
-    Section capturing a local orbital extending a foundational APW basis set                                                 .
+    Implementation of `APWWavefunction` capturing a local orbital extending a foundational APW basis set.
+    Local orbitals allow for flexible additions to an `APWOrbital` specification.
+    They may be included to describe semi-core states, virtual states, ghost bands, or improve overall convergence.
+
+    * D. J. Singh and L. Nordström, \"Role of the Linearization Energies,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 49-52.
     """
 
     type = Quantity(
@@ -1056,8 +1068,8 @@ class APWLocalOrbital(APWWavefunction):
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
         |------|-------------|----------------|
-        | lo   | 2-parameter local orbital | $A_l u_l (r, E_l) + B_l /dot{u}_l (r, E_l^')$ |
-        | LO   | 3-parameter local orbital | $A_l u_l (r, E_l) + B_l /dot{u}_l (r, E_l^') + C_l /dot{u}_l (r, E_l^{''})$ |
+        | lo   | 2-parameter local orbital | $A_l u_l (r, E_l) + B_l \dot{u}_l (r, E_l^')$ |
+        | LO   | 3-parameter local orbital | $A_l u_l (r, E_l) + B_l \dot{u}_l (r, E_l^') + C_l \dot{u}_l (r, E_l^{''})$ |
         | custom | local orbital of a different formula |
 
         * http://susi.theochem.tuwien.ac.at/lapw/
@@ -1124,8 +1136,9 @@ class APWLocalOrbital(APWWavefunction):
 
 class APWLChannel(ArchiveSection):
     """
-    Channel of the angular momentum ($l$),
-    containing all orbitals that contribute to its description.
+    Collection of all (S)(L)APW and local orbital components that contribute
+    to a single $l$-channel. $l$ here stands for the angular momentum parameter
+    in the Laplace spherical harmonics $Y_{l, m}$.
     """
 
     name = Quantity(
@@ -1153,6 +1166,8 @@ class APWLChannel(ArchiveSection):
 class MuffinTinRegion(LocalizedBasisSet, Mesh):
     """
     Muffin-tin region around atoms, containing the augmented part of the APW basis set.
+    The latter is structured by l-channel. Each channel contains a base (S)(L)APW definition,
+    which may be extended via local orbitals.
     """
 
     # there are 2 main ways of structuring the APW basis set
@@ -1171,33 +1186,32 @@ class MuffinTinRegion(LocalizedBasisSet, Mesh):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        self.type = 'Spherical'
+        # self.type = 'spherical'
 
 
 class BasisSetContainer(NumericalSettings):
-    """Section providing an overview of the full basis set.
-    The basis set may contain multiple basis sets specifications `BasisSet`,
-    each with their own parameters."""
+    """
+    A section defining the full basis set used for representing the electronic structure
+    during the diagonalization of a Hamiltonian (component), as defined in `ModelMethod`.
+    This section may contain multiple basis set specifications under the basis_set_components,
+    each with their own parameters.
+    """
 
     native_tier = Quantity(
-        type=str,
+        type=str,  # to be overwritten by a parser `MEnum`
         shape=[],
         description="""
-        Code-specific tag indicating the precision used
-        for the basis set and meshes of numerical routines.
+        Code-specific tag indicating the overall precision based on the basis set parameters.
+        The naming conventions of the same code are used. See the parser implementation for the possible values.
+        The number of tiers varies, but a typical example would be `low`, `medium`, `high`.
         """,
     )
 
-    electronic_structure = Quantity(
-        type=str,
-        shape=[],
-        description="""
-        Electronic structure method used for the calculation.
-        """,
-        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
-    )
+    # TODO: add reference to `electronic_structure`,
+    # specifying to which electronic structure representation the basis set is applied
+    # e.g. wavefunction, density, grids for subroutines, etc.
 
-    basis_sets = SubSection(sub_section=BasisSet.m_def, repeats=True)
+    basis_set_components = SubSection(sub_section=BasisSet.m_def, repeats=True)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
