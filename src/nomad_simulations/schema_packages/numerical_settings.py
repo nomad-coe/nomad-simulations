@@ -19,10 +19,12 @@
 from itertools import accumulate, chain, tee
 from typing import TYPE_CHECKING, Optional, Union
 
+from nomad_simulations.schema_packages.model_method import BaseModelMethod
 import numpy as np
 import pint
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
 from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
@@ -914,6 +916,16 @@ class BasisSet(ArchiveSection):
     - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
     """
 
+    hamiltonian_definition = Quantity(
+        type=BaseModelMethod,
+        shape=['*'],
+        description="""
+        Reference to the section `BaseModelMethod` containing the information
+        of the Hamiltonian term to which the basis set applies.
+        """,
+        a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
+    )
+
     def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
@@ -937,7 +949,7 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         """,
     )
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super(BasisSet, self).normalize(archive, logger)
         super(Mesh, self).normalize(archive, logger)
 
@@ -954,6 +966,7 @@ class LocalizedBasisSet(BasisSet):
         Reference to the section `AtomsState` containing the information
         of the states of the atoms used for the localized basis set.
         """,
+        a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
     )
 
     # TODO: add atom index-based instantiator for species if not present
