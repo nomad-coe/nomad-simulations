@@ -911,12 +911,26 @@ class SelfConsistency(NumericalSettings):
 class BasisSet(ArchiveSection):
     """A type section denoting a basis set component of a simulation.
     Should be used as a base section for more specialized sections.
+    Allows for denoting the basis set's _scope_, i.e. to which entity it applies,
+    e.g. atoms species, orbital type, Hamiltonian term.
+
     Examples include:
     - mesh-based basis sets, e.g. (projector-)(augmented) plane-wave basis sets
     - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
     """
 
-    hamiltonian_definition = Quantity(
+    species_scope = Quantity(
+        type=AtomsState,
+        shape=['*'],
+        description="""
+        Reference to the section `AtomsState` specifying the localization of the basis set.
+        """,
+        a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
+    )
+
+    # TODO: add atom index-based instantiator for species if not present
+
+    hamiltonian_scope = Quantity(
         type=BaseModelMethod,
         shape=['*'],
         description="""
@@ -925,6 +939,8 @@ class BasisSet(ArchiveSection):
         """,
         a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
     )
+
+    # ? band_scope or orbital_scope: valence vs core
 
     def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
@@ -954,24 +970,6 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         super(Mesh, self).normalize(archive, logger)
 
 
-class LocalizedBasisSet(BasisSet):
-    """
-    Abstract base section that connects a basis set to a localized unit, often an atom.
-    """
-
-    species_definition = Quantity(
-        type=AtomsState,
-        shape=['*'],
-        description="""
-        Reference to the section `AtomsState` containing the information
-        of the states of the atoms used for the localized basis set.
-        """,
-        a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
-    )
-
-    # TODO: add atom index-based instantiator for species if not present
-
-
 class AtomCenteredFunction(ArchiveSection):
     """
     Specifies a single function (term) in an atom-centered basis set.
@@ -982,7 +980,7 @@ class AtomCenteredFunction(ArchiveSection):
     # TODO: design system for writing basis functions like gaussian or slater orbitals
 
 
-class AtomCenteredBasisSet(LocalizedBasisSet):
+class AtomCenteredBasisSet(BasisSet):
     """
     Defines an atom-centered basis set.
     """
@@ -1200,7 +1198,7 @@ class APWLChannel(BasisSet):
         self.n_wavefunctions = len(self.orbitals) * (2 * self.name + 1)
 
 
-class MuffinTinRegion(LocalizedBasisSet, Mesh):
+class MuffinTinRegion(BasisSet, Mesh):
     """
     Muffin-tin region around atoms, containing the augmented part of the APW basis set.
     The latter is structured by l-channel. Each channel contains a base (S)(L)APW definition,
