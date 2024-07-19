@@ -1002,7 +1002,7 @@ class APWOrbital(APWWavefunction):
     """
 
     type = Quantity(
-        type=MEnum('APW', 'LAPW', 'SLAPW', 'spherical Dirac'),
+        type=MEnum('apw', 'lapw', 'slapw', 'spherical_dirac'),
         description="""
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
@@ -1134,7 +1134,7 @@ class APWLocalOrbital(APWWavefunction):
             logger.error('`APWLOrbital.boundary_orders` must be non-negative.')
 
 
-class APWLChannel(ArchiveSection):
+class APWLChannel(BasisSet):
     """
     Collection of all (S)(L)APW and local orbital components that contribute
     to a single $l$-channel. $l$ here stands for the angular momentum parameter
@@ -1157,7 +1157,31 @@ class APWLChannel(ArchiveSection):
 
     orbitals = SubSection(sub_section=APWWavefunction.m_def, repeats=True)
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def _determine_apw(self, logger: BoundLogger) -> dict[str, int]:
+        """
+        Produce a count of the APW components in the l-channel.
+        """
+        count = {'apw': 0, 'lapw': 0, 'slapw': 0, 'lo': 0, 'other': 0}
+        order_map = {0: 'apw', 1: 'lapw', 2: 'slapw'}  # TODO: add dirac?
+
+        for orb in self.orbitals:
+            err_msg = f'Unknown APW orbital type {orb.type} and order {orb.differential_order}.'
+            if isinstance(orb, APWOrbital):
+                if orb.type in order_map.values():
+                    count[orb.type] += 1
+                elif orb.differential_order in order_map:
+                    count[order_map[orb.differential_order]] += 1
+                elif orb.differential_order > 2:
+                    count['slapw'] += 1
+                else:
+                    logger.warning(err_msg)
+            elif isinstance(orb, APWLocalOrbital):
+                count['lo'] += 1
+            else:
+                logger.warning(err_msg)
+        return count
+
+    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
         # self.name = self.m_def.name
         self.n_wavefunctions = len(self.orbitals) * (2 * self.name + 1)
@@ -1184,6 +1208,15 @@ class MuffinTinRegion(LocalizedBasisSet, Mesh):
 
     l_channels = SubSection(sub_section=APWLChannel.m_def, repeats=True)
 
+    def _determine_apw(self, logger: BoundLogger) -> dict[str, int]:
+        """
+        Aggregate the APW component count in the muffin-tin region.
+        """
+        count = {'apw': 0, 'lapw': 0, 'slapw': 0, 'lo': 0, 'other': 0}
+        for channel in self.l_channels:
+            count.update(channel._determine_apw(logger))
+        return count
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         # self.type = 'spherical'
@@ -1199,7 +1232,6 @@ class BasisSetContainer(NumericalSettings):
 
     native_tier = Quantity(
         type=str,  # to be overwritten by a parser `MEnum`
-        shape=[],
         description="""
         Code-specific tag indicating the overall precision based on the basis set parameters.
         The naming conventions of the same code are used. See the parser implementation for the possible values.
@@ -1213,7 +1245,28 @@ class BasisSetContainer(NumericalSettings):
 
     basis_set_components = SubSection(sub_section=BasisSet.m_def, repeats=True)
 
+    def _determine_apw(self, logger: BoundLogger) -> str:
+        """
+        Derive the basis set name for a (S)(L)APW case.
+        """
+        answer, has_plane_wave = '', False
+        for comp in self.basis_set_components:
+            if isinstance(comp, MuffinTinRegion):
+                count = comp._determine_apw(logger)
+                if count['apw'] + count['lapw'] + count['slapw'] > 0:
+                    if count['slapw'] > 0:
+                        answer += 'slapw'.upper()
+                    elif count['lapw'] > 0:
+                        answer += 'lapw'.upper()
+                    elif count['apw'] > 0:
+                        answer += 'apw'.upper()
+                    if count['lo'] > 0:
+                        answer += '+lo'
+            elif isinstance(comp, PlaneWaveBasisSet):
+                has_plane_wave = True
+        return answer if has_plane_wave else ''
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        # self.name = self.m_def.name
-        # TODO: set name based on basis sets
+        if name := self._determine_apw(logger):
+            self.name = name  # TODO: set name based on basis sets
