@@ -19,7 +19,7 @@
 from itertools import accumulate, chain, tee
 from typing import TYPE_CHECKING, Optional, Union
 
-from nomad_simulations.schema_packages.model_method import BaseModelMethod
+from nomad_simulations.schema_packages.properties.energies import EnergyContribution
 import numpy as np
 import pint
 from scipy import constants as const
@@ -932,10 +932,10 @@ class BasisSet(ArchiveSection):
     # TODO: add atom index-based instantiator for species if not present
 
     hamiltonian_scope = Quantity(
-        type=BaseModelMethod,
+        type=EnergyContribution,
         shape=['*'],
         description="""
-        Reference to the section `BaseModelMethod` containing the information
+        Reference to the section `EnergyContribution` containing the information
         of the Hamiltonian term to which the basis set applies.
         """,
         a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
