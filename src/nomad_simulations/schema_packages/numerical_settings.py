@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Optional, Union
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 import numpy as np
 import pint
+from scipy import constants as const
 from ase.dft.kpoints import get_monkhorst_pack_size_and_offset, monkhorst_pack
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
@@ -965,6 +966,13 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         """,
     )
 
+    @property  # ? keep, remove, or convert to `Quantity`?
+    def cutoff_radius(self) -> pint.Quantity:
+        """
+        Compute the cutoff radius for the plane-wave basis set, expressed in reciprocal coordinates.
+        """
+        return np.sqrt(2 * const.m_e * ureg.kg * self.cutoff_energy / ureg.hbar ** 2)
+
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super(BasisSet, self).normalize(archive, logger)
         super(Mesh, self).normalize(archive, logger)
@@ -980,8 +988,8 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
         type=np.float64,
         shape=[],
         description="""
-        The spherical cutoff parameter for the interstitial plane waves in the LAPW family.
-        This cutoff has no unit, referring to the product of the smallest muffin-tin radius
+        The spherical cutoff parameter for the interstitial plane waves in the APW family.
+        This cutoff has no units, referring to the product of the smallest muffin-tin radius
         and the length of the cutoff reciprocal vector ($r_{MT} * |K_{cut}|$).
         """,
     )
