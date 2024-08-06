@@ -970,6 +970,36 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         super(Mesh, self).normalize(archive, logger)
 
 
+class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
+    """
+    A `PlaneWaveBasisSet` specialized to the APW use case.
+    Its main descriptors are defined in terms of the `MuffinTin` regions.
+    """
+
+    cutoff_fractional = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        The spherical cutoff parameter for the interstitial plane waves in the LAPW family.
+        This cutoff has no unit, referring to the product of the smallest muffin-tin radius
+        and the length of the cutoff reciprocal vector ($r_{MT} * |K_{cut}|$).
+        """,
+    )
+
+    def set_cutoff_fractional(self, mt_r_min: float, logger: BoundLogger) -> None:
+        """
+        Compute the fractional cutoff parameter for the interstitial plane waves in the LAPW family.
+        This parameter is defined wrt the smallest muffin-tin region.
+        """
+        try:
+            self.cutoff_fractional = self.cutoff_energy / mt_r_min
+        except AttributeError:
+            logger.warning('`MuffinTin.cutoff_energy` must be defined.')
+        except ZeroDivisionError:
+            logger.warning('`MuffinTin.radius` cannot be zero.')
+        except TypeError:
+            logger.warning('`MuffinTin.radius` and `MuffinTin.cutoff_energy` must be defined.')
+
 class AtomCenteredFunction(ArchiveSection):
     """
     Specifies a single function (term) in an atom-centered basis set.
@@ -1209,6 +1239,15 @@ class MuffinTinRegion(BasisSet, Mesh):
     # either as APW and lo in the MT region
     # or by l-channel in the MT region
 
+    radius = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='meter',
+        description="""
+        The radius descriptor of the `MuffinTin` is spherical shape.
+        """,
+    )
+
     l_max = Quantity(
         type=np.int32,
         description="""
@@ -1277,7 +1316,26 @@ class BasisSetContainer(NumericalSettings):
                 has_plane_wave = True
         return answer if has_plane_wave else ''
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def _smallest_mt(self) -> MuffinTinRegion:
+        """
+        Scan the container for the smallest muffin-tin region.
+        """
+        mt_min = None
+        for comp in self.basis_set_components:
+            if isinstance(comp, MuffinTinRegion):
+                if mt_min is None or comp.radius < mt_min.radius:
+                    mt_min = comp
+        return mt_min
+
+    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
+        pws = [comp for comp in self.basis_set_components if isinstance(comp, PlaneWaveBasisSet)]
+        if len(pws) > 1:
+            logger.warning('Multiple plane-wave basis sets found were found.')
         if name := self._determine_apw(logger):
             self.name = name  # TODO: set name based on basis sets
+            try:
+                pws[0].compute_cutoff_fractional(self._smallest_mt(), logger)
+            except (IndexError, AttributeError):
+                logger.error('Expected a `APWPlaneWaveBasisSet` instance, but found none.')
+
