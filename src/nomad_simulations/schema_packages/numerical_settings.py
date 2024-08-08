@@ -19,7 +19,6 @@
 from itertools import accumulate, chain, tee
 from typing import TYPE_CHECKING, Optional, Union
 
-from nomad_simulations.schema_packages.properties.energies import EnergyContribution
 import numpy as np
 import pint
 from scipy import constants as const
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.model_system import ModelSystem
+from nomad_simulations.schema_packages.properties.energies import EnergyContribution
 from nomad_simulations.schema_packages.utils import is_not_representative
 
 
@@ -121,7 +121,7 @@ class Mesh(ArchiveSection):
     )
 
     dimensionality = Quantity(
-        type=MEnum(1, 2, 3),
+        type=np.int32,
         default=3,
         description="""
         Dimensionality of the mesh: 1, 2, or 3. Defaults to 3.
@@ -962,16 +962,18 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         type=np.float64,
         unit='joule',
         description="""
-        Cutoff energy for the plane-wave basis set. The simulation uses plane waves with energies below this cutoff.
+        Cutoff energy for the plane-wave basis set.
+        The simulation uses plane waves with energies below this cutoff.
         """,
     )
 
-    @property  # ? keep, remove, or convert to `Quantity`?
+    @property  # ? keep, or convert to `Quantity`?
     def cutoff_radius(self) -> pint.Quantity:
         """
         Compute the cutoff radius for the plane-wave basis set, expressed in reciprocal coordinates.
         """
-        return np.sqrt(2 * const.m_e * ureg.kg * self.cutoff_energy / ureg.hbar ** 2)
+        m_e = const.m_e * ureg(const.unit('electron mass'))
+        return np.sqrt(2 * m_e * self.cutoff_energy)
 
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super(BasisSet, self).normalize(archive, logger)
@@ -994,19 +996,22 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
         """,
     )
 
-    def set_cutoff_fractional(self, mt_r_min: float, logger: BoundLogger) -> None:
+    def set_cutoff_fractional(self, mt_r_min: pint.Quantity, logger: BoundLogger) -> None:
         """
         Compute the fractional cutoff parameter for the interstitial plane waves in the LAPW family.
         This parameter is defined wrt the smallest muffin-tin region.
         """
         try:
-            self.cutoff_fractional = self.cutoff_energy / mt_r_min
+            self.cutoff_fractional = self.cutoff_radius / mt_r_min  # unitless
         except AttributeError:
             logger.warning('`MuffinTin.cutoff_energy` must be defined.')
         except ZeroDivisionError:
             logger.warning('`MuffinTin.radius` cannot be zero.')
         except TypeError:
-            logger.warning('`MuffinTin.radius` and `MuffinTin.cutoff_energy` must be defined.')
+            logger.warning(
+                '`MuffinTin.radius` and `MuffinTin.cutoff_energy` must be defined.'
+            )
+
 
 class AtomCenteredFunction(ArchiveSection):
     """
@@ -1025,7 +1030,7 @@ class AtomCenteredBasisSet(BasisSet):
 
     functional_composition = SubSection(
         sub_section=AtomCenteredFunction.m_def, repeats=True
-    )
+    )  # TODO change name
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -1036,34 +1041,7 @@ class AtomCenteredBasisSet(BasisSet):
 
 class APWWavefunction(ArchiveSection):
     """Abstract base section for (S)(L)APW and local orbital component wavefunctions.
-    It helps defines the interface with `APWLChannel`."""
-
-    pass
-
-
-class APWOrbital(APWWavefunction):
-    """
-    Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\sum_{lm} \left[ \sum_o c_{lmo} \frac{\partial}{\partial r}u_l(r, \epsilon_l) \right] Y_lm$.
-    The energy parameter $\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
-    This representation then has to match the plane-wave $k_n$ points within the muffin-tin sphere.
-
-    * D. J. Singh and L. Nordström, \"INTRODUCTION TO THE LAPW METHOD,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 43-52.
-    """
-
-    type = Quantity(
-        type=MEnum('apw', 'lapw', 'slapw', 'spherical_dirac'),
-        description="""
-        Type of augmentation contribution. Abbreviations stand for:
-        | name | description | radial product |
-        |------|-------------|----------------|
-        | APW  | augmented plane wave with a frozen energy parameter | $A_{lm, k_n} u_l (r, E_l)$ |
-        | LAPW | linearized augmented plane wave with an optimized energy parameter | $A_{lm, k_n} u_l (r, E_l) + B_{lm, k_n} \dot{u}_{lm} (r, E_l^')$ |
-        | SLAPW | super linearized augmented plane wave | -- |
-        | spherical Dirac | spherical Dirac basis set | -- |
-
-        * http://susi.theochem.tuwien.ac.at/lapw/
-        """,
-    )
+    It helps defining the interface with `APWLChannel`."""
 
     energy_parameter = Quantity(
         type=np.float64,
@@ -1095,6 +1073,31 @@ class APWOrbital(APWWavefunction):
         Derivative order of the radial wavefunction term.
         """,
     )  # TODO: add check non-negative # ? to remove
+
+
+class APWOrbital(APWWavefunction):
+    """
+    Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\sum_{lm} \left[ \sum_o c_{lmo} \frac{\partial}{\partial r}u_l(r, \epsilon_l) \right] Y_lm$.
+    The energy parameter $\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
+    This representation then has to match the plane-wave $k_n$ points within the muffin-tin sphere.
+
+    * D. J. Singh and L. Nordström, \"INTRODUCTION TO THE LAPW METHOD,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 43-52.
+    """
+
+    type = Quantity(
+        type=MEnum('apw', 'lapw', 'slapw', 'spherical_dirac'),
+        description="""
+        Type of augmentation contribution. Abbreviations stand for:
+        | name | description | radial product |
+        |------|-------------|----------------|
+        | APW  | augmented plane wave with a frozen energy parameter | $A_{lm, k_n} u_l (r, E_l)$ |
+        | LAPW | linearized augmented plane wave with an optimized energy parameter | $A_{lm, k_n} u_l (r, E_l) + B_{lm, k_n} \dot{u}_{lm} (r, E_l^')$ |
+        | SLAPW | super linearized augmented plane wave | -- |
+        | spherical Dirac | spherical Dirac basis set | -- |
+
+        * http://susi.theochem.tuwien.ac.at/lapw/
+        """,
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -1132,42 +1135,19 @@ class APWLocalOrbital(APWWavefunction):
         """,
     )
 
-    energy_parameters = Quantity(
-        type=np.float64,
-        shape=['n_terms'],
-        unit='joule',
-        description="""
-        Reference energy parameter for the augmented plane wave (APW) basis set.
-        Is used to set the energy parameter for each state.
-        """,
-    )  # TODO: add approximation formula from energy parameter n
+    energy_parameter = APWWavefunction.energy_parameter.m_copy()
+    energy_parameter.shape = ['n_terms']
 
-    energy_parameters_n = Quantity(
-        type=np.int32,
-        shape=['n_terms'],
-        description="""
-        Reference number of radial nodes for the augmented plane wave (APW) basis set.
-        This is used to derive the `energy_parameter`.
-        """,
-    )
+    energy_parameter_n = APWWavefunction.energy_parameter_n.m_copy()
+    energy_parameter_n.shape = ['n_terms']
 
-    energy_statuses = Quantity(
-        type=MEnum('fixed', 'pre-optimization', 'post-optimization'),
-        shape=['n_terms'],
-        description="""
-        Allow the code to optimize the initial energy parameter.
-        """,
-    )
+    energy_status = APWWavefunction.energy_status.m_copy()
+    energy_status.shape = ['n_terms']
 
-    differential_orders = Quantity(
-        type=np.int32,
-        shape=['n_terms'],
-        description="""
-        Derivative order of the radial wavefunction term.
-        """,
-    )  # TODO: add check non-negative # ? to remove
+    differential_order = APWWavefunction.differential_order.m_copy()
+    differential_order.shape = ['n_terms']
 
-    boundary_orders = Quantity(
+    boundary_order = Quantity(
         type=np.int32,
         shape=['n_terms'],
         description="""
@@ -1337,13 +1317,18 @@ class BasisSetContainer(NumericalSettings):
 
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
-        pws = [comp for comp in self.basis_set_components if isinstance(comp, PlaneWaveBasisSet)]
+        pws = [
+            comp
+            for comp in self.basis_set_components
+            if isinstance(comp, PlaneWaveBasisSet)
+        ]
         if len(pws) > 1:
             logger.warning('Multiple plane-wave basis sets found were found.')
         if name := self._determine_apw(logger):
             self.name = name  # TODO: set name based on basis sets
             try:
-                pws[0].compute_cutoff_fractional(self._smallest_mt(), logger)
+                pws[0].set_cutoff_fractional(self._smallest_mt(), logger)
             except (IndexError, AttributeError):
-                logger.error('Expected a `APWPlaneWaveBasisSet` instance, but found none.')
-
+                logger.error(
+                    'Expected a `APWPlaneWaveBasisSet` instance, but found none.'
+                )
