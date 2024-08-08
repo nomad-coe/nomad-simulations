@@ -1,4 +1,3 @@
-
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
@@ -111,19 +110,27 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
         """,
     )
 
-    def set_cutoff_fractional(self, mt_r_min: pint.Quantity, logger: BoundLogger) -> None:
+    def set_cutoff_fractional(
+        self, mt_r_min: pint.Quantity, logger: BoundLogger
+    ) -> None:
         """
         Compute the fractional cutoff parameter for the interstitial plane waves in the LAPW family.
         This parameter is defined wrt the smallest muffin-tin region.
         """
         reference_unit = 'angstrom'
         if self.cutoff_fractional is not None:
-            logger.info('`APWPlaneWaveBasisSet.cutoff_fractional` already defined. Will not overwrite.') #! extend implementation
+            logger.info(
+                '`APWPlaneWaveBasisSet.cutoff_fractional` already defined. Will not overwrite.'
+            )  #! extend implementation
             return
         elif self.cutoff_energy is None or mt_r_min is None:
-            logger.warning('`APWPlaneWaveBasisSet.cutoff_energy` and `APWPlaneWaveBasisSet.radius` must both be defined. Aborting normalization step.')
+            logger.warning(
+                '`APWPlaneWaveBasisSet.cutoff_energy` and `APWPlaneWaveBasisSet.radius` must both be defined. Aborting normalization step.'
+            )
             return
-        self.cutoff_fractional = self.cutoff_radius.to(f'1 / {reference_unit}') * mt_r_min.to(reference_unit)
+        self.cutoff_fractional = self.cutoff_radius.to(
+            f'1 / {reference_unit}'
+        ) * mt_r_min.to(reference_unit)
 
 
 class AtomCenteredFunction(ArchiveSection):
