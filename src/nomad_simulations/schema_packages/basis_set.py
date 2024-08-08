@@ -84,8 +84,11 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         """
         Compute the cutoff radius for the plane-wave basis set, expressed in reciprocal coordinates.
         """
+        if self.cutoff_energy is None:
+            return None
         m_e = const.m_e * ureg(const.unit('electron mass'))
-        return np.sqrt(2 * m_e * self.cutoff_energy)
+        h = const.h * ureg(const.unit('Planck constant'))
+        return np.sqrt(2 * m_e * self.cutoff_energy) / h
 
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super(BasisSet, self).normalize(archive, logger)
@@ -113,16 +116,14 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
         Compute the fractional cutoff parameter for the interstitial plane waves in the LAPW family.
         This parameter is defined wrt the smallest muffin-tin region.
         """
-        try:
-            self.cutoff_fractional = self.cutoff_radius / mt_r_min  # unitless
-        except AttributeError:
-            logger.warning('`MuffinTin.cutoff_energy` must be defined.')
-        except ZeroDivisionError:
-            logger.warning('`MuffinTin.radius` cannot be zero.')
-        except TypeError:
-            logger.warning(
-                '`MuffinTin.radius` and `MuffinTin.cutoff_energy` must be defined.'
-            )
+        reference_unit = 'angstrom'
+        if self.cutoff_fractional is not None:
+            logger.info('`APWPlaneWaveBasisSet.cutoff_fractional` already defined. Will not overwrite.') #! extend implementation
+            return
+        elif self.cutoff_energy is None or mt_r_min is None:
+            logger.warning('`APWPlaneWaveBasisSet.cutoff_energy` and `APWPlaneWaveBasisSet.radius` must both be defined. Aborting normalization step.')
+            return
+        self.cutoff_fractional = self.cutoff_radius.to(f'1 / {reference_unit}') * mt_r_min.to(reference_unit)
 
 
 class AtomCenteredFunction(ArchiveSection):
