@@ -7,7 +7,7 @@ import numpy as np
 import pint
 from scipy import constants as const
 from structlog.stdlib import BoundLogger
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from nomad.metainfo import Context, Section
@@ -182,6 +182,7 @@ class APWWavefunction(ArchiveSection):
 
     energy_status = Quantity(
         type=MEnum('fixed', 'pre-optimization', 'post-optimization'),
+        default='post-optimization',
         description="""
         Allow the code to optimize the initial energy parameter.
         """,
@@ -224,6 +225,56 @@ class APWOrbital(APWWavefunction):
         if self.differential_order < 0:
             logger.error('`APWLOrbital.differential_order` must be non-negative.')
 
+
+def generate_apworbitals(
+        name: str,
+        params: Union[list[pint.Quantity], list[int]],
+        logger: BoundLogger,
+    ) -> list[APWOrbital]:  # TODO: move to utils
+    """
+    Generate the APW orbitals encoding `apw` or `lapw`.
+    Accepts as `params` either energies (`energy_parameter`) or integers (`energy_parameter_n`).
+    """
+    # check edge cases
+    # no parameters
+    if len(params) == 0:
+        logger.error('No parameters provided for APW orbital generation.')
+        return []
+
+    # incorrect type in the list
+    if isinstance(params[0], pint.Quantity):
+        try:
+            params[0].to('joule')
+            param_type = 'energy_parameter'
+        except pint.errors.DimensionalityError:
+            logger.error('Unknown parameter dimensionality: not energy.')
+            return []
+    elif isinstance(params[0], int):
+        param_type = 'energy_parameter_n'
+    else:
+        logger.error('Unknown parameter type.')
+        return []
+
+    # define order
+    if name == 'apw':
+        order = 0
+    elif name == 'lapw':
+        order = 1
+    else:
+        raise ValueError('Unknown APW orbital type.')
+
+    # pad out the parameters
+    if (len_diff := len(params) - order) < 0:
+        for _ in range(-len_diff):
+            params.append(params[-1])
+
+    return [
+        APWOrbital(
+            type=name,
+            differential_order=i,
+            **{param_type: param}
+        ) for i, param in enumerate(params)
+    ]
 
 class APWLocalOrbital(APWWavefunction):
     """
