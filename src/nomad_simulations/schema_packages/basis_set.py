@@ -159,12 +159,20 @@ class AtomCenteredBasisSet(BasisSet):
         # ? use naming BSE
 
 
-class APWWavefunction(ArchiveSection):
+class APWBaseOrbital(ArchiveSection):
     """Abstract base section for (S)(L)APW and local orbital component wavefunctions.
     It helps defining the interface with `APWLChannel`."""
 
+    n_terms = Quantity(
+        type=np.int32,
+        description="""
+        Number of terms in the local orbital.
+        """,
+    )
+
     energy_parameter = Quantity(
         type=np.float64,
+        shape=['n_terms'],
         unit='joule',
         description="""
         Reference energy parameter for the augmented plane wave (APW) basis set.
@@ -174,6 +182,7 @@ class APWWavefunction(ArchiveSection):
 
     energy_parameter_n = Quantity(
         type=np.int32,
+        shape=['n_terms'],
         description="""
         Reference number of radial nodes for the augmented plane wave (APW) basis set.
         This is used to derive the `energy_parameter`.
@@ -190,13 +199,19 @@ class APWWavefunction(ArchiveSection):
 
     differential_order = Quantity(
         type=np.int32,
+        shape=['n_terms'],
         description="""
         Derivative order of the radial wavefunction term.
         """,
     )  # TODO: add check non-negative # ? to remove
 
+    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+        super().normalize(archive, logger)
+        if (self.differential_order < 0).any():
+            logger.error('`APWBaseOrbital.differential_order` must be non-negative.')
 
-class APWOrbital(APWWavefunction):
+
+class APWOrbital(APWBaseOrbital):
     """
     Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\sum_{lm} \left[ \sum_o c_{lmo} \frac{\partial}{\partial r}u_l(r, \epsilon_l) \right] Y_lm$.
     The energy parameter $\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
@@ -220,63 +235,7 @@ class APWOrbital(APWWavefunction):
         """,
     )
 
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-        if self.differential_order < 0:
-            logger.error('`APWLOrbital.differential_order` must be non-negative.')
-
-
-def generate_apworbitals(
-        name: str,
-        params: Union[list[pint.Quantity], list[int]],
-        logger: BoundLogger,
-    ) -> list[APWOrbital]:  # TODO: move to utils
-    """
-    Generate the APW orbitals encoding `apw` or `lapw`.
-    Accepts as `params` either energies (`energy_parameter`) or integers (`energy_parameter_n`).
-    """
-    # check edge cases
-    # no parameters
-    if len(params) == 0:
-        logger.error('No parameters provided for APW orbital generation.')
-        return []
-
-    # incorrect type in the list
-    if isinstance(params[0], pint.Quantity):
-        try:
-            params[0].to('joule')
-            param_type = 'energy_parameter'
-        except pint.errors.DimensionalityError:
-            logger.error('Unknown parameter dimensionality: not energy.')
-            return []
-    elif isinstance(params[0], int):
-        param_type = 'energy_parameter_n'
-    else:
-        logger.error('Unknown parameter type.')
-        return []
-
-    # define order
-    if name == 'apw':
-        order = 0
-    elif name == 'lapw':
-        order = 1
-    else:
-        raise ValueError('Unknown APW orbital type.')
-
-    # pad out the parameters
-    if (len_diff := len(params) - order) < 0:
-        for _ in range(-len_diff):
-            params.append(params[-1])
-
-    return [
-        APWOrbital(
-            type=name,
-            differential_order=i,
-            **{param_type: param}
-        ) for i, param in enumerate(params)
-    ]
-
-class APWLocalOrbital(APWWavefunction):
+class APWLocalOrbital(APWBaseOrbital):
     """
     Implementation of `APWWavefunction` capturing a local orbital extending a foundational APW basis set.
     Local orbitals allow for flexible additions to an `APWOrbital` specification.
@@ -298,25 +257,6 @@ class APWLocalOrbital(APWWavefunction):
         * http://susi.theochem.tuwien.ac.at/lapw/
         """,
     )
-
-    n_terms = Quantity(
-        type=np.int32,
-        description="""
-        Number of terms in the local orbital.
-        """,
-    )
-
-    energy_parameter = APWWavefunction.energy_parameter.m_copy()
-    energy_parameter.shape = ['n_terms']
-
-    energy_parameter_n = APWWavefunction.energy_parameter_n.m_copy()
-    energy_parameter_n.shape = ['n_terms']
-
-    energy_status = APWWavefunction.energy_status.m_copy()
-    energy_status.shape = ['n_terms']
-
-    differential_order = APWWavefunction.differential_order.m_copy()
-    differential_order.shape = ['n_terms']
 
     boundary_order = Quantity(
         type=np.int32,
@@ -355,7 +295,7 @@ class APWLChannel(BasisSet):
         """,
     )
 
-    orbitals = SubSection(sub_section=APWWavefunction.m_def, repeats=True)
+    orbitals = SubSection(sub_section=APWBaseOrbital.m_def, repeats=True)
 
     def _determine_apw(self, logger: BoundLogger) -> dict[str, int]:
         """
