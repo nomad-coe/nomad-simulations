@@ -838,7 +838,7 @@ class ExcitedStateMethodology(ModelMethodElectronic):
     A base section used to define the parameters typical of excited-state calculations. "ExcitedStateMethodology"
     mainly refers to methodologies which consider many-body effects as a perturbation of the original
     DFT Hamiltonian. These are: GW, TDDFT, BSE.
-    """
+    """  # Note: we don't really talke about Hamiltonians in DFT: their physics is accommodated in the functional itself
 
     n_states = Quantity(
         type=np.int32,
