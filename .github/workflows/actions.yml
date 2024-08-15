@@ -31,24 +31,12 @@ jobs:
     - name: Install dependencies
       run: |
         uv pip install -e '.[dev]'
-        uv pip install coveralls
     - name: mypy
       run: |
         python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional src/nomad_simulations/schema_packages tests
-    - name: Build coverage file
+    - name: Test with pytest
       run: |
-        pytest --junitxml=pytest.xml --cov-report=term-missing:skip-covered --cov=src tests | tee pytest-coverage.txt
-    - name: Pytest coverage comment
-      uses: MishaKav/pytest-coverage-comment@main
-      with:
-        pytest-coverage-path: pytest-coverage.txt
-        junitxml-path: pytest.xml
-    - name: Submit to coveralls
-      continue-on-error: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        coveralls --service=github
+        pytest
   build-and-install:
     runs-on: ubuntu-latest
     strategy:
