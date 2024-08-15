@@ -8,6 +8,8 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "License :: OSI Approved :: Apache Software License",
 ]
 name = "nomad-simulations"
@@ -45,6 +47,9 @@ dev = [
     "pytest-cov",
     "structlog",
 ]
+
+[tool.uv]
+index-url = "https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple"
 
 [tool.ruff]
 # Exclude a variety of commonly ignored directories.

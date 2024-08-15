@@ -9,21 +9,29 @@ permissions:
   checks: write
   pull-requests: write
 
+env:
+  UV_SYSTEM_PYTHON: true
+
 jobs:
   install-and-test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python_version: ["3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.9
+    - name: Set up Python ${{matrix.python_version}}
       uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: ${{matrix.python_version}}
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Install dependencies
       run: |
-        pip install --upgrade pip
-        pip install uv
-        uv pip install -e '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple --system
-        uv pip install coveralls --system
+        uv pip install -e '.[dev]'
+        uv pip install coveralls
     - name: mypy
       run: |
         python -m mypy --ignore-missing-imports --follow-imports=silent --no-strict-optional src/nomad_simulations/schema_packages tests
@@ -43,21 +51,26 @@ jobs:
         coveralls --service=github
   build-and-install:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python_version: ["3.9", "3.10", "3.11"]
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python 3.9
+    - name: Set up Python ${{matrix.python_version}}
       uses: actions/setup-python@v5
       with:
-        python-version: 3.9
+        python-version: ${{matrix.python_version}}
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
     - name: Build the package
       run: |
-        pip install uv
-        uv pip install --upgrade pip --system
-        uv pip install build --system
+        uv pip install build
         python -m build --sdist
     - name: Install the package
       run: |
-        uv pip install dist/*.tar.gz --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple --system
+        uv pip install dist/*.tar.gz
   ruff-linting:
       runs-on: ubuntu-latest
       steps:
