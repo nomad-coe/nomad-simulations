@@ -1,4 +1,4 @@
-name: install-and-test
+name: Installing and Testing
 on: [push]
 
 # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
