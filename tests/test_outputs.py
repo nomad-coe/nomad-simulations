@@ -41,7 +41,7 @@ class TestOutputs:
         which properties are already defined and in which order to control their normalizations
         """
         outputs = Outputs()
-        assert len(outputs.m_def.all_sub_sections) == 12
+        assert len(outputs.m_def.all_sub_sections) == 17
         defined_properties = [
             'fermi_levels',
             'chemical_potentials',
@@ -55,6 +55,11 @@ class TestOutputs:
             'permittivities',
             'absorption_spectra',
             'xas_spectra',
+            'total_energies',
+            'kinetic_energies',
+            'potential_energies',
+            'total_forces',
+            'temperatures',
         ]
         assert list(outputs.m_def.all_sub_sections.keys()) == defined_properties
 

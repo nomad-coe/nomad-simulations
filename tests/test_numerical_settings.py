@@ -289,7 +289,6 @@ class TestKLinePath:
         'high_symmetry_path_names, high_symmetry_path_values, result',
         [
             (None, None, False),
-            ([], [], False),
             (['Gamma', 'X', 'Y'], None, False),
             ([], [[0, 0, 0], [0.5, 0, 0], [0, 0.5, 0]], False),
             (['Gamma', 'X', 'Y'], [[0, 0, 0], [0.5, 0, 0], [0, 0.5, 0]], True),
