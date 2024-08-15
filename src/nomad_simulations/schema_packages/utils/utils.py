@@ -112,7 +112,8 @@ class RussellSaundersState:
     @property
     def degeneracy(self):
         return factorial(int(self.multiplicity)) / (
-            factorial(int(self.multiplicity - self.occupation)) * factorial(self.occupation)
+            factorial(int(self.multiplicity - self.occupation))
+            * factorial(self.occupation)
         )
 
 

@@ -20,6 +20,7 @@ from typing import Optional
 
 import pytest
 from nomad.datamodel import EntryArchive
+
 from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.schema_packages.general import Simulation
 from nomad_simulations.schema_packages.model_method import (

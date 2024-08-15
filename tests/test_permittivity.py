@@ -20,6 +20,7 @@ from typing import Optional
 
 import numpy as np
 import pytest
+
 from nomad_simulations.schema_packages.properties import Permittivity
 from nomad_simulations.schema_packages.variables import Frequency, KMesh, Variables
 
