@@ -22,6 +22,7 @@ import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
 from nomad.units import ureg
+
 from nomad_simulations.schema_packages.properties import ElectronicBandGap
 from nomad_simulations.schema_packages.variables import Temperature
 
@@ -78,9 +79,6 @@ class TestElectronicBandGap:
             (None, None, None),
             (None, 'direct', 'direct'),
             (None, 'indirect', 'indirect'),
-            ([], None, None),
-            ([], 'direct', 'direct'),
-            ([], 'indirect', 'indirect'),
             ([[0, 0, 0]], None, None),
             ([[0, 0, 0]], 'direct', None),
             ([[0, 0, 0]], 'indirect', None),

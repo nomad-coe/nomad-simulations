@@ -118,15 +118,15 @@ class Outputs(ArchiveSection):
 
     xas_spectra = SubSection(sub_section=XASSpectrum.m_def, repeats=True)
 
-    total_energy = SubSection(sub_section=TotalEnergy.m_def, repeats=True)
+    total_energies = SubSection(sub_section=TotalEnergy.m_def, repeats=True)
 
-    kinetic_energy = SubSection(sub_section=KineticEnergy.m_def, repeats=True)
+    kinetic_energies = SubSection(sub_section=KineticEnergy.m_def, repeats=True)
 
-    potential_energy = SubSection(sub_section=PotentialEnergy.m_def, repeats=True)
+    potential_energies = SubSection(sub_section=PotentialEnergy.m_def, repeats=True)
 
-    total_force = SubSection(sub_section=TotalForce.m_def, repeats=True)
+    total_forces = SubSection(sub_section=TotalForce.m_def, repeats=True)
 
-    temperature = SubSection(sub_section=Temperature.m_def, repeats=True)
+    temperatures = SubSection(sub_section=Temperature.m_def, repeats=True)
 
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
     # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

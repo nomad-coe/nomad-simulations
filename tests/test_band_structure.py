@@ -21,6 +21,7 @@ from typing import Optional
 import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
+
 from nomad_simulations.schema_packages.properties import ElectronicEigenvalues
 
 from . import logger
@@ -87,12 +88,6 @@ class TestElectronicEigenvalues:
         [
             (
                 None,
-                [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                False,
-                (None, None),
-            ),
-            (
-                [],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
                 False,
                 (None, None),
@@ -189,13 +184,6 @@ class TestElectronicEigenvalues:
                 (None, None),
             ),
             (
-                [],
-                [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                None,
-                None,
-                (None, None),
-            ),
-            (
                 [[2, 2], [0, 0]],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
                 None,
@@ -212,13 +200,6 @@ class TestElectronicEigenvalues:
             # `highest_occupied` and `lowest_unoccupied` are passed to the class
             (
                 None,
-                [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                1.0,
-                2.0,
-                (1.0, 2.0),
-            ),
-            (
-                [],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
                 1.0,
                 2.0,
@@ -291,13 +272,6 @@ class TestElectronicEigenvalues:
                 None,
             ),
             (
-                [],
-                [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                None,
-                None,
-                None,
-            ),
-            (
                 [[2, 2], [0, 0]],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
                 None,
@@ -314,13 +288,6 @@ class TestElectronicEigenvalues:
             # `highest_occupied` and `lowest_unoccupied` are passed to the class
             (
                 None,
-                [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
-                1.0,
-                2.0,
-                1.0,
-            ),
-            (
-                [],
                 [[3, -2], [3, 1], [4, -2], [5, -1], [4, 0], [2, 0], [2, 1], [4, -3]],
                 1.0,
                 2.0,

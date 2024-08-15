@@ -19,6 +19,7 @@
 import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
+
 from nomad_simulations.schema_packages.general import Simulation
 from nomad_simulations.schema_packages.model_system import (
     AtomicCell,

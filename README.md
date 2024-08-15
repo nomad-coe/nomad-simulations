@@ -20,11 +20,11 @@ pip install nomad-simulations --index-url https://gitlab.mpcdf.mpg.de/api/v4/pro
 
 ## Development
 
-If you want to develop locally this package, clone the project and in the workspace folder, create a virtual environment (note this project uses Python 3.9):
+If you want to develop locally this package, clone the project and in the workspace folder, create a virtual environment (you can use Python 3.9, 3.10, or 3.11):
 ```sh
 git clone https://github.com/nomad-coe/nomad-simulations.git
 cd nomad-simulations
-python3.9 -m venv .pyenv
+python3.11 -m venv .pyenv
 . .pyenv/bin/activate
 ```
 
