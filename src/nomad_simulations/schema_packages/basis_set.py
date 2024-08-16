@@ -3,11 +3,12 @@ from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import MEnum, Quantity, SubSection
 from nomad.units import ureg
+import itertools
 import numpy as np
 import pint
 from scipy import constants as const
 from structlog.stdlib import BoundLogger
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Optional, Any
 
 if TYPE_CHECKING:
     from nomad.metainfo import Context, Section
@@ -442,3 +443,65 @@ class BasisSetContainer(NumericalSettings):
                 logger.error(
                     'Expected a `APWPlaneWaveBasisSet` instance, but found none.'
                 )
+
+
+def generate_apw(
+    species: dict[str, dict[str, Any]], cutoff: Optional[float] = None
+) -> BasisSetContainer:
+    """
+    Generate a mock APW basis set with the following structure:
+    .
+    ├── 1 x plane-wave basis set
+    └── n x muffin-tin regions
+        └── l_max x l-channels
+            ├── orbitals
+            └── local orbitals
+
+    from a dictionary
+    {
+    <species_name>: {
+            'r': <muffin-tin radius>,
+            'l_max': <maximum angular momentum>,
+            'orb_type': [<APWOrbital.type>],
+            'lo_type': [<APWLocalOrbital.type>],
+        }
+    }
+    """
+
+    basis_set_components: list[BasisSet] = []
+    if cutoff is not None:
+        pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff)
+        basis_set_components.append(pw)
+
+    for sp_name, sp in species.items():
+        sp['r'] = sp.get('r', None)
+        sp['l_max'] = sp.get('l_max', 0)
+        sp['orb_type'] = sp.get('orb_type', [])
+        sp['lo_type'] = sp.get('lo_type', [])
+
+        basis_set_components.extend(
+            [
+                MuffinTinRegion(
+                    species_scope=AtomsState(
+                        chemical_symbol=sp_name
+                    ),  # TODO: extend to search through a model_system
+                    radius=sp['r'],
+                    l_max=sp['l_max'],
+                    l_channels=[
+                        APWLChannel(
+                            name=l,
+                            orbitals=list(
+                                itertools.chain(
+                                    (APWOrbital(type=orb) for orb in sp['orb_type']),
+                                    (APWLocalOrbital(type=lo) for lo in sp['lo_type']),
+                                )
+                            ),
+                        )
+                        for l in range(sp['l_max'] + 1)
+                    ],
+                )
+
+            ]
+        )
+
+    return BasisSetContainer(basis_set_components=basis_set_components)

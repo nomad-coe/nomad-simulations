@@ -1,11 +1,11 @@
-import itertools
+from typing import Any, Optional
+
+import pytest
 from . import logger
 from nomad.units import ureg
 import numpy as np
-import pytest
-from typing import Optional, Any
 
-from tests.conftest import apw
+from tests.conftest import refs_apw
 
 from nomad_simulations.schema_packages.basis_set import (
     APWBaseOrbital,
@@ -16,6 +16,7 @@ from nomad_simulations.schema_packages.basis_set import (
     BasisSet,
     BasisSetContainer,
     MuffinTinRegion,
+    generate_apw,
 )
 
 
@@ -50,57 +51,18 @@ def test_cutoff_failure():
     assert pw.cutoff_fractional == 1
 
 
-@pytest.mark.skip(reason='This function is not meant to be tested directly')
-def generate_apw(
-    species: dict[str, dict[str, Any]], cutoff: Optional[float] = None
-) -> BasisSetContainer:
-    """
-    Generate a mock APW basis set with the following structure:
-    .
-    ├── 1 x plane-wave basis set
-    └── n x muffin-tin regions
-        └── l_max x l-channels
-            ├── orbitals
-            └── local orbitals
-    """
-    basis_set_components: list[BasisSet] = []
-    if cutoff is not None:
-        pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff)
-        basis_set_components.append(pw)
-
-    for sp_name, sp in species.items():
-        l_max = sp['l_max']
-        mt = MuffinTinRegion(
-            radius=sp['r'],
-            l_max=l_max,
-            l_channels=[
-                APWLChannel(
-                    name=l,
-                    orbitals=list(
-                        itertools.chain(
-                            (APWOrbital(type=orb) for orb in sp['orb_type']),
-                            (APWLocalOrbital(type=lo) for lo in sp['lo_type']),
-                        )
-                    ),
-                )
-                for l in range(l_max + 1)
-            ],
-        )
-        basis_set_components.append(mt)
-
-    return BasisSetContainer(basis_set_components=basis_set_components)
-
-
-def test_full_apw():
-    ref_apw = generate_apw(
-        {
-            'A': {
-                'r': 1.823,
-                'l_max': 2,
-                'orb_type': ['apw', 'lapw'],
-                'lo_type': ['lo'],
-            }
-        },
-        cutoff=500,
-    )
-    assert ref_apw.m_to_dict() == apw
+@pytest.mark.parametrize(
+    'ref_index, species_def, cutoff',
+    [
+        (0, {}, None),
+        (1, {}, 500.0),
+        (2, {'H': {'r': 1, 'l_max': 2, 'orb_type': ['apw']}}, 500.0),
+    ],
+)
+def test_full_apw(
+    ref_index: int, species_def: dict[str, dict[str, Any]], cutoff: Optional[float]
+):
+    """Test the composite structure of APW basis sets."""
+    assert (
+        generate_apw(species_def, cutoff=cutoff).m_to_dict() == refs_apw[ref_index]
+    )  # TODO: add normalization?
