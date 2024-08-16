@@ -56,8 +56,6 @@ class BasisSet(ArchiveSection):
 
     def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)
-        # Set the name of the section
-        self.name = self.m_def.name
 
 
 class PlaneWaveBasisSet(BasisSet, Mesh):
@@ -235,6 +233,7 @@ class APWOrbital(APWBaseOrbital):
         """,
     )
 
+
 class APWLocalOrbital(APWBaseOrbital):
     """
     Implementation of `APWWavefunction` capturing a local orbital extending a foundational APW basis set.
@@ -286,7 +285,7 @@ class APWLChannel(BasisSet):
         description="""
         Angular momentum quantum number of the local orbital.
         """,
-    )
+    )  # TODO: add `l` as a quantity
 
     n_wavefunctions = Quantity(
         type=np.int32,

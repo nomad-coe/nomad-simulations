@@ -1,8 +1,11 @@
+import itertools
 from . import logger
 from nomad.units import ureg
 import numpy as np
 import pytest
-from typing import Optional
+from typing import Optional, Any
+
+from tests.conftest import apw
 
 from nomad_simulations.schema_packages.basis_set import (
     APWBaseOrbital,
@@ -47,19 +50,17 @@ def test_cutoff_failure():
     assert pw.cutoff_fractional == 1
 
 
-@pytest.mark.skip(reason="This function is not meant to be tested directly")
+@pytest.mark.skip(reason='This function is not meant to be tested directly')
 def generate_apw(
-    species: dict[str, int | APWBaseOrbital],
-    cutoff: Optional[float] = None
+    species: dict[str, dict[str, Any]], cutoff: Optional[float] = None
 ) -> BasisSetContainer:
     """
     Generate a mock APW basis set with the following structure:
     .
-    ├── plane-wave basis set
-    └── muffin-tin regions
-        └── l-channels
-            ├── (orbitals)
-            │   └── wavefunctions
+    ├── 1 x plane-wave basis set
+    └── n x muffin-tin regions
+        └── l_max x l-channels
+            ├── orbitals
             └── local orbitals
     """
     basis_set_components: list[BasisSet] = []
@@ -67,21 +68,39 @@ def generate_apw(
         pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff)
         basis_set_components.append(pw)
 
-    mts: list[MuffinTinRegion] = []
-    for sp in species:
+    for sp_name, sp in species.items():
         l_max = sp['l_max']
         mt = MuffinTinRegion(
             radius=sp['r'],
             l_max=l_max,
             l_channels=[
                 APWLChannel(
-                    l=l,
-                    orbitals=[APWOrbital(type=orb) for orb in sp['orb_type']] +\
-                        [APWLocalOrbital(type=lo) for lo in sp['lo_type']],
-                ) for l in range(l_max)
-            ]
+                    name=l,
+                    orbitals=list(
+                        itertools.chain(
+                            (APWOrbital(type=orb) for orb in sp['orb_type']),
+                            (APWLocalOrbital(type=lo) for lo in sp['lo_type']),
+                        )
+                    ),
+                )
+                for l in range(l_max + 1)
+            ],
         )
-        mts.append(mt)
-    basis_set_components.append(mts)
+        basis_set_components.append(mt)
 
     return BasisSetContainer(basis_set_components=basis_set_components)
+
+
+def test_full_apw():
+    ref_apw = generate_apw(
+        {
+            'A': {
+                'r': 1.823,
+                'l_max': 2,
+                'orb_type': ['apw', 'lapw'],
+                'lo_type': ['lo'],
+            }
+        },
+        cutoff=500,
+    )
+    assert ref_apw.m_to_dict() == apw
