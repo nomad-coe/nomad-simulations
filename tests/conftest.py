@@ -405,20 +405,29 @@ def k_space_simulation() -> Simulation:
 
 
 refs_apw = [
-    {},
     {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
+    },
+    {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
         'basis_set_components': [
             {
                 'm_def': 'nomad_simulations.schema_packages.basis_set.APWPlaneWaveBasisSet',
                 'cutoff_energy': 500.0,
             },
-        ]
+        ],
     },
     {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
         'basis_set_components': [
             {
+                'm_def': 'nomad_simulations.schema_packages.basis_set.APWPlaneWaveBasisSet',
+                'cutoff_energy': 500.0,
+            },
+            {
                 'm_def': 'nomad_simulations.schema_packages.basis_set.MuffinTinRegion',
-                'radius': 1.823,
+                'species_scope': ['/data/model_system/0/cell/0/atoms_state/0'],
+                'radius': 1.0,
                 'l_max': 2,
                 'l_channels': [
                     {
@@ -450,7 +459,7 @@ refs_apw = [
                     },
                 ],
             },
-        ]
+        ],
     },
     {
         'basis_set_components': [

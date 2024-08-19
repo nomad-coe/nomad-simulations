@@ -21,7 +21,7 @@ from nomad_simulations.schema_packages.numerical_settings import (
 from nomad_simulations.schema_packages.properties.energies import EnergyContribution
 
 
-class BasisSet(ArchiveSection):
+class BasisSet(NumericalSettings):
     """A type section denoting a basis set component of a simulation.
     Should be used as a base section for more specialized sections.
     Allows for denoting the basis set's _scope_, i.e. to which entity it applies,
@@ -31,6 +31,13 @@ class BasisSet(ArchiveSection):
     - mesh-based basis sets, e.g. (projector-)(augmented) plane-wave basis sets
     - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
     """
+
+    name = Quantity(
+        type=str,
+        description="""
+        Name of the basis set component.
+        """,
+    )
 
     species_scope = Quantity(
         type=AtomsState,
@@ -55,8 +62,9 @@ class BasisSet(ArchiveSection):
 
     # ? band_scope or orbital_scope: valence vs core
 
-    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
+    def normalize(self, archive, logger):
+        super().normalize(archive, logger)
+        self.name = self.m_def.name
 
 
 class PlaneWaveBasisSet(BasisSet, Mesh):
@@ -286,7 +294,7 @@ class APWLChannel(BasisSet):
         description="""
         Angular momentum quantum number of the local orbital.
         """,
-    )  # TODO: add `l` as a quantity
+    )
 
     n_wavefunctions = Quantity(
         type=np.int32,
@@ -322,8 +330,7 @@ class APWLChannel(BasisSet):
         return count
 
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        super().normalize(archive, logger)
-        # self.name = self.m_def.name
+        super(BasisSet).normalize(archive, logger)
         self.n_wavefunctions = len(self.orbitals) * (2 * self.name + 1)
 
 
@@ -365,10 +372,6 @@ class MuffinTinRegion(BasisSet, Mesh):
         for channel in self.l_channels:
             count.update(channel._determine_apw(logger))
         return count
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-        # self.type = 'spherical'
 
 
 class BasisSetContainer(NumericalSettings):
@@ -447,7 +450,7 @@ class BasisSetContainer(NumericalSettings):
 
 def generate_apw(
     species: dict[str, dict[str, Any]], cutoff: Optional[float] = None
-) -> BasisSetContainer:
+) -> BasisSetContainer:  # TODO: extend to cover all parsing use cases (maybe split up?)
     """
     Generate a mock APW basis set with the following structure:
     .
@@ -473,7 +476,7 @@ def generate_apw(
         pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff)
         basis_set_components.append(pw)
 
-    for sp_name, sp in species.items():
+    for sp_ref, sp in species.items():
         sp['r'] = sp.get('r', None)
         sp['l_max'] = sp.get('l_max', 0)
         sp['orb_type'] = sp.get('orb_type', [])
@@ -482,9 +485,7 @@ def generate_apw(
         basis_set_components.extend(
             [
                 MuffinTinRegion(
-                    species_scope=AtomsState(
-                        chemical_symbol=sp_name
-                    ),  # TODO: extend to search through a model_system
+                    species_scope=[sp_ref],
                     radius=sp['r'],
                     l_max=sp['l_max'],
                     l_channels=[
@@ -500,7 +501,6 @@ def generate_apw(
                         for l in range(sp['l_max'] + 1)
                     ],
                 )
-
             ]
         )
 

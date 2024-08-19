@@ -1,6 +1,12 @@
 from typing import Any, Optional
 
+from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
 import pytest
+
+from nomad.datamodel.datamodel import EntryArchive
 from . import logger
 from nomad.units import ureg
 import numpy as np
@@ -56,13 +62,37 @@ def test_cutoff_failure():
     [
         (0, {}, None),
         (1, {}, 500.0),
-        (2, {'H': {'r': 1, 'l_max': 2, 'orb_type': ['apw']}}, 500.0),
+        (
+            2,
+            {
+                '/data/model_system/0/cell/0/atoms_state/0': {
+                    'r': 1,
+                    'l_max': 2,
+                    'orb_type': ['apw'],
+                }
+            },
+            500.0,
+        ),
     ],
 )
 def test_full_apw(
     ref_index: int, species_def: dict[str, dict[str, Any]], cutoff: Optional[float]
 ):
     """Test the composite structure of APW basis sets."""
+    entry = EntryArchive(
+        data=Simulation(
+            model_system=[
+                ModelSystem(
+                    cell=[AtomicCell(atoms_state=[AtomsState(chemical_symbol='H')])]
+                )
+            ],
+            model_method=[ModelMethod(numerical_settings=[])],
+        )
+    )
+
+    numerical_settings = entry.data.model_method[0].numerical_settings
+    numerical_settings.append(generate_apw(species_def, cutoff=cutoff))
+
     assert (
-        generate_apw(species_def, cutoff=cutoff).m_to_dict() == refs_apw[ref_index]
+        numerical_settings[0].m_to_dict() == refs_apw[ref_index]
     )  # TODO: add normalization?
