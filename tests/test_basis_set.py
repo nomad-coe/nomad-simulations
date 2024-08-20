@@ -100,22 +100,20 @@ def test_full_apw(
 
 
 @pytest.mark.parametrize(
-    'ref_n_terms, e, e_n, d_o',
+    'ref_n_terms, e, d_o',
     [
-        (None, [0.0], [0, 0], []),  # logically inconsistent
-        (1, [0.0], [0], [0]),  # apw
-        (2, [0.0, 0.0], [0, 0], [0, 1]),  # lapw
+        (None, None, None),  # unset
+        (0, [], []),  # empty
+        (None, [0.0], []),  # logically inconsistent
+        (1, [0.0], [0]),  # apw
+        (2, 2 * [0.0], [0, 1]),  # lapw
     ],
 )
-def test_apw_base_orbital(
-    ref_n_terms: Optional[int], e: list[float], e_n: list[int], d_o: list[int]
-):
+def test_apw_base_orbital(ref_n_terms: Optional[int], e: list[float], d_o: list[int]):
     orb = APWBaseOrbital(
         energy_parameter=e,
-        energy_parameter_n=e_n,
         differential_order=d_o,
     )
-
     assert orb.get_n_terms() == ref_n_terms
 
 
@@ -124,8 +122,41 @@ def test_apw_base_orbital_normalize(n_terms: Optional[int], ref_n_terms: Optiona
     orb = APWBaseOrbital(
         n_terms=n_terms,
         energy_parameter=[0],
-        energy_parameter_n=[0],
         differential_order=[1],
     )
     orb.normalize(None, logger)
     assert orb.n_terms == ref_n_terms
+
+
+@pytest.mark.parametrize(
+    'ref_type, n_terms',
+    [(None, None), (None, 0), ('apw', 1), ('lapw', 2), ('slapw', 3)],
+)
+def test_apw_orbital(ref_type: Optional[str], n_terms: Optional[int]):
+    orb = APWOrbital(n_terms=n_terms)
+    assert orb.n_terms_to_type(orb.n_terms) == ref_type
+
+
+@pytest.mark.parametrize(
+    'ref_n_terms, ref_type, e, d_o, b_o',
+    [
+        (None, None, [0.0], [], []),  # logically inconsistent
+        (1, 'custom', [0.0], [0], [0]),  # custom
+        (2, 'lo', 2 * [0.0], [0, 1], [0, 1]),  # lo
+        (3, 'LO', 3 * [0.0], [0, 1, 0], [0, 1, 0]),  # LO
+    ],
+)
+def test_apw_local_orbital(
+    ref_n_terms: Optional[int],
+    ref_type: str,
+    e: list[float],
+    d_o: list[int],
+    b_o: list[int],
+):
+    orb = APWLocalOrbital(
+        energy_parameter=e,
+        differential_order=d_o,
+        boundary_order=d_o,
+    )
+    assert orb.get_n_terms() == ref_n_terms
+    assert orb.bo_terms_to_type(orb.boundary_order) == ref_type

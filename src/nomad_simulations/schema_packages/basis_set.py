@@ -234,12 +234,7 @@ class APWBaseOrbital(ArchiveSection):
     def _get_lengths(self, quantities: set[str]) -> list[int]:
         """Extract the lengths of the `quantities` contained in the set."""
         present_quantities = set(quantities) & self._get_open_quantities()
-        lengths: list[int] = []
-        for quant in present_quantities:
-            length = len(getattr(self, quant))
-            if length > 0:  # empty lists are exempt
-                lengths.append(length)
-        return lengths
+        return [len(getattr(self, quant)) for quant in present_quantities]
 
     def _of_equal_length(self, lengths: list[int]) -> bool:
         """Check if all elements in the list are of equal length."""
@@ -320,11 +315,11 @@ class APWOrbital(APWBaseOrbital):
         """
         Set the type of the APW orbital based on the differential order.
         """
-        if n_terms is None:
+        if n_terms is None or n_terms == 0:
             return None
-        if n_terms == 0:
+        if n_terms == 1:
             return 'apw'
-        elif n_terms == 1:
+        elif n_terms == 2:
             return 'lapw'
         else:
             return 'slapw'
@@ -385,6 +380,19 @@ class APWLocalOrbital(APWBaseOrbital):
                 'boundary_order',
             }
         )
+
+    def bo_terms_to_type(self, bo_terms: Optional[int]) -> Optional[str]:
+        """
+        Set the type of the local orbital based on the boundary order.
+        """  # ? include differential_order
+        if bo_terms is None or len(bo_terms) == 0:
+            return None
+        if sorted(bo_terms) == [0, 1]:
+            return 'lo'
+        elif sorted(bo_terms) == [0, 0, 1]:  # ! double-check
+            return 'LO'
+        else:
+            return 'custom'
 
     @check_normalized
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
