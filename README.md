@@ -14,7 +14,7 @@ This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base secti
 
 `nomad-simulations` can be installed as a PyPI package using `pip`. We require features from the `nomad-lab` package which are not publicly available in PyPI, so an extra flag `--index-url` needs to be specified when pip installing this package:
 ```sh
-pip install nomad-simulations --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+pip install nomad-simulations
 ```
 
 
@@ -40,7 +40,7 @@ pip install uv
 
 Install the `nomad-lab` package:
 ```sh
-uv pip install '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+uv pip install '.[dev]'
 ```
 
 **Note!**
@@ -49,7 +49,7 @@ sure to include NOMAD's internal package registry (via `--index-url` in the abov
 
 The plugin is still under development. If you would like to contribute, install the package in editable mode (with the added `-e` flag):
 ```sh
-uv pip install -e '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
+uv pip install -e '.[dev]'
 ```
 
 
