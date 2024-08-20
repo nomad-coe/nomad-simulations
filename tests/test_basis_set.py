@@ -93,6 +93,39 @@ def test_full_apw(
     numerical_settings = entry.data.model_method[0].numerical_settings
     numerical_settings.append(generate_apw(species_def, cutoff=cutoff))
 
+    # test structure
     assert (
         numerical_settings[0].m_to_dict() == refs_apw[ref_index]
     )  # TODO: add normalization?
+
+
+@pytest.mark.parametrize(
+    'ref_n_terms, e, e_n, d_o',
+    [
+        (None, [0.0], [0, 0], []),  # logically inconsistent
+        (1, [0.0], [0], [0]),  # apw
+        (2, [0.0, 0.0], [0, 0], [0, 1]),  # lapw
+    ],
+)
+def test_apw_base_orbital(
+    ref_n_terms: Optional[int], e: list[float], e_n: list[int], d_o: list[int]
+):
+    orb = APWBaseOrbital(
+        energy_parameter=e,
+        energy_parameter_n=e_n,
+        differential_order=d_o,
+    )
+
+    assert orb.get_n_terms() == ref_n_terms
+
+
+@pytest.mark.parametrize('n_terms, ref_n_terms', [(None, 1), (1, 1), (2, None)])
+def test_apw_base_orbital_normalize(n_terms: Optional[int], ref_n_terms: Optional[int]):
+    orb = APWBaseOrbital(
+        n_terms=n_terms,
+        energy_parameter=[0],
+        energy_parameter_n=[0],
+        differential_order=[1],
+    )
+    orb.normalize(None, logger)
+    assert orb.n_terms == ref_n_terms

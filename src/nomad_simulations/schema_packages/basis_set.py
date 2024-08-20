@@ -225,9 +225,15 @@ class APWBaseOrbital(ArchiveSection):
         """,
     )  # TODO: add check non-negative # ? to remove
 
+    def _get_open_quantities(self) -> set[str]:
+        """Extract the open quantities of the `APWBaseOrbital`."""
+        return {
+            k for k, v in self.m_def.all_quantities.items() if self.m_get(v) is not None
+        }
+
     def _get_lengths(self, quantities: set[str]) -> list[int]:
         """Extract the lengths of the `quantities` contained in the set."""
-        present_quantities = set(quantities) & self.m_quantities
+        present_quantities = set(quantities) & self._get_open_quantities()
         lengths: list[int] = []
         for quant in present_quantities:
             length = len(getattr(self, quant))
@@ -235,7 +241,7 @@ class APWBaseOrbital(ArchiveSection):
                 lengths.append(length)
         return lengths
 
-    def _of_equal_length(lengths: list[int]) -> bool:
+    def _of_equal_length(self, lengths: list[int]) -> bool:
         """Check if all elements in the list are of equal length."""
         if len(lengths) == 0:
             return True
@@ -266,9 +272,10 @@ class APWBaseOrbital(ArchiveSection):
         if self.n_terms is None:
             self.n_terms = new_n_terms
         elif self.n_terms != new_n_terms:
-            logger.error(
-                f'Inconsistent lengths of `APWBaseOrbital` quantities: {self.m_quantities}. Setting back to `None`.'
-            )
+            if logger is not None:
+                logger.error(
+                    f'Inconsistent lengths of `APWBaseOrbital` quantities: {self.m_def.quantities}. Setting back to `None`.'
+                )
             self.n_terms = None
 
         # enforce differential order constraints
