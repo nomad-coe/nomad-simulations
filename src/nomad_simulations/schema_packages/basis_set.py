@@ -385,18 +385,19 @@ class APWLocalOrbital(APWBaseOrbital):
         """,
     )
 
-    def get_n_terms(self) -> Optional[int]:
+    def get_n_terms(
+        self,
+        representative_quantities={
+            'energy_parameter',
+            'energy_parameter_n',
+            'differential_order',
+            'boundary_order',
+        },
+    ) -> Optional[int]:
         """Determine the value of `n_terms` based on the lengths of the representative quantities."""
-        return super().get_n_terms(
-            representative_quantities={
-                'energy_parameter',
-                'energy_parameter_n',
-                'differential_order',
-                'boundary_order',
-            }
-        )
+        return super().get_n_terms(representative_quantities=representative_quantities)
 
-    def bo_terms_to_type(self, bo_terms: Optional[int]) -> Optional[str]:
+    def bo_terms_to_type(self, bo_terms: Optional[list[int]]) -> Optional[str]:
         """
         Set the type of the local orbital based on the boundary order.
         """  # ? include differential_order
@@ -469,7 +470,7 @@ class APWLChannel(BasisSet):
 
     @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        super(BasisSet).normalize(archive, logger)
+        BasisSet.normalize(self, archive, logger)
         self.n_orbitals = len(self.orbitals)
 
 
@@ -591,7 +592,7 @@ class BasisSetContainer(NumericalSettings):
         ]
         if len(pws) > 1:
             logger.warning('Multiple plane-wave basis sets found were found.')
-        self.name = self._determine_apw(logger)
+        self.name = self._determine_apw()
         try:
             pws[0].set_cutoff_fractional(self._smallest_mt(), logger)
         except (IndexError, AttributeError):
