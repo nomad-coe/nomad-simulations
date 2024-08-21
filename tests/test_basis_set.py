@@ -1,3 +1,4 @@
+from itertools import chain
 from typing import Any, Optional
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -156,7 +157,39 @@ def test_apw_local_orbital(
     orb = APWLocalOrbital(
         energy_parameter=e,
         differential_order=d_o,
-        boundary_order=d_o,
+        boundary_order=b_o,
     )
     assert orb.get_n_terms() == ref_n_terms
     assert orb.bo_terms_to_type(orb.boundary_order) == ref_type
+
+
+@pytest.mark.parametrize(
+    'ref_count, apw_es, los',
+    [
+        ([0, 0, 0, 0, 0], [], []),
+        ([0, 0, 0, 0, 2], [[]], [None]),
+        ([1, 0, 0, 0, 0], [[0.0]], []),
+        ([2, 0, 0, 0, 0], 2 * [[0.0]], []),
+        ([0, 1, 0, 0, 0], [2 * [0.0]], []),
+        ([0, 0, 1, 0, 0], [3 * [0.0]], []),
+        ([1, 1, 0, 0, 0], [[0.0], 2 * [0.0]], []),
+        ([1, 1, 1, 0, 0], [[0.0], 2 * [0.0], 3 * [0.0]], []),
+        ([0, 0, 0, 1, 0], [], ['lo']),
+        ([0, 0, 0, 1, 0], [], ['LO']),
+        ([0, 0, 0, 2, 0], [], ['lo', 'custom']),
+    ],
+)
+def test_apw_l_channel(
+    ref_count: list[int], apw_es: list[list[float]], los: list[Optional[str]]
+):
+    """Test the L-channel APW structure."""
+    ref_keys = ('apw', 'lapw', 'slapw', 'lo', 'other')
+    l_channel = APWLChannel(
+        orbitals=list(
+            chain(
+                [APWOrbital(energy_parameter=apw_e) for apw_e in apw_es],
+                [APWLocalOrbital(type=lo) for lo in los],
+            )
+        )
+    )
+    assert l_channel._determine_apw() == dict(zip(ref_keys, ref_count))

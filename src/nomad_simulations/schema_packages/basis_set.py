@@ -1,14 +1,16 @@
-from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.datamodel import EntryArchive
-from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import MEnum, Quantity, SubSection
-from nomad.units import ureg
 import itertools
 import numpy as np
 import pint
 from scipy import constants as const
 from structlog.stdlib import BoundLogger
-from typing import Optional, Any, Callable
+from typing import Iterable, Optional, Any, Callable
+
+from nomad import utils
+from nomad.datamodel.data import ArchiveSection
+from nomad.datamodel.datamodel import EntryArchive
+from nomad.datamodel.metainfo.annotations import ELNAnnotation
+from nomad.metainfo import MEnum, Quantity, SubSection
+from nomad.units import ureg
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.numerical_settings import (
@@ -16,6 +18,8 @@ from nomad_simulations.schema_packages.numerical_settings import (
     NumericalSettings,
 )
 from nomad_simulations.schema_packages.properties.energies import EnergyContribution
+
+logger = utils.get_logger(__name__)
 
 
 def check_normalized(func: Callable):
@@ -259,6 +263,14 @@ class APWBaseOrbital(ArchiveSection):
         else:
             return lengths[0]
 
+    def _check_non_negative(self, quantity_names: set[str]) -> bool:
+        """Check if all elements in the set are non-negative."""
+        for quantity_name in quantity_names:
+            if isinstance(quant := self.get(quantity_name), Iterable):
+                if np.any(np.array(quant) > 0):
+                    return False
+        return True
+
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
 
@@ -274,10 +286,12 @@ class APWBaseOrbital(ArchiveSection):
             self.n_terms = None
 
         # enforce differential order constraints
-        if np.any(np.isneginf(self.differential_order)):
-            logger.error(
-                '`APWBaseOrbital.differential_order` must be completely non-negative.'
-            )
+        if self._check_non_negative({'differential_order'}):
+            self.differential_order = None  # ? appropriate
+            if logger is not None:
+                logger.error(
+                    '`APWBaseOrbital.differential_order` must be completely non-negative. Resetting to `None`.'
+                )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -397,10 +411,12 @@ class APWLocalOrbital(APWBaseOrbital):
     @check_normalized
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        if np.any(np.isneginf(self.boundary_order)):
-            logger.error(
-                '`APWLOrbital.boundary_order` must be completely non-negative.'
-            )
+        if self._check_non_negative({'boundary_order'}):
+            self.boundary_order = None  # ? appropriate
+            if logger is not None:
+                logger.error(
+                    '`APWLOrbital.boundary_order` must be completely non-negative. Resetting to `None`.'
+                )
 
 
 class APWLChannel(BasisSet):
@@ -429,14 +445,16 @@ class APWLChannel(BasisSet):
     def _determine_apw(self) -> dict[str, int]:
         """
         Produce a count of the APW components in the l-channel.
-        Invokes `normalize` on `orbitals`.
+        Invokes `normalize` on `orbitals` to ensure the existence of `type`.
         """
         for orb in self.orbitals:
-            orb.normalize(None, None)
+            orb.normalize(None, logger)
 
         type_count = {'apw': 0, 'lapw': 0, 'slapw': 0, 'lo': 0, 'other': 0}
         for orb in self.orbitals:
-            if isinstance(orb, APWOrbital) and orb.type.lower() in type_count.keys():
+            if orb.type is None:
+                type_count['other'] += 1
+            elif isinstance(orb, APWOrbital) and orb.type.lower() in type_count.keys():
                 type_count[orb.type] += 1
             elif isinstance(orb, APWLocalOrbital):
                 type_count['lo'] += 1
@@ -494,7 +512,7 @@ class MuffinTinRegion(BasisSet, Mesh):
         Invokes `normalize` on `l_channels`.
         """
         for l_channel in self.l_channels:
-            l_channel.normalize(None, None)
+            l_channel.normalize(None, logger)
 
         type_count: dict[str, int]
         if len(self.l_channels) > 0:
@@ -541,7 +559,7 @@ class BasisSetContainer(NumericalSettings):
         answer, has_plane_wave = '', False
         for comp in self.basis_set_components:
             if isinstance(comp, MuffinTinRegion):
-                comp.normalize(None, None)
+                comp.normalize(None, logger)
                 type_count = comp._determine_apw()
                 if sum([type_count[i] for i in ('apw', 'lapw', 'slapw')]) > 0:
                     if type_count['slapw'] > 0:
