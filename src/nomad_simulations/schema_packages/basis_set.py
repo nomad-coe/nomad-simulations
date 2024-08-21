@@ -1,16 +1,17 @@
 import itertools
+from collections.abc import Iterable
+from typing import Any, Callable, Optional
+
 import numpy as np
 import pint
-from scipy import constants as const
-from structlog.stdlib import BoundLogger
-from typing import Iterable, Optional, Any, Callable
-
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import MEnum, Quantity, SubSection
 from nomad.units import ureg
+from scipy import constants as const
+from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.numerical_settings import (
@@ -84,7 +85,7 @@ class BasisSet(NumericalSettings):
 
 class PlaneWaveBasisSet(BasisSet, Mesh):
     """
-    Basis set over a reciprocal mesh, where each point $k_n$ represents a planar-wave basis function $\frac{1}{\sqrt{\omega}} e^{i k_n r}$.
+    Basis set over a reciprocal mesh, where each point $k_n$ represents a planar-wave basis function $\frac{1}{\\sqrt{\\omega}} e^{i k_n r}$.
     Typically the grid itself is cartesian with only points within a designated sphere considered.
     The cutoff radius may be defined by a reciprocal length, or more commonly, the equivalent kinetic energy for a free particle.
 
@@ -303,8 +304,8 @@ class APWBaseOrbital(ArchiveSection):
 
 class APWOrbital(APWBaseOrbital):
     """
-    Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\sum_{lm} \left[ \sum_o c_{lmo} \frac{\partial}{\partial r}u_l(r, \epsilon_l) \right] Y_lm$.
-    The energy parameter $\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
+    Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\\sum_{lm} \\left[ \\sum_o c_{lmo} \frac{\\partial}{\\partial r}u_l(r, \\epsilon_l) \right] Y_lm$.
+    The energy parameter $\\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
     This representation then has to match the plane-wave $k_n$ points within the muffin-tin sphere.
 
     * D. J. Singh and L. Nordström, \"INTRODUCTION TO THE LAPW METHOD,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 43-52.
@@ -312,7 +313,7 @@ class APWOrbital(APWBaseOrbital):
 
     type = Quantity(
         type=MEnum('apw', 'lapw', 'slapw'),  # ? where to put 'spherical_dirac'
-        description="""
+        description=r"""
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
         |------|-------------|----------------|
@@ -364,7 +365,7 @@ class APWLocalOrbital(APWBaseOrbital):
 
     type = Quantity(
         type=MEnum('lo', 'LO', 'custom'),
-        description="""
+        description=r"""
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
         |------|-------------|----------------|
@@ -470,10 +471,6 @@ class APWLChannel(BasisSet):
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super(BasisSet).normalize(archive, logger)
         self.n_orbitals = len(self.orbitals)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._is_normalized = False
 
 
 class MuffinTinRegion(BasisSet, Mesh):
@@ -643,7 +640,7 @@ def generate_apw(
                     l_max=sp['l_max'],
                     l_channels=[
                         APWLChannel(
-                            name=l,
+                            name=l_channel,
                             orbitals=list(
                                 itertools.chain(
                                     (APWOrbital(type=orb) for orb in sp['orb_type']),
@@ -651,7 +648,7 @@ def generate_apw(
                                 )
                             ),
                         )
-                        for l in range(sp['l_max'] + 1)
+                        for l_channel in range(sp['l_max'] + 1)
                     ],
                 )
             ]

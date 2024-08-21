@@ -17,6 +17,7 @@
 #
 
 import pytest
+
 from nomad_simulations.schema_packages.model_system import (
     AtomicCell,
     ModelSystem,

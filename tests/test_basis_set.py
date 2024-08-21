@@ -1,30 +1,29 @@
 from itertools import chain
 from typing import Any, Optional
 
-from nomad_simulations.schema_packages.atoms_state import AtomsState
-from nomad_simulations.schema_packages.general import Simulation
-from nomad_simulations.schema_packages.model_method import ModelMethod
-from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
-import pytest
-
-from nomad.datamodel.datamodel import EntryArchive
-from . import logger
-from nomad.units import ureg
 import numpy as np
+import pytest
+from nomad.datamodel.datamodel import EntryArchive
+from nomad.units import ureg
 
-from tests.conftest import refs_apw
-
+from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.basis_set import (
     APWBaseOrbital,
-    APWOrbital,
-    APWLocalOrbital,
     APWLChannel,
+    APWLocalOrbital,
+    APWOrbital,
     APWPlaneWaveBasisSet,
     BasisSet,
     BasisSetContainer,
     MuffinTinRegion,
     generate_apw,
 )
+from nomad_simulations.schema_packages.general import Simulation
+from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
+from tests.conftest import refs_apw
+
+from . import logger
 
 
 def test_cutoff():
