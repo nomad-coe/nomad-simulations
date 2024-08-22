@@ -507,23 +507,6 @@ refs_apw = [
                             },
                         ],
                     },
-                    {
-                        'name': 2,
-                        'orbitals': [
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'apw',
-                            },
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'lapw',
-                            },
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWLocalOrbital',
-                                'type': 'lo',
-                            },
-                        ],
-                    },
                 ],
             },
         ]

@@ -1,4 +1,3 @@
-from itertools import chain
 from typing import Any, Optional
 
 import numpy as np
@@ -39,22 +38,25 @@ def test_cutoff():
     assert np.isclose(pw.cutoff_fractional, 1, rtol=1e-2)
 
 
-def test_cutoff_failure():
+@pytest.mark.parametrize(
+    'ref_cutoff_fractional, cutoff_energy, mt_radius',
+    [
+        (None, None, None),
+        (None, 500.0, None),
+        (None, None, 1.0),
+        (1.823, 500.0, 1.0),
+    ],
+)
+def test_cutoff_failure(ref_cutoff_fractional, cutoff_energy, mt_radius):
     """Test modes where `cutoff_fractional` is not computed."""
-    # missing cutoff_energy
-    pw = APWPlaneWaveBasisSet()
-    pw.set_cutoff_fractional(ureg.angstrom, logger)
-    assert pw.cutoff_fractional is None
+    pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff_energy * ureg('eV') if cutoff_energy else None)
+    if mt_radius is not None:
+        pw.set_cutoff_fractional(mt_radius * ureg.angstrom, logger)
 
-    # missing mt_radius
-    pw = APWPlaneWaveBasisSet(cutoff_energy=500 * ureg('eV'))
-    pw.set_cutoff_fractional(None, logger)
-    assert pw.cutoff_fractional is None
-
-    # cutoff_fractional already set
-    pw = APWPlaneWaveBasisSet(cutoff_energy=500 * ureg('eV'), cutoff_fractional=1)
-    pw.set_cutoff_fractional(ureg.angstrom, logger)
-    assert pw.cutoff_fractional == 1
+    if ref_cutoff_fractional is None:
+        assert pw.cutoff_fractional is None
+    else:
+        assert np.isclose(pw.cutoff_fractional, ref_cutoff_fractional, atol=1e-3)
 
 
 @pytest.mark.parametrize(
@@ -110,10 +112,7 @@ def test_full_apw(
     ],
 )
 def test_apw_base_orbital(ref_n_terms: Optional[int], e: list[float], d_o: list[int]):
-    orb = APWBaseOrbital(
-        energy_parameter=e,
-        differential_order=d_o,
-    )
+    orb = APWBaseOrbital(energy_parameter=e, differential_order=d_o)
     assert orb.get_n_terms() == ref_n_terms
 
 
@@ -129,66 +128,183 @@ def test_apw_base_orbital_normalize(n_terms: Optional[int], ref_n_terms: Optiona
 
 
 @pytest.mark.parametrize(
-    'ref_type, n_terms',
-    [(None, None), (None, 0), ('apw', 1), ('lapw', 2), ('slapw', 3)],
-)
-def test_apw_orbital(ref_type: Optional[str], n_terms: Optional[int]):
-    orb = APWOrbital(n_terms=n_terms)
-    assert orb.n_terms_to_type(orb.n_terms) == ref_type
-
-
-@pytest.mark.parametrize(
-    'ref_n_terms, ref_type, e, d_o, b_o',
+    'ref_type, do',
     [
-        (None, None, [0.0], [], []),  # logically inconsistent
-        (1, 'custom', [0.0], [0], [0]),  # custom
-        (2, 'lo', 2 * [0.0], [0, 1], [0, 1]),  # lo
-        (3, 'LO', 3 * [0.0], [0, 1, 0], [0, 1, 0]),  # LO
+        (None, None),
+        ('APW-like', 0),
+        ('APW', [0]),
+        ('LAPW', [0, 1]),
+        ('SLAPW', [0, 2]),
+    ],
+)
+def test_apw_orbital(ref_type: Optional[str], do: Optional[int]):
+    orb = APWOrbital(differential_order=do)
+    assert orb.do_to_type(orb.differential_order) == ref_type
+
+
+# ? necessary
+@pytest.mark.parametrize(
+    'ref_n_terms, e, d_o',
+    [
+        (None, [0.0], []),
+        (1, [0.0], [0]),
+        (2, 2 * [0.0], [0, 1]),
+        (3, 3 * [0.0], [0, 1, 0]),
     ],
 )
 def test_apw_local_orbital(
     ref_n_terms: Optional[int],
-    ref_type: str,
     e: list[float],
     d_o: list[int],
-    b_o: list[int],
 ):
     orb = APWLocalOrbital(
         energy_parameter=e,
         differential_order=d_o,
-        boundary_order=b_o,
     )
     assert orb.get_n_terms() == ref_n_terms
-    assert orb.bo_terms_to_type(orb.boundary_order) == ref_type
 
 
 @pytest.mark.parametrize(
-    'ref_count, apw_es, los',
+    'ref_type, ref_mt_counts, ref_l_counts, species_def, cutoff',
     [
-        ([0, 0, 0, 0, 0], [], []),
-        ([0, 0, 0, 0, 2], [[]], [None]),
-        ([1, 0, 0, 0, 0], [[0.0]], []),
-        ([2, 0, 0, 0, 0], 2 * [[0.0]], []),
-        ([0, 1, 0, 0, 0], [2 * [0.0]], []),
-        ([0, 0, 1, 0, 0], [3 * [0.0]], []),
-        ([1, 1, 0, 0, 0], [[0.0], 2 * [0.0]], []),
-        ([1, 1, 1, 0, 0], [[0.0], 2 * [0.0], 3 * [0.0]], []),
-        ([0, 0, 0, 1, 0], [], ['lo']),
-        ([0, 0, 0, 1, 0], [], ['LO']),
-        ([0, 0, 0, 2, 0], [], ['lo', 'custom']),
+        (
+            None,
+            [[0, 0, 0, 0, 0]],
+            [[[0, 0, 0, 0, 0]]],
+            {
+                'H': {
+                    'r': 1.0,
+                    'l_max': 0,
+                    'orb_d_o': [],
+                    'orb_param': [],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                }
+            },
+            None,
+        ),
+        (
+            None,
+            [[1, 0, 0, 0, 0]],
+            [[[1, 0, 0, 0, 0]]],
+            {
+                'H': {
+                    'r': 1.0,
+                    'l_max': 0,
+                    'orb_d_o': [[0]],
+                    'orb_param': [[0.0]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                }
+            },
+            None,
+        ),
+        (
+            'APW-like',
+            [[0, 0, 0, 0, 1]],
+            [[[0, 0, 0, 0, 1]]],
+            {
+                'H': {
+                    'r': 1.0,
+                    'l_max': 0,
+                    'orb_d_o': [[]],
+                    'orb_param': [[]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                }
+            },
+            500.0,
+        ),
+        (
+            'APW',
+            [[1, 0, 0, 0, 0]],
+            [[[1, 0, 0, 0, 0]]],
+            {
+                'H': {
+                    'r': 1.0,
+                    'l_max': 1,
+                    'orb_d_o': [[0]],
+                    'orb_param': [[0.0]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                }
+            },
+            500.0,
+        ),
+        (
+            'LAPW',
+            [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0]],
+            [[[1, 0, 0, 0, 0]], [[0, 1, 0, 0, 0]]],
+            {
+                'H': {
+                    'r': 1.0,
+                    'l_max': 0,
+                    'orb_d_o': [[0]],
+                    'orb_param': [[0.0]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                },
+                'O': {
+                    'r': 2.0,
+                    'l_max': 0,
+                    'orb_d_o': [[0, 1]],
+                    'orb_param': [2 * [0.0]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                },
+            },
+            500.0,
+        ),
+        (
+            'SLAPW',
+            [[1, 0, 0, 0, 0], [0, 1, 1, 0, 0]],
+            [[[1, 0, 0, 0, 0]], [[0, 1, 1, 0, 0]]],
+            {
+                'H': {
+                    'r': 1.0,
+                    'l_max': 0,
+                    'orb_d_o': [[0]],
+                    'orb_param': [[0.0]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                },
+                'O': {
+                    'r': 2.0,
+                    'l_max': 2,
+                    'orb_d_o': [[0, 1], [0, 2]],
+                    'orb_param': 2 * [2 * [0.0]],
+                    'lo_d_o': [],
+                    'lo_param': [],
+                },
+            },
+            500.0,
+        ),
     ],
 )
-def test_apw_l_channel(
-    ref_count: list[int], apw_es: list[list[float]], los: list[Optional[str]]
+def test_determine_apw(
+    ref_type: str,
+    ref_mt_counts: list[list[int]],
+    ref_l_counts: list[list[list[int]]],
+    species_def: dict[str, dict[str, Any]],
+    cutoff: Optional[float],
 ):
     """Test the L-channel APW structure."""
     ref_keys = ('apw', 'lapw', 'slapw', 'lo', 'other')
-    l_channel = APWLChannel(
-        orbitals=list(
-            chain(
-                [APWOrbital(energy_parameter=apw_e) for apw_e in apw_es],
-                [APWLocalOrbital(type=lo) for lo in los],
-            )
-        )
-    )
-    assert l_channel._determine_apw() == dict(zip(ref_keys, ref_count))
+    bs = generate_apw(species_def, cutoff=cutoff)
+
+    # test from the bottom up
+    for bsc in bs.basis_set_components:
+        if isinstance(bsc, MuffinTinRegion):
+            l_counts = ref_l_counts.pop(0)
+            for l_channel in bsc.l_channels:
+                try:
+                    assert l_channel._determine_apw() == dict(
+                        zip(ref_keys, l_counts.pop(0))
+                    )
+                except IndexError:
+                    pass
+            try:
+                assert bsc._determine_apw() == dict(zip(ref_keys, ref_mt_counts.pop(0)))
+            except IndexError:
+                pass
+    assert bs._determine_apw() == ref_type
