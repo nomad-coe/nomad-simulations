@@ -272,6 +272,7 @@ class APWBaseOrbital(ArchiveSection):
                     return False
         return True
 
+    @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
 
@@ -287,12 +288,20 @@ class APWBaseOrbital(ArchiveSection):
             self.n_terms = None
 
         # enforce differential order constraints
-        if self._check_non_negative({'differential_order'}):
-            self.differential_order = None  # ? appropriate
-            if logger is not None:
-                logger.error(
-                    '`APWBaseOrbital.differential_order` must be completely non-negative. Resetting to `None`.'
-                )
+        for quantity in ('differential_order', 'energy_parameter_n'):
+            if self._check_non_negative({quantity}):
+                quantity = None  # ? appropriate
+                if logger is not None:
+                    logger.error(
+                        f'`{self.m_def}.{quantity}` must be completely non-negative. Resetting to `None`.'
+                    )
+
+        # use the differential order as naming convention
+        self.name = (
+            f'{sorted(self.differential_order)}'
+            if len(self.differential_order) > 0
+            else 'APW-like'
+        )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -307,6 +316,8 @@ class APWOrbital(APWBaseOrbital):
     Implementation of `APWWavefunction` capturing the foundational (S)(L)APW basis sets, all of the form $\\sum_{lm} \\left[ \\sum_o c_{lmo} \frac{\\partial}{\\partial r}u_l(r, \\epsilon_l) \right] Y_lm$.
     The energy parameter $\\epsilon_l$ is always considered fixed during diagonalization, opposed to the original APW formulation.
     This representation then has to match the plane-wave $k_n$ points within the muffin-tin sphere.
+
+    Its `name` is showcased as `(s)(l)apw: <differential order>`.
 
     * D. J. Singh and L. Nordström, \"INTRODUCTION TO THE LAPW METHOD,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 43-52.
     """
@@ -326,25 +337,29 @@ class APWOrbital(APWBaseOrbital):
         """,
     )
 
-    def n_terms_to_type(self, n_terms: Optional[int]) -> Optional[str]:
+    def do_to_type(self, do: Optional[list[int]]) -> Optional[str]:
         """
         Set the type of the APW orbital based on the differential order.
         """
-        if n_terms is None or n_terms == 0:
+        if do is None or len(do) == 0:
             return None
-        if n_terms == 1:
+
+        do = sorted(do)
+        if do == [0]:
             return 'apw'
-        elif n_terms == 2:
+        elif do == [0, 1]:
             return 'lapw'
-        else:
+        elif max(do) > 1:  # exciting definition
             return 'slapw'
+        else:
+            return None
 
     @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
         # assign a APW orbital type
         # this snippet works of the previous normalization
-        new_type = self.n_terms_to_type(self.n_terms)
+        new_type = self.do_to_type(self.differential_order)
         if self.type is None:
             self.type = new_type
         elif self.type != new_type:
@@ -352,6 +367,12 @@ class APWOrbital(APWBaseOrbital):
                 f'Inconsistent `APWOrbital` type: {self.type}. Setting back to `None`.'
             )
             self.type = None
+
+        self.name = (
+            f'{self.type.upper()}: {self.name}'
+            if self.type and self.differential_order
+            else self.name
+        )
 
 
 class APWLocalOrbital(APWBaseOrbital):
@@ -363,62 +384,16 @@ class APWLocalOrbital(APWBaseOrbital):
     * D. J. Singh and L. Nordström, \"Role of the Linearization Energies,\" in Planewaves, pseudopotentials, and the LAPW method, 2nd ed. New York, NY: Springer, 2006, pp. 49-52.
     """
 
-    type = Quantity(
-        type=MEnum('lo', 'LO', 'custom'),
-        description=r"""
-        Type of augmentation contribution. Abbreviations stand for:
-        | name | description | radial product |
-        |------|-------------|----------------|
-        | lo   | 2-parameter local orbital | $A_l u_l (r, E_l) + B_l \dot{u}_l (r, E_l^')$ |
-        | LO   | 3-parameter local orbital | $A_l u_l (r, E_l) + B_l \dot{u}_l (r, E_l^') + C_l \dot{u}_l (r, E_l^{''})$ |
-        | custom | local orbital of a different formula |
-
-        * http://susi.theochem.tuwien.ac.at/lapw/
-        """,
-    )
-
-    boundary_order = Quantity(
-        type=np.int32,
-        shape=['n_terms'],
-        description="""
-        Differential order to which the radial wavefunction is matched at the boundary.
-        """,
-    )
-
-    def get_n_terms(
-        self,
-        representative_quantities={
-            'energy_parameter',
-            'energy_parameter_n',
-            'differential_order',
-            'boundary_order',
-        },
-    ) -> Optional[int]:
-        """Determine the value of `n_terms` based on the lengths of the representative quantities."""
-        return super().get_n_terms(representative_quantities=representative_quantities)
-
-    def bo_terms_to_type(self, bo_terms: Optional[list[int]]) -> Optional[str]:
-        """
-        Set the type of the local orbital based on the boundary order.
-        """  # ? include differential_order
-        if bo_terms is None or len(bo_terms) == 0:
-            return None
-        if sorted(bo_terms) == [0, 1]:
-            return 'lo'
-        elif sorted(bo_terms) == [0, 0, 1]:  # ! double-check
-            return 'LO'
-        else:
-            return 'custom'
+    # there's no community consensus on `type`
 
     @check_normalized
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
-        if self._check_non_negative({'boundary_order'}):
-            self.boundary_order = None  # ? appropriate
-            if logger is not None:
-                logger.error(
-                    '`APWLOrbital.boundary_order` must be completely non-negative. Resetting to `None`.'
-                )
+        self.name = (
+            f'LO: {sorted(self.differential_order)}'
+            if self.differential_order
+            else 'LO'
+        )
 
 
 class APWLChannel(BasisSet):
@@ -470,7 +445,7 @@ class APWLChannel(BasisSet):
 
     @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        BasisSet.normalize(self, archive, logger)
+        ArchiveSection.normalize(self, archive, logger)
         self.n_orbitals = len(self.orbitals)
 
 
@@ -512,14 +487,16 @@ class MuffinTinRegion(BasisSet, Mesh):
         for l_channel in self.l_channels:
             l_channel.normalize(None, logger)
 
-        type_count: dict[str, int]
+        type_count: dict[str, int] = {}
         if len(self.l_channels) > 0:
-            l_channel = self.l_channels[0]
             # dynamically determine `type_count` structure
-            type_count = l_channel._determine_apw(l_channel.orbitals)
-            for channel in self.l_channels[1:]:
-                type_count.update(channel._determine_apw())
+            for l_channel in self.l_channels:
+                type_count.update(l_channel._determine_apw())
         return type_count
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._is_normalized = False
 
     @check_normalized
     def normalize(self, archive, logger):
@@ -566,8 +543,11 @@ class BasisSetContainer(NumericalSettings):
                         answer += 'lapw'.upper()
                     elif type_count['apw'] > 0:
                         answer += 'apw'.upper()
-                    if type_count['lo'] > 0:
-                        answer += '+lo'
+                elif type_count['lo'] > 0:
+                    answer += '+lo'
+                else:
+                    answer = 'APW-like'
+                    break
             elif isinstance(comp, PlaneWaveBasisSet):
                 has_plane_wave = True
         return answer if has_plane_wave else None
@@ -600,7 +580,8 @@ class BasisSetContainer(NumericalSettings):
 
 
 def generate_apw(
-    species: dict[str, dict[str, Any]], cutoff: Optional[float] = None
+    species: dict[str, dict[str, Any]],
+    cutoff: Optional[float] = None,
 ) -> BasisSetContainer:  # TODO: extend to cover all parsing use cases (maybe split up?)
     """
     Generate a mock APW basis set with the following structure:
@@ -616,8 +597,10 @@ def generate_apw(
     <species_name>: {
             'r': <muffin-tin radius>,
             'l_max': <maximum angular momentum>,
-            'orb_type': [<APWOrbital.type>],
-            'lo_type': [<APWLocalOrbital.type>],
+            'orb_do': [[int]],
+            'orb_param': [<APWOrbital.energy_parameter>|<APWOrbital.energy_parameter_n>],
+            'lo_do': [[int]],
+            'lo_param': [<APWOrbital.energy_parameter>|<APWOrbital.energy_parameter_n>],
         }
     }
     """
@@ -630,8 +613,10 @@ def generate_apw(
     for sp_ref, sp in species.items():
         sp['r'] = sp.get('r', None)
         sp['l_max'] = sp.get('l_max', 0)
-        sp['orb_type'] = sp.get('orb_type', [])
-        sp['lo_type'] = sp.get('lo_type', [])
+        sp['orb_d_o'] = sp.get('orb_d_o', [])
+        sp['orb_param'] = sp.get('orb_param', [])
+        sp['lo_d_o'] = sp.get('lo_d_o', [])
+        sp['lo_param'] = sp.get('lo_param', [])
 
         basis_set_components.extend(
             [
@@ -644,8 +629,24 @@ def generate_apw(
                             name=l_channel,
                             orbitals=list(
                                 itertools.chain(
-                                    (APWOrbital(type=orb) for orb in sp['orb_type']),
-                                    (APWLocalOrbital(type=lo) for lo in sp['lo_type']),
+                                    (
+                                        APWOrbital(
+                                            energy_parameter=param,  # TODO: add energy_parameter_n
+                                            differential_order=d_o,
+                                        )
+                                        for param, d_o in zip(
+                                            sp['orb_param'], sp['orb_d_o']
+                                        )
+                                    ),
+                                    (
+                                        APWLocalOrbital(
+                                            energy_parameter=param,  # TODO: add energy_parameter_n
+                                            differential_order=d_o,
+                                        )
+                                        for param, d_o in zip(
+                                            sp['lo_param'], sp['lo_d_o']
+                                        )
+                                    ),
                                 )
                             ),
                         )
