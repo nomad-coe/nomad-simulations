@@ -47,6 +47,7 @@ class BasisSet(NumericalSettings):
     - mesh-based basis sets, e.g. (projector-)(augmented) plane-wave basis sets
     - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
     """
+    # TODO check implementation of `BasisSet` for Wannier and Slater-Koster orbitals
 
     name = Quantity(
         type=str,
@@ -268,7 +269,7 @@ class APWBaseOrbital(ArchiveSection):
         """Check if all elements in the set are non-negative."""
         for quantity_name in quantity_names:
             if isinstance(quant := self.get(quantity_name), Iterable):
-                if np.any(np.array(quant) > 0):
+                if np.any(np.array(quant) <= 0):
                     return False
         return True
 
@@ -288,19 +289,19 @@ class APWBaseOrbital(ArchiveSection):
             self.n_terms = None
 
         # enforce differential order constraints
-        for quantity in ('differential_order', 'energy_parameter_n'):
-            if self._check_non_negative({quantity}):
-                quantity = None  # ? appropriate
+        for quantity_name in ('differential_order', 'energy_parameter_n'):
+            if self._check_non_negative({quantity_name}):
+                self.m_set(self.m_def.all_quantities[quantity_name], None)
                 if logger is not None:
                     logger.error(
-                        f'`{self.m_def}.{quantity}` must be completely non-negative. Resetting to `None`.'
+                        f'`{self.m_def}.{quantity_name}` must be completely non-negative. Resetting to `None`.'
                     )
 
         # use the differential order as naming convention
         self.name = (
-            f'{sorted(self.differential_order)}'
-            if len(self.differential_order) > 0
-            else 'APW-like'
+            'APW-like'
+            if self.differential_order is None or len(self.differential_order) == 0
+            else f'{sorted(self.differential_order)}'
         )
 
     def __init__(self, *args, **kwargs):
@@ -370,7 +371,7 @@ class APWOrbital(APWBaseOrbital):
 
         self.name = (
             f'{self.type.upper()}: {self.name}'
-            if self.type and self.differential_order
+            if self.type and len(self.differential_order) > 0
             else self.name
         )
 
@@ -531,26 +532,29 @@ class BasisSetContainer(NumericalSettings):
         Derive the basis set name for a (S)(L)APW case, including local orbitals.
         Invokes `normalize` on `basis_set_components`.
         """
-        answer, has_plane_wave = '', False
+        has_plane_wave = True if any(
+            isinstance(comp, PlaneWaveBasisSet) for comp in self.basis_set_components
+        ) else False
+
+        type_sums: dict[str, int] = {}
         for comp in self.basis_set_components:
             if isinstance(comp, MuffinTinRegion):
-                comp.normalize(None, logger)
                 type_count = comp._determine_apw()
-                if sum([type_count[i] for i in ('apw', 'lapw', 'slapw')]) > 0:
-                    if type_count['slapw'] > 0:
-                        answer += 'slapw'.upper()
-                    elif type_count['lapw'] > 0:
-                        answer += 'lapw'.upper()
-                    elif type_count['apw'] > 0:
-                        answer += 'apw'.upper()
-                elif type_count['lo'] > 0:
-                    answer += '+lo'
-                else:
-                    answer = 'APW-like'
+                for key in type_count.keys():
+                    type_sums[key] = type_sums.get(key, 0) + type_count[key]
+
+        type_str = 'APW-like'
+        for key in ('slapw', 'lapw', 'apw'):
+            try:
+                if type_sums[key] > 0:
+                    type_str = key.upper()
+                    if type_sums['lo'] > 0:
+                        type_str += '+lo'
                     break
-            elif isinstance(comp, PlaneWaveBasisSet):
-                has_plane_wave = True
-        return answer if has_plane_wave else None
+            except KeyError:
+                pass
+
+        return type_str if has_plane_wave else None
 
     def _smallest_mt(self) -> MuffinTinRegion:
         """
@@ -598,9 +602,9 @@ def generate_apw(
             'r': <muffin-tin radius>,
             'l_max': <maximum angular momentum>,
             'orb_do': [[int]],
-            'orb_param': [<APWOrbital.energy_parameter>|<APWOrbital.energy_parameter_n>],
+            'orb_param': [<APWOrbital.energy_parameter>],
             'lo_do': [[int]],
-            'lo_param': [<APWOrbital.energy_parameter>|<APWOrbital.energy_parameter_n>],
+            'lo_param': [<APWOrbital.energy_parameter>],
         }
     }
     """

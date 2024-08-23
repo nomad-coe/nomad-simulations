@@ -8,12 +8,9 @@ from nomad.units import ureg
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.basis_set import (
     APWBaseOrbital,
-    APWLChannel,
     APWLocalOrbital,
     APWOrbital,
     APWPlaneWaveBasisSet,
-    BasisSet,
-    BasisSetContainer,
     MuffinTinRegion,
     generate_apw,
 )
@@ -70,7 +67,8 @@ def test_cutoff_failure(ref_cutoff_fractional, cutoff_energy, mt_radius):
                 '/data/model_system/0/cell/0/atoms_state/0': {
                     'r': 1,
                     'l_max': 2,
-                    'orb_type': ['apw'],
+                    'orb_d_o': [[0]],
+                    'orb_param': [[0.0]],
                 }
             },
             500.0,
@@ -96,9 +94,7 @@ def test_full_apw(
     numerical_settings.append(generate_apw(species_def, cutoff=cutoff))
 
     # test structure
-    assert (
-        numerical_settings[0].m_to_dict() == refs_apw[ref_index]
-    )  # TODO: add normalization?
+    assert numerical_settings[0].m_to_dict() == refs_apw[ref_index]
 
 
 @pytest.mark.parametrize(
@@ -131,10 +127,11 @@ def test_apw_base_orbital_normalize(n_terms: Optional[int], ref_n_terms: Optiona
     'ref_type, do',
     [
         (None, None),
-        ('APW-like', 0),
-        ('APW', [0]),
-        ('LAPW', [0, 1]),
-        ('SLAPW', [0, 2]),
+        (None, []),
+        (None, [0, 0, 1]),
+        ('apw', [0]),
+        ('lapw', [0, 1]),
+        ('slapw', [0, 2]),
     ],
 )
 def test_apw_orbital(ref_type: Optional[str], do: Optional[int]):

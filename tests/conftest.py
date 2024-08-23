@@ -436,7 +436,8 @@ refs_apw = [
                         'orbitals': [
                             {
                                 'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'apw',
+                                'energy_parameter': [0.0],
+                                'differential_order': [0],
                             },
                         ],
                     },
@@ -445,7 +446,8 @@ refs_apw = [
                         'orbitals': [
                             {
                                 'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'apw',
+                                'energy_parameter': [0.0],
+                                'differential_order': [0],
                             },
                         ],
                     },
@@ -454,61 +456,13 @@ refs_apw = [
                         'orbitals': [
                             {
                                 'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'apw',
+                                'energy_parameter': [0.0],
+                                'differential_order': [0],
                             },
                         ],
                     },
                 ],
             },
         ],
-    },
-    {
-        'basis_set_components': [
-            {
-                'm_def': 'nomad_simulations.schema_packages.basis_set.APWPlaneWaveBasisSet',
-                'cutoff_energy': 500.0,
-            },
-            {
-                'm_def': 'nomad_simulations.schema_packages.basis_set.MuffinTinRegion',
-                'radius': 1.823,
-                'l_max': 2,
-                'l_channels': [
-                    {
-                        'name': 0,
-                        'orbitals': [
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'apw',
-                            },
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'lapw',
-                            },
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWLocalOrbital',
-                                'type': 'lo',
-                            },
-                        ],
-                    },
-                    {
-                        'name': 1,
-                        'orbitals': [
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'apw',
-                            },
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
-                                'type': 'lapw',
-                            },
-                            {
-                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWLocalOrbital',
-                                'type': 'lo',
-                            },
-                        ],
-                    },
-                ],
-            },
-        ]
     },
 ]
