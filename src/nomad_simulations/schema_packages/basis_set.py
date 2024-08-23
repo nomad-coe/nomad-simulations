@@ -2,6 +2,7 @@ import itertools
 from collections.abc import Iterable
 from typing import Any, Callable, Optional
 
+from nomad_simulations.schema_packages.model_method import BaseModelMethod
 import numpy as np
 import pint
 from nomad import utils
@@ -47,6 +48,7 @@ class BasisSet(NumericalSettings):
     - mesh-based basis sets, e.g. (projector-)(augmented) plane-wave basis sets
     - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
     """
+
     # TODO check implementation of `BasisSet` for Wannier and Slater-Koster orbitals
 
     name = Quantity(
@@ -68,10 +70,10 @@ class BasisSet(NumericalSettings):
     # TODO: add atom index-based instantiator for species if not present
 
     hamiltonian_scope = Quantity(
-        type=EnergyContribution,
+        type=BaseModelMethod,
         shape=['*'],
         description="""
-        Reference to the section `EnergyContribution` containing the information
+        Reference to the section `BaseModelMethod` containing the information
         of the Hamiltonian term to which the basis set applies.
         """,
         a_eln=ELNAnnotation(components='ReferenceEditQuantity'),
@@ -532,9 +534,14 @@ class BasisSetContainer(NumericalSettings):
         Derive the basis set name for a (S)(L)APW case, including local orbitals.
         Invokes `normalize` on `basis_set_components`.
         """
-        has_plane_wave = True if any(
-            isinstance(comp, PlaneWaveBasisSet) for comp in self.basis_set_components
-        ) else False
+        has_plane_wave = (
+            True
+            if any(
+                isinstance(comp, PlaneWaveBasisSet)
+                for comp in self.basis_set_components
+            )
+            else False
+        )
 
         type_sums: dict[str, int] = {}
         for comp in self.basis_set_components:

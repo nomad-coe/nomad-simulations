@@ -11,11 +11,15 @@ from nomad_simulations.schema_packages.basis_set import (
     APWLocalOrbital,
     APWOrbital,
     APWPlaneWaveBasisSet,
+    AtomCenteredBasisSet,
+    BasisSet,
+    BasisSetContainer,
     MuffinTinRegion,
+    PlaneWaveBasisSet,
     generate_apw,
 )
 from nomad_simulations.schema_packages.general import Simulation
-from nomad_simulations.schema_packages.model_method import ModelMethod
+from nomad_simulations.schema_packages.model_method import BaseModelMethod, ModelMethod
 from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
 from tests.conftest import refs_apw
 
@@ -46,7 +50,9 @@ def test_cutoff():
 )
 def test_cutoff_failure(ref_cutoff_fractional, cutoff_energy, mt_radius):
     """Test modes where `cutoff_fractional` is not computed."""
-    pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff_energy * ureg('eV') if cutoff_energy else None)
+    pw = APWPlaneWaveBasisSet(
+        cutoff_energy=cutoff_energy * ureg('eV') if cutoff_energy else None
+    )
     if mt_radius is not None:
         pw.set_cutoff_fractional(mt_radius * ureg.angstrom, logger)
 
@@ -305,3 +311,58 @@ def test_determine_apw(
             except IndexError:
                 pass
     assert bs._determine_apw() == ref_type
+
+
+def test_quick_step():
+    """Test the feasibility of describing a QuickStep basis set."""
+    entry = EntryArchive(
+        data=Simulation(
+            model_method=[
+                ModelMethod(
+                    contributions=[
+                        BaseModelMethod(name='kinetic'),
+                        BaseModelMethod(name='electron-ion'),
+                        BaseModelMethod(name='hartree'),
+                    ],
+                    numerical_settings=[],
+                )
+            ],
+        )
+    )
+    numerical_settings = entry.data.model_method[0].numerical_settings
+    numerical_settings.append(
+        BasisSetContainer(
+            # scope='density',
+            basis_set_components=[
+                AtomCenteredBasisSet(
+                    hamiltonian_scope=[
+                        entry.data.model_method[0].contributions[0],
+                        entry.data.model_method[0].contributions[1],
+                    ],
+                ),
+                PlaneWaveBasisSet(
+                    cutoff_energy=500 * ureg.eV,
+                    hamiltonian_scope=[entry.data.model_method[0].contributions[2]],
+                ),
+            ],
+        )
+    )
+
+    assert numerical_settings[0].m_to_dict() == {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
+        'basis_set_components': [
+            {
+                'm_def': 'nomad_simulations.schema_packages.basis_set.AtomCenteredBasisSet',
+                'hamiltonian_scope': [
+                    '/data/model_method/0/contributions/0',
+                    '/data/model_method/0/contributions/1',
+                ],
+            },
+            {
+                'm_def': 'nomad_simulations.schema_packages.basis_set.PlaneWaveBasisSet',
+                'hamiltonian_scope': ['/data/model_method/0/contributions/2'],
+                'cutoff_energy': (500.0 * ureg.eV).to('joule').magnitude,
+            },
+        ],
+    }
+    # TODO: generate a QuickStep generator in the CP2K plugin
