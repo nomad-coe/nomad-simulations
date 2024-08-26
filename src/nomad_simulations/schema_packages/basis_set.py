@@ -2,7 +2,6 @@ import itertools
 from collections.abc import Iterable
 from typing import Any, Callable, Optional
 
-from nomad_simulations.schema_packages.model_method import BaseModelMethod
 import numpy as np
 import pint
 from nomad import utils
@@ -15,11 +14,11 @@ from scipy import constants as const
 from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.numerical_settings import (
     Mesh,
     NumericalSettings,
 )
-from nomad_simulations.schema_packages.properties.energies import EnergyContribution
 
 logger = utils.get_logger(__name__)
 
@@ -38,7 +37,7 @@ def check_normalized(func: Callable):
     return wrapper
 
 
-class BasisSet(NumericalSettings):
+class BasisSet(ArchiveSection):
     """A type section denoting a basis set component of a simulation.
     Should be used as a base section for more specialized sections.
     Allows for denoting the basis set's _scope_, i.e. to which entity it applies,
@@ -448,7 +447,7 @@ class APWLChannel(BasisSet):
 
     @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        ArchiveSection.normalize(self, archive, logger)
+        super(ArchiveSection, self).normalize(archive, logger)
         self.n_orbitals = len(self.orbitals)
 
 
