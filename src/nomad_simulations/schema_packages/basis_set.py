@@ -13,10 +13,14 @@ from nomad.units import ureg
 from scipy import constants as const
 from structlog.stdlib import BoundLogger
 
-from nomad_simulations.schema_packages.general import set_not_normalized, check_normalized
 from nomad_simulations.schema_packages.atoms_state import AtomsState
+from nomad_simulations.schema_packages.general import (
+    check_normalized,
+    set_not_normalized,
+)
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.numerical_settings import (
+    KMesh,
     Mesh,
     NumericalSettings,
 )
@@ -72,7 +76,7 @@ class BasisSet(ArchiveSection):
         self.name = self.m_def.name
 
 
-class PlaneWaveBasisSet(BasisSet, Mesh):
+class PlaneWaveBasisSet(BasisSet, KMesh):
     """
     Basis set over a reciprocal mesh, where each point $k_n$ represents a planar-wave basis function $\frac{1}{\\sqrt{\\omega}} e^{i k_n r}$.
     Typically the grid itself is cartesian with only points within a designated sphere considered.
@@ -90,20 +94,37 @@ class PlaneWaveBasisSet(BasisSet, Mesh):
         """,
     )
 
-    @property  # ? keep, or convert to `Quantity`?
-    def cutoff_radius(self) -> pint.Quantity:
+    cutoff_radius = Quantity(
+        type=np.float64,
+        unit='1/meter',
+        description="""
+        Cutoff radius for the plane-wave basis set.
+        Is the less frequently used dual to `cutoff_energy`.
+        """,
+    )
+
+    def compute_cutoff_radius(
+        self, cutoff_energy: Optional[pint.Quantity]
+    ) -> Optional[pint.Quantity]:
         """
         Compute the cutoff radius for the plane-wave basis set, expressed in reciprocal coordinates.
         """
-        if self.cutoff_energy is None:
+        if cutoff_energy is None:
             return None
         m_e = const.m_e * ureg(const.unit('electron mass'))
         h = const.h * ureg(const.unit('Planck constant'))
-        return np.sqrt(2 * m_e * self.cutoff_energy) / h
+        return np.sqrt(2 * m_e * cutoff_energy) / h
 
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        super(BasisSet, self).normalize(archive, logger)
-        super(Mesh, self).normalize(archive, logger)
+        super().normalize(archive, logger)
+        if self.cutoff_radius is None:
+            cutoff_radius = self.compute_cutoff_radius(self.cutoff_energy)
+            if cutoff_radius is None:
+                logger.warning(
+                    'Could not calculate `PlaneWaveBasisSet.cutoff_radius`: missing `cutoff_energy`.'
+                )
+            else:
+                self.cutoff_radius = cutoff_radius
 
 
 class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
@@ -122,27 +143,40 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
         """,
     )
 
-    def set_cutoff_fractional(
-        self, mt_r_min: pint.Quantity, logger: BoundLogger
-    ) -> None:
+    def compute_cutoff_fractional(
+        self, cutoff_radius: Optional[pint.Quantity], mt_r_min: Optional[pint.Quantity]
+    ) -> Optional[pint.Quantity]:
         """
         Compute the fractional cutoff parameter for the interstitial plane waves in the LAPW family.
-        This parameter is defined wrt the smallest muffin-tin region.
+
+        Args:
+        - cutoff_radius (Optional[pint.Quantity]): The cutoff radius.
+        - mt_r_min (Optional[pint.Quantity]): The smallest muffin-tin radius within the `BasisSetContainer`.
         """
         reference_unit = 'angstrom'
-        if self.cutoff_fractional is not None:
-            logger.info(
-                '`APWPlaneWaveBasisSet.cutoff_fractional` already defined. Will not overwrite.'
-            )  #! extend implementation
-            return
-        elif self.cutoff_energy is None or mt_r_min is None:
+        if cutoff_radius is None or mt_r_min is None:
+            return None
+        return cutoff_radius.to(f'1 / {reference_unit}') * mt_r_min.to(reference_unit)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.mt_r_min = None
+
+    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+        super().normalize(archive, logger)  # 1st compute `cutoff_radius``
+        if self.cutoff_fractional is None:
             logger.warning(
-                '`APWPlaneWaveBasisSet.cutoff_energy` and `APWPlaneWaveBasisSet.radius` must both be defined. Aborting normalization step.'
+                'Expected `APWPlaneWaveBasisSet.cutoff_fractional` to be defined. Will attempt to calculate.'
             )
-            return
-        self.cutoff_fractional = self.cutoff_radius.to(
-            f'1 / {reference_unit}'
-        ) * mt_r_min.to(reference_unit)
+            cutoff_fractional = self.compute_cutoff_fractional(
+                self.cutoff_radius, self.mt_r_min
+            )
+            if cutoff_fractional is None:
+                logger.warning(
+                    'Could not calculate `APWPlaneWaveBasisSet.cutoff_fractional`: missing `cutoff_radius` or `mt_r_min`.'
+                )
+            else:
+                self.cutoff_fractional = cutoff_fractional
 
 
 class AtomCenteredFunction(ArchiveSection):
@@ -168,7 +202,7 @@ class AtomCenteredBasisSet(BasisSet):
         super().normalize(archive, logger)
         # self.name = self.m_def.name
         # TODO: set name based on basis functions
-        # ? use naming BSE
+        # ? use basis set names from Basis Set Exchange
 
 
 class APWBaseOrbital(ArchiveSection):
@@ -270,20 +304,18 @@ class APWBaseOrbital(ArchiveSection):
         if self.n_terms is None:
             self.n_terms = new_n_terms
         elif self.n_terms != new_n_terms:
-            if logger is not None:
-                logger.error(
-                    f'Inconsistent lengths of `APWBaseOrbital` quantities: {self.m_def.quantities}. Setting back to `None`.'
-                )
+            logger.error(
+                f'Inconsistent lengths of `APWBaseOrbital` quantities: {self.m_def.quantities}. Setting back to `None`.'
+            )
             self.n_terms = None
 
         # enforce differential order constraints
         for quantity_name in ('differential_order', 'energy_parameter_n'):
             if self._check_non_negative({quantity_name}):
                 self.m_set(self.m_def.all_quantities[quantity_name], None)
-                if logger is not None:
-                    logger.error(
-                        f'`{self.m_def}.{quantity_name}` must be completely non-negative. Resetting to `None`.'
-                    )
+                logger.error(
+                    f'`{self.m_def}.{quantity_name}` must be completely non-negative. Resetting to `None`.'
+                )
 
         # use the differential order as naming convention
         self.name = (
@@ -312,15 +344,14 @@ class APWOrbital(APWBaseOrbital):
     """
 
     type = Quantity(
-        type=MEnum('apw', 'lapw', 'slapw'),  # ? where to put 'spherical_dirac'
+        type=MEnum('apw', 'lapw', 'slapw'),  # ? add 'spherical_dirac'
         description=r"""
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
         |------|-------------|----------------|
-        | APW  | augmented plane wave with a frozen energy parameter | $A_{lm, k_n} u_l (r, E_l)$ |
+        | APW  | augmented plane wave with parametrized energy levels | $A_{lm, k_n} u_l (r, E_l)$ |
         | LAPW | linearized augmented plane wave with an optimized energy parameter | $A_{lm, k_n} u_l (r, E_l) + B_{lm, k_n} \dot{u}_{lm} (r, E_l^')$ |
         | SLAPW | super linearized augmented plane wave | -- |
-        | spherical Dirac | spherical Dirac basis set | -- |
 
         * http://susi.theochem.tuwien.ac.at/lapw/
         """,
@@ -434,7 +465,8 @@ class APWLChannel(BasisSet):
 
     @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        super(ArchiveSection, self).normalize(archive, logger)
+        # call order: parent of `BasisSet``, then `self`
+        super(BasisSet, self).normalize(archive, logger)
         self.n_orbitals = len(self.orbitals)
 
 
@@ -451,7 +483,6 @@ class MuffinTinRegion(BasisSet, Mesh):
 
     radius = Quantity(
         type=np.float64,
-        shape=[],
         unit='meter',
         description="""
         The radius descriptor of the `MuffinTin` is spherical shape.
@@ -486,10 +517,12 @@ class MuffinTinRegion(BasisSet, Mesh):
     @set_not_normalized
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.mt_r_min = None
 
     @check_normalized
     def normalize(self, archive, logger):
         super().normalize(archive, logger)
+        # TODO: add spherical specification, once supported in `Grid`
 
 
 class BasisSetContainer(NumericalSettings):
@@ -549,31 +582,34 @@ class BasisSetContainer(NumericalSettings):
 
         return type_str if has_plane_wave else None
 
-    def _smallest_mt(self) -> MuffinTinRegion:
+    def _find_mt_r_min(self) -> Optional[pint.Quantity]:
         """
         Scan the container for the smallest muffin-tin region.
         """
-        mt_min = None
+        mt_r_min = None
         for comp in self.basis_set_components:
             if isinstance(comp, MuffinTinRegion):
-                if mt_min is None or comp.radius < mt_min.radius:
-                    mt_min = comp
-        return mt_min
+                if mt_r_min is None or comp.radius < mt_r_min:
+                    mt_r_min = comp.radius
+        return mt_r_min
 
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
         super().normalize(archive, logger)
-        pws = [
-            comp
-            for comp in self.basis_set_components
-            if isinstance(comp, PlaneWaveBasisSet)
-        ]
-        if len(pws) > 1:
+
+        mt_r_min = self._find_mt_r_min()
+        plane_waves: list[APWPlaneWaveBasisSet] = []
+        for component in self.basis_set_components:
+            if isinstance(component, PlaneWaveBasisSet):
+                plane_waves.append(component)
+            elif isinstance(component, MuffinTinRegion):
+                component.mt_r_min = mt_r_min
+                component.normalize(archive, logger)
+
+        if len(plane_waves) == 0:
+            logger.error('Expected a `APWPlaneWaveBasisSet` instance, but found none.')
+        elif len(plane_waves) > 1:
             logger.warning('Multiple plane-wave basis sets found were found.')
         self.name = self._determine_apw()
-        try:
-            pws[0].set_cutoff_fractional(self._smallest_mt(), logger)
-        except (IndexError, AttributeError):
-            logger.error('Expected a `APWPlaneWaveBasisSet` instance, but found none.')
 
 
 def generate_apw(

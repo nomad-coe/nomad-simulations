@@ -12,7 +12,6 @@ from nomad_simulations.schema_packages.basis_set import (
     APWOrbital,
     APWPlaneWaveBasisSet,
     AtomCenteredBasisSet,
-    BasisSet,
     BasisSetContainer,
     MuffinTinRegion,
     PlaneWaveBasisSet,
@@ -26,35 +25,77 @@ from tests.conftest import refs_apw
 from . import logger
 
 
-def test_cutoff():
+@pytest.mark.parametrize(
+    'ref_cutoff_radius, cutoff_energy',
+    [
+        (None, None),
+        (1.823 / ureg.angstrom, 500 * ureg.eV),  # reference computed by ChatGPT 4o
+    ],
+)
+def test_cutoff(ref_cutoff_radius, cutoff_energy):
     """Test the quantitative results when computing certain plane-wave cutoffs."""
-    p_unit = '1 / angstrom'
-    ref_cutoff_radius = 1.823 * ureg(p_unit)
-    pw = APWPlaneWaveBasisSet(cutoff_energy=500 * ureg('eV'))
-    assert np.isclose(
-        pw.cutoff_radius.to(p_unit).magnitude, ref_cutoff_radius.magnitude, atol=1e-3
-    )  # reference computed by ChatGPT 4o
+    pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff_energy)
+    cutoff_radius = pw.compute_cutoff_radius(cutoff_energy)
 
-    pw.set_cutoff_fractional(1 / ref_cutoff_radius, logger)
-    assert np.isclose(pw.cutoff_fractional, 1, rtol=1e-2)
+    if cutoff_radius is None:
+        assert cutoff_radius is ref_cutoff_radius
+    else:
+        assert np.isclose(
+            cutoff_radius.to(ref_cutoff_radius.units).magnitude,
+            ref_cutoff_radius.magnitude,
+            atol=1e-3,
+        )
+
+
+@pytest.mark.parametrize(
+    'mts, ref_mt_r_min',
+    [
+        ([], None),
+        ([None], None),
+        ([MuffinTinRegion(radius=1.0 * ureg.angstrom)], 1.0),
+        ([MuffinTinRegion(radius=r * ureg.angstrom) for r in (1.0, 2.0, 3.0)], 1.0),
+    ],
+)
+def test_mt_r_min(mts: list[Optional[MuffinTinRegion]], ref_mt_r_min: float):
+    """
+    Test the computation of the minimum muffin-tin radius.
+    """
+    bs = BasisSetContainer(basis_set_components=mts)
+    mt_r_min = bs._find_mt_r_min()
+
+    try:
+        assert mt_r_min.to('angstrom').magnitude == ref_mt_r_min
+    except AttributeError:
+        assert mt_r_min is ref_mt_r_min
+
+    bs.basis_set_components.append(APWPlaneWaveBasisSet(cutoff_energy=500 * ureg('eV')))
+    bs.normalize(None, logger)
+
+    try:
+        assert (
+            bs.basis_set_components[-2].mt_r_min.to('angstrom').magnitude
+            == ref_mt_r_min
+        )
+    except (IndexError, AttributeError):
+        assert ref_mt_r_min is None
 
 
 @pytest.mark.parametrize(
     'ref_cutoff_fractional, cutoff_energy, mt_radius',
     [
         (None, None, None),
-        (None, 500.0, None),
+        (None, 500.0 * ureg.eV, None),
         (None, None, 1.0),
-        (1.823, 500.0, 1.0),
+        (1.823, 500.0 * ureg.eV, 1.0 * ureg.angstrom),
     ],
 )
 def test_cutoff_failure(ref_cutoff_fractional, cutoff_energy, mt_radius):
     """Test modes where `cutoff_fractional` is not computed."""
-    pw = APWPlaneWaveBasisSet(
-        cutoff_energy=cutoff_energy * ureg('eV') if cutoff_energy else None
-    )
+    pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff_energy if cutoff_energy else None)
     if mt_radius is not None:
-        pw.set_cutoff_fractional(mt_radius * ureg.angstrom, logger)
+        pw.cutoff_fractional = pw.compute_cutoff_fractional(
+            pw.compute_cutoff_radius(cutoff_energy), mt_radius
+        )
 
     if ref_cutoff_fractional is None:
         assert pw.cutoff_fractional is None

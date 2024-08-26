@@ -310,10 +310,10 @@ class KMesh(Mesh):
     """
 
     label = Quantity(
-        type=MEnum('k-mesh', 'q-mesh'),  # ? add g-mesh for LAPW
+        type=MEnum('k-mesh', 'q-mesh', 'g-mesh'),
         default='k-mesh',
         description="""
-        Label used to identify the `KMesh` with the reciprocal vector used. In linear response, `k` is used for
+        Label used to identify the kidn of `KMesh` with the reciprocal vector used. In linear response, `k` is used for
         refering to the wave-vector of electrons, while `q` is used for the scattering effect of the Coulomb potential.
         """,
     )

@@ -21,12 +21,12 @@ from typing import TYPE_CHECKING, Callable
 import numpy as np
 from nomad.config import config
 from nomad.datamodel.data import Schema
+from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Activity, Entity
 from nomad.metainfo import Datetime, Quantity, SchemaPackage, Section, SubSection
-
-from nomad.datamodel.datamodel import EntryArchive
 from structlog.stdlib import BoundLogger
+
 from nomad_simulations.schema_packages.model_method import ModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs
@@ -41,15 +41,16 @@ configuration = config.get_plugin_entry_point(
 
 m_package = SchemaPackage()
 
+
 def set_not_normalized(func: Callable):
     """
     Decorator to set the section as not normalized.
     Typically decorates the section initializer.
     """
 
-    def wrapper(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def wrapper(self, *args, **kwargs) -> None:
+        func(self, *args, **kwargs)
         self._is_normalized = False
-        func(self, archive, logger)
 
     return wrapper
 
