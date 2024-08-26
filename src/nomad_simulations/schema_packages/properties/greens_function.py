@@ -26,7 +26,6 @@ if TYPE_CHECKING:
     from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
-    from nomad_simulations.schema_packages.variables import Variables
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.schema_packages.physical_property import PhysicalProperty
@@ -157,7 +156,7 @@ class BaseGreensFunction(PhysicalProperty):
             'iw': MatsubaraFrequency,
         }
 
-        def find_space_id(space_map: dict[str, 'Variables']) -> str:
+        def find_space_id(space_map: dict) -> str:
             """
             Finds the id string for a given map.
 
@@ -169,7 +168,7 @@ class BaseGreensFunction(PhysicalProperty):
             """
             for space_id, variable_cls in space_map.items():
                 space_variable = get_variables(variables=self.variables, variable_cls=variable_cls)
-                if len(space_variable) >= 0:
+                if len(space_variable) > 0:
                     return space_id
             return ''
 
@@ -341,12 +340,13 @@ class QuasiparticleWeight(PhysicalProperty):
 
     def is_valid_quasiparticle_weight(self) -> bool:
         """
-        Check if the quasiparticle weight values are valid, i.e., if all `value` are defined positive.
+        Check if the quasiparticle weight values are valid, i.e., if all `value` are defined between
+        0 and 1.
 
         Returns:
             (bool): True if the quasiparticle weight is valid, False otherwise.
         """
-        if (self.value < 0.0).any():
+        if (self.value < 0.0).any() or (self.value > 1.0).any():
             return False
         return True
 
@@ -363,7 +363,7 @@ class QuasiparticleWeight(PhysicalProperty):
             return 'strongly-correlated metal'
         elif np.any(self.value == 0) and np.any(self.value > 0):
             return 'OSMI'
-        elif np.all(self.value == 0):
+        elif np.all(self.value < 1e-2):
             return 'Mott insulator'
         return ''
 
