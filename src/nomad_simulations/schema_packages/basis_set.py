@@ -1,6 +1,6 @@
 import itertools
 from collections.abc import Iterable
-from typing import Any, Callable, Optional
+from typing import Any, Optional
 
 import numpy as np
 import pint
@@ -13,6 +13,7 @@ from nomad.units import ureg
 from scipy import constants as const
 from structlog.stdlib import BoundLogger
 
+from nomad_simulations.schema_packages.general import set_not_normalized, check_normalized
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.numerical_settings import (
@@ -21,20 +22,6 @@ from nomad_simulations.schema_packages.numerical_settings import (
 )
 
 logger = utils.get_logger(__name__)
-
-
-def check_normalized(func: Callable):
-    """
-    Decorator to check if the section is already normalized.
-    """
-
-    def wrapper(self, archive: EntryArchive, logger: BoundLogger) -> None:
-        if self._is_normalized:
-            return None
-        func(self, archive, logger)
-        self._is_normalized = True
-
-    return wrapper
 
 
 class BasisSet(ArchiveSection):
@@ -305,12 +292,12 @@ class APWBaseOrbital(ArchiveSection):
             else f'{sorted(self.differential_order)}'
         )
 
+    @set_not_normalized
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # it's hard to enforce commutative diagrams between `_determine_apw` and `normalize`
         # instead, make all `_determine_apw` soft-coupled and dependent on the normalized state
         # leverage normalize ∘ normalize = normalize
-        self._is_normalized = False
 
 
 class APWOrbital(APWBaseOrbital):
@@ -441,9 +428,9 @@ class APWLChannel(BasisSet):
                 type_count['other'] += 1  # other de facto operates as a catch-all
         return type_count
 
+    @set_not_normalized
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._is_normalized = False
 
     @check_normalized
     def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
@@ -496,9 +483,9 @@ class MuffinTinRegion(BasisSet, Mesh):
                 type_count.update(l_channel._determine_apw())
         return type_count
 
+    @set_not_normalized
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._is_normalized = False
 
     @check_normalized
     def normalize(self, archive, logger):
