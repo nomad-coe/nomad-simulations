@@ -173,14 +173,17 @@ class BaseGreensFunction(PhysicalProperty):
             return ''
 
         space_id = find_space_id(_real_space_map) + find_space_id(_time_space_map)
-        return space_id
+        return space_id if space_id else None
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
-        if not self.space_id:
-            self.space_id = self.resolve_space_id()
-
+        space_id = self.resolve_space_id()
+        if (self.space_id is not None and self.space_id != space_id):
+            logger.warning(
+                f'The stored `space_id`, {self.space_id}, does not coincide with the resolved one, {space_id}. We will update it.'
+            )
+        self.space_id = space_id
 
 class ElectronicGreensFunction(BaseGreensFunction):
     """
@@ -365,7 +368,7 @@ class QuasiparticleWeight(PhysicalProperty):
             return 'OSMI'
         elif np.all(self.value < 1e-2):
             return 'Mott insulator'
-        return ''
+        return None
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -376,5 +379,9 @@ class QuasiparticleWeight(PhysicalProperty):
             )
             return
 
-        if not self.system_correlation_strengths:
-            self.system_correlation_strengths = self.resolve_system_correlation_strengths()
+        system_correlation_strengths = self.resolve_system_correlation_strengths()
+        if (self.system_correlation_strengths is not None and self.system_correlation_strengths != system_correlation_strengths):
+            logger.warning(
+                f'The stored `system_correlation_strengths`, {self.system_correlation_strengths}, does not coincide with the resolved one, {system_correlation_strengths}. We will update it.'
+            )
+        self.system_correlation_strengths = system_correlation_strengths
