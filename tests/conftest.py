@@ -403,3 +403,66 @@ def k_line_path() -> KLinePathSettings:
 @pytest.fixture(scope='session')
 def k_space_simulation() -> Simulation:
     return generate_k_space_simulation()
+
+
+refs_apw = [
+    {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
+    },
+    {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
+        'basis_set_components': [
+            {
+                'm_def': 'nomad_simulations.schema_packages.basis_set.APWPlaneWaveBasisSet',
+                'cutoff_energy': 500.0,
+            },
+        ],
+    },
+    {
+        'm_def': 'nomad_simulations.schema_packages.basis_set.BasisSetContainer',
+        'basis_set_components': [
+            {
+                'm_def': 'nomad_simulations.schema_packages.basis_set.APWPlaneWaveBasisSet',
+                'cutoff_energy': 500.0,
+            },
+            {
+                'm_def': 'nomad_simulations.schema_packages.basis_set.MuffinTinRegion',
+                'species_scope': ['/data/model_system/0/cell/0/atoms_state/0'],
+                'radius': 1.0,
+                'l_max': 2,
+                'l_channels': [
+                    {
+                        'name': 0,
+                        'orbitals': [
+                            {
+                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
+                                'energy_parameter': [0.0],
+                                'differential_order': [0],
+                            },
+                        ],
+                    },
+                    {
+                        'name': 1,
+                        'orbitals': [
+                            {
+                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
+                                'energy_parameter': [0.0],
+                                'differential_order': [0],
+                            },
+                        ],
+                    },
+                    {
+                        'name': 2,
+                        'orbitals': [
+                            {
+                                'm_def': 'nomad_simulations.schema_packages.basis_set.APWOrbital',
+                                'energy_parameter': [0.0],
+                                'differential_order': [0],
+                            },
+                        ],
+                    },
+                ],
+            },
+        ],
+    },
+]

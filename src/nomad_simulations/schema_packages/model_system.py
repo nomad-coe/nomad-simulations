@@ -151,12 +151,20 @@ class GeometricSpace(Entity):
     )
 
     coordinates_system = Quantity(
-        type=MEnum('cartesian', 'polar', 'cylindrical', 'spherical'),
+        type=MEnum('cartesian', 'cylindrical', 'spherical', 'ellipsoidal', 'polar'),
         default='cartesian',
         description="""
-        Coordinate system used to determine the geometrical information of a shape in real
-        space. Default to 'cartesian'.
-        """,
+        Coordinate system used to define geometrical primitives of a shape in real
+        space. Defaults to 'cartesian'.
+
+        | name       | description | dimensionalities | coordinates |
+        |------------|-------------|------------------|-------------|
+        | cartesian  | coordinate system with fixed angles between the axes (not necessarily 90°) | 1, 2, 3 | x, y, z |
+        | cylindrical| cylindrical symmetry | 3 | r, theta, z |
+        | spherical  | spherical symmetry | 3 | r, theta, phi |
+        | ellipsoidal| spherically elongated system | 3 | r, theta, phi |
+        | polar      | spherical symmetry | 2 | r, theta |
+        """,  # ? could this not be extended to the k-space
     )
 
     origin_shift = Quantity(

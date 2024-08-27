@@ -54,15 +54,29 @@ class NumericalSettings(ArchiveSection):
         super().normalize(archive, logger)
 
 
+class Smearing(NumericalSettings):
+    """
+    Section specifying the smearing of the occupation numbers to
+    either simulate temperature effects or improve SCF convergence.
+    """
+
+    name = Quantity(
+        type=MEnum('Fermi-Dirac', 'Gaussian', 'Methfessel-Paxton'),
+        description="""
+        Smearing routine employed.
+        """,
+    )
+
+
 class Mesh(ArchiveSection):
     """
-    A base section used to specify the settings of a sampling mesh. It supports uniformly-spaced
-    meshes and symmetry-reduced representations.
+    A base section used to specify the settings of a sampling mesh.
+    It supports uniformly-spaced meshes and symmetry-reduced representations.
     """
 
     spacing = Quantity(
         type=MEnum('Equidistant', 'Logarithmic', 'Tan'),
-        default='Equidistant',
+        shape=['dimensionality'],
         description="""
         Identifier for the spacing of the Mesh. Defaults to 'Equidistant' if not defined. It can take the values:
 
@@ -71,19 +85,6 @@ class Mesh(ArchiveSection):
         | `'Equidistant'`  | Equidistant grid (also known as 'Newton-Cotes') |
         | `'Logarithmic'`  | log distance grid |
         | `'Tan'`  | Non-uniform tan mesh for grids. More dense at low abs values of the points, while less dense for higher values |
-        """,
-    )
-
-    center = Quantity(
-        type=MEnum('Gamma-centered', 'Monkhorst-Pack', 'Gamma-offcenter'),
-        description="""
-        Identifier for the center of the Mesh:
-
-        | Name      | Description                      |
-        | --------- | -------------------------------- |
-        | `'Gamma-centered'` | Regular mesh is centered around Gamma. No offset. |
-        | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
-        | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
         """,
     )
 
@@ -105,7 +106,7 @@ class Mesh(ArchiveSection):
         | `'Clenshaw-Curtis'`  | Quadrature rule for integration using Chebyshev polynomials using discrete cosine transformations |
         | `'Gauss-Hermite'`  | Quadrature rule for integration using Hermite polynomials |
         """,
-    )
+    )  # ! @JosePizarro3 I think that this is separate from the spacing
 
     n_points = Quantity(
         type=np.int32,
@@ -118,7 +119,7 @@ class Mesh(ArchiveSection):
         type=np.int32,
         default=3,
         description="""
-        Dimensionality of the mesh: 1, 2, or 3. If not defined, it is assumed to be 3.
+        Dimensionality of the mesh: 1, 2, or 3. Defaults to 3.
         """,
     )
 
@@ -126,9 +127,9 @@ class Mesh(ArchiveSection):
         type=np.int32,
         shape=['dimensionality'],
         description="""
-        Amount of mesh point sampling along each axis, i.e. [nx, ny, nz].
+        Amount of mesh point sampling along each axis. See `type` for the axes definition.
         """,
-    )
+    )  # ? @JosePizzaro3: should the mesh also contain its boundary information
 
     points = Quantity(
         type=np.complex128,
@@ -143,9 +144,9 @@ class Mesh(ArchiveSection):
         shape=['n_points'],
         description="""
         The amount of times the same point reappears. A value larger than 1, typically indicates
-        a symmtery operation that was applied to the `Mesh`. This quantity is equivalent to `weights`:
+        a symmetry operation that was applied to the `Mesh`. This quantity is equivalent to `weights`:
 
-            multiplicities = 1 / weights
+            multiplicities = n_points * weights
         """,
     )
 
@@ -153,10 +154,10 @@ class Mesh(ArchiveSection):
         type=np.float64,
         shape=['n_points'],
         description="""
-        Weight of each point. A value smaller than 1, typically indicates a symmtery operation that was
+        Weight of each point. A value smaller than 1, typically indicates a symmetry operation that was
         applied to the mesh. This quantity is equivalent to `multiplicities`:
 
-            weights = 1 / multiplicities
+            weights = multiplicities / n_points
         """,
     )
 
@@ -309,11 +310,27 @@ class KMesh(Mesh):
     """
 
     label = Quantity(
-        type=MEnum('k-mesh', 'q-mesh'),
+        type=MEnum('k-mesh', 'g-mesh', 'q-mesh'),
         default='k-mesh',
         description="""
-        Label used to identify the `KMesh` with the reciprocal vector used. In linear response, `k` is used for
-        refering to the wave-vector of electrons, while `q` is used for the scattering effect of the Coulomb potential.
+        Label used to identify the meaning of the reciprocal grid.
+        The actual meaning of `k` vs `g` vs `q` is context-dependent, though typically:
+        - `g` is used for the primitive vectors (typically within the Brillouin zone).
+        - `k` for a generic reciprocal vector.
+        - `q` for any momentum change imparted by a scattering event.
+        """,
+    )
+
+    center = Quantity(
+        type=MEnum('Gamma-centered', 'Monkhorst-Pack', 'Gamma-offcenter'),
+        description="""
+        Identifier for the center of the Mesh:
+
+        | Name      | Description                      |
+        | --------- | -------------------------------- |
+        | `'Gamma-centered'` | Regular mesh is centered around Gamma. No offset. |
+        | `'Monkhorst-Pack'` | Regular mesh with an offset of half the reciprocal lattice vector. |
+        | `'Gamma-offcenter'` | Regular mesh with an offset that is neither `'Gamma-centered'`, nor `'Monkhorst-Pack'`. |
         """,
     )
 
@@ -841,7 +858,7 @@ class KSpace(NumericalSettings):
 class SelfConsistency(NumericalSettings):
     """
     A base section used to define the convergence settings of self-consistent field (SCF) calculation.
-    It determines the condictions for `is_scf_converged` in `SCFOutputs` (see outputs.py). The convergence
+    It determines the conditions for `is_scf_converged` in `SCFOutputs` (see outputs.py). The convergence
     criteria covered are:
 
         1. The number of iterations is smaller than or equal to `n_max_iterations`.
@@ -880,20 +897,6 @@ class SelfConsistency(NumericalSettings):
         Unit using the pint UnitRegistry() notation for the `threshold_change`.
         """,
     )
-
-    def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
-        super().__init__(m_def, m_context, **kwargs)
-        # Set the name of the section
-        self.name = self.m_def.name
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-
-
-class BasisSet(NumericalSettings):
-    """"""
-
-    # TODO work on this base section (@ndaelman-hu)
 
     def __init__(self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs):
         super().__init__(m_def, m_context, **kwargs)

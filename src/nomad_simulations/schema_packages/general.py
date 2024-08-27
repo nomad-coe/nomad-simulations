@@ -18,16 +18,18 @@
 
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
+
 import numpy as np
 from nomad.config import config
 from nomad.datamodel.data import Schema
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Activity, Entity
 from nomad.metainfo import Datetime, Quantity, SchemaPackage, Section, SubSection
-
-if TYPE_CHECKING:
-    from nomad.datamodel.datamodel import EntryArchive
-    from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.model_method import ModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
@@ -42,6 +44,34 @@ configuration = config.get_plugin_entry_point(
 )
 
 m_package = SchemaPackage()
+
+
+def set_not_normalized(func: 'Callable'):
+    """
+    Decorator to set the section as not normalized.
+    Typically decorates the section initializer.
+    """
+
+    def wrapper(self, *args, **kwargs) -> None:
+        func(self, *args, **kwargs)
+        self._is_normalized = False
+
+    return wrapper
+
+
+def check_normalized(func: 'Callable'):
+    """
+    Decorator to check if the section is already normalized.
+    Typically decorates the section normalizer.
+    """
+
+    def wrapper(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        if self._is_normalized:
+            return None
+        func(self, archive, logger)
+        self._is_normalized = True
+
+    return wrapper
 
 
 class Program(Entity):
