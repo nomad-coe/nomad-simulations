@@ -17,7 +17,7 @@
 # limitations under the License.
 
 from .band_gap import ElectronicBandGap
-from .band_structure import ElectronicBandStructure, ElectronicEigenvalues
+from .band_structure import ElectronicBandStructure, ElectronicEigenvalues, Occupancy
 from .energies import (
     EnergyContribution,
     FermiLevel,

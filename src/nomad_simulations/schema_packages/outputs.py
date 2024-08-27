@@ -46,6 +46,7 @@ from nomad_simulations.schema_packages.properties import (
     HoppingMatrix,
     HybridizationFunction,
     KineticEnergy,
+    Occupancy,
     Permittivity,
     PotentialEnergy,
     QuasiparticleWeight,
@@ -115,6 +116,8 @@ class Outputs(ArchiveSection):
     electronic_band_structures = SubSection(
         sub_section=ElectronicBandStructure.m_def, repeats=True
     )
+
+    occupancies = SubSection(sub_section=Occupancy.m_def, repeats=True)
 
     electronic_greens_functions = SubSection(
         sub_section=ElectronicGreensFunction.m_def, repeats=True
