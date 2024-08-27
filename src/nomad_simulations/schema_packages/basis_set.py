@@ -120,6 +120,9 @@ class PlaneWaveBasisSet(BasisSetComponent, KMesh):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+
+        self.label = 'g-mesh'
+
         if self.cutoff_radius is None:
             cutoff_radius = self.compute_cutoff_radius(self.cutoff_energy)
             if cutoff_radius is None:
