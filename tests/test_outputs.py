@@ -41,7 +41,7 @@ class TestOutputs:
         which properties are already defined and in which order to control their normalizations
         """
         outputs = Outputs()
-        assert len(outputs.m_def.all_sub_sections) == 21
+        assert len(outputs.m_def.all_sub_sections) == 22
         defined_properties = [
             'fermi_levels',
             'chemical_potentials',
@@ -52,6 +52,7 @@ class TestOutputs:
             'electronic_dos',
             'fermi_surfaces',
             'electronic_band_structures',
+            'occupancies',
             'electronic_greens_functions',
             'electronic_self_energies',
             'hybridization_functions',
