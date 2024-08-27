@@ -1,17 +1,20 @@
 import itertools
 from collections.abc import Iterable
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+from scipy import constants as const
+
+if TYPE_CHECKING:
+    from nomad.datamodel.datamodel import EntryArchive
+    from structlog.stdlib import BoundLogger
 
 import numpy as np
 import pint
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.datamodel import EntryArchive
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.metainfo import MEnum, Quantity, SubSection
 from nomad.units import ureg
-from scipy import constants as const
-from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.general import (
@@ -71,7 +74,7 @@ class BasisSet(ArchiveSection):
 
     # ? band_scope or orbital_scope: valence vs core
 
-    def normalize(self, archive, logger):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         self.name = self.m_def.name
 
@@ -115,7 +118,7 @@ class PlaneWaveBasisSet(BasisSet, KMesh):
         h = const.h * ureg(const.unit('Planck constant'))
         return np.sqrt(2 * m_e * cutoff_energy) / h
 
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         if self.cutoff_radius is None:
             cutoff_radius = self.compute_cutoff_radius(self.cutoff_energy)
@@ -162,7 +165,7 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
         super().__init__(*args, **kwargs)
         self.mt_r_min = None
 
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)  # 1st compute `cutoff_radius``
         if self.cutoff_fractional is None:
             logger.warning(
@@ -296,7 +299,7 @@ class APWBaseOrbital(ArchiveSection):
         return True
 
     @check_normalized
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         # enforce quantity length (will be used for type assignment)
@@ -375,7 +378,7 @@ class APWOrbital(APWBaseOrbital):
             return None
 
     @check_normalized
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         # assign a APW orbital type
         # this snippet works of the previous normalization
@@ -407,7 +410,7 @@ class APWLocalOrbital(APWBaseOrbital):
     # there's no community consensus on `type`
 
     @check_normalized
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         self.name = (
             f'LO: {sorted(self.differential_order)}'
@@ -464,7 +467,7 @@ class APWLChannel(BasisSet):
         super().__init__(*args, **kwargs)
 
     @check_normalized
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         # call order: parent of `BasisSet``, then `self`
         super(BasisSet, self).normalize(archive, logger)
         self.n_orbitals = len(self.orbitals)
@@ -520,7 +523,7 @@ class MuffinTinRegion(BasisSet, Mesh):
         self.mt_r_min = None
 
     @check_normalized
-    def normalize(self, archive, logger):
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         # TODO: add spherical specification, once supported in `Grid`
 
@@ -593,7 +596,7 @@ class BasisSetContainer(NumericalSettings):
                     mt_r_min = comp.radius
         return mt_r_min
 
-    def normalize(self, archive: EntryArchive, logger: BoundLogger) -> None:
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
         mt_r_min = self._find_mt_r_min()

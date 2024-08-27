@@ -1,4 +1,7 @@
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
+
+if TYPE_CHECKING:
+    import pint
 
 import numpy as np
 import pytest
@@ -32,7 +35,9 @@ from . import logger
         (1.823 / ureg.angstrom, 500 * ureg.eV),  # reference computed by ChatGPT 4o
     ],
 )
-def test_cutoff(ref_cutoff_radius, cutoff_energy):
+def test_cutoff(
+    ref_cutoff_radius: 'pint.Quantity', cutoff_energy: 'pint.Quantity'
+) -> None:
     """Test the quantitative results when computing certain plane-wave cutoffs."""
     pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff_energy)
     cutoff_radius = pw.compute_cutoff_radius(cutoff_energy)
@@ -56,7 +61,7 @@ def test_cutoff(ref_cutoff_radius, cutoff_energy):
         ([MuffinTinRegion(radius=r * ureg.angstrom) for r in (1.0, 2.0, 3.0)], 1.0),
     ],
 )
-def test_mt_r_min(mts: list[Optional[MuffinTinRegion]], ref_mt_r_min: float):
+def test_mt_r_min(mts: list[Optional[MuffinTinRegion]], ref_mt_r_min: float) -> None:
     """
     Test the computation of the minimum muffin-tin radius.
     """
@@ -89,7 +94,11 @@ def test_mt_r_min(mts: list[Optional[MuffinTinRegion]], ref_mt_r_min: float):
         (1.823, 500.0 * ureg.eV, 1.0 * ureg.angstrom),
     ],
 )
-def test_cutoff_failure(ref_cutoff_fractional, cutoff_energy, mt_radius):
+def test_cutoff_failure(
+    ref_cutoff_fractional: float,
+    cutoff_energy: 'pint.Quantity',
+    mt_radius: 'pint.Quantity',
+) -> None:
     """Test modes where `cutoff_fractional` is not computed."""
     pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff_energy if cutoff_energy else None)
     if mt_radius is not None:
@@ -124,7 +133,7 @@ def test_cutoff_failure(ref_cutoff_fractional, cutoff_energy, mt_radius):
 )
 def test_full_apw(
     ref_index: int, species_def: dict[str, dict[str, Any]], cutoff: Optional[float]
-):
+) -> None:
     """Test the composite structure of APW basis sets."""
     entry = EntryArchive(
         data=Simulation(
@@ -160,7 +169,9 @@ def test_apw_base_orbital(ref_n_terms: Optional[int], e: list[float], d_o: list[
 
 
 @pytest.mark.parametrize('n_terms, ref_n_terms', [(None, 1), (1, 1), (2, None)])
-def test_apw_base_orbital_normalize(n_terms: Optional[int], ref_n_terms: Optional[int]):
+def test_apw_base_orbital_normalize(
+    n_terms: Optional[int], ref_n_terms: Optional[int]
+) -> None:
     orb = APWBaseOrbital(
         n_terms=n_terms,
         energy_parameter=[0],
@@ -181,7 +192,7 @@ def test_apw_base_orbital_normalize(n_terms: Optional[int], ref_n_terms: Optiona
         ('slapw', [0, 2]),
     ],
 )
-def test_apw_orbital(ref_type: Optional[str], do: Optional[int]):
+def test_apw_orbital(ref_type: Optional[str], do: Optional[int]) -> None:
     orb = APWOrbital(differential_order=do)
     assert orb.do_to_type(orb.differential_order) == ref_type
 
@@ -200,7 +211,7 @@ def test_apw_local_orbital(
     ref_n_terms: Optional[int],
     e: list[float],
     d_o: list[int],
-):
+) -> None:
     orb = APWLocalOrbital(
         energy_parameter=e,
         differential_order=d_o,
@@ -331,7 +342,7 @@ def test_determine_apw(
     ref_l_counts: list[list[list[int]]],
     species_def: dict[str, dict[str, Any]],
     cutoff: Optional[float],
-):
+) -> None:
     """Test the L-channel APW structure."""
     ref_keys = ('apw', 'lapw', 'slapw', 'lo', 'other')
     bs = generate_apw(species_def, cutoff=cutoff)
@@ -354,7 +365,7 @@ def test_determine_apw(
     assert bs._determine_apw() == ref_type
 
 
-def test_quick_step():
+def test_quick_step() -> None:
     """Test the feasibility of describing a QuickStep basis set."""
     entry = EntryArchive(
         data=Simulation(
