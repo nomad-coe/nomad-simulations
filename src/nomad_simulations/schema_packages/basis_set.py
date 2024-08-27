@@ -31,7 +31,7 @@ from nomad_simulations.schema_packages.numerical_settings import (
 logger = utils.get_logger(__name__)
 
 
-class BasisSet(ArchiveSection):
+class BasisSetComponent(ArchiveSection):
     """A type section denoting a basis set component of a simulation.
     Should be used as a base section for more specialized sections.
     Allows for denoting the basis set's _scope_, i.e. to which entity it applies,
@@ -42,7 +42,7 @@ class BasisSet(ArchiveSection):
     - atom-centered basis sets, e.g. Gaussian-type basis sets, Slater-type orbitals, muffin-tin orbitals
     """
 
-    # TODO check implementation of `BasisSet` for Wannier and Slater-Koster orbitals
+    # TODO check implementation of `BasisSetComponent` for Wannier and Slater-Koster orbitals
 
     name = Quantity(
         type=str,
@@ -79,7 +79,7 @@ class BasisSet(ArchiveSection):
         self.name = self.m_def.name
 
 
-class PlaneWaveBasisSet(BasisSet, KMesh):
+class PlaneWaveBasisSet(BasisSetComponent, KMesh):
     """
     Basis set over a reciprocal mesh, where each point $k_n$ represents a planar-wave basis function $\frac{1}{\\sqrt{\\omega}} e^{i k_n r}$.
     Typically the grid itself is cartesian with only points within a designated sphere considered.
@@ -192,7 +192,7 @@ class AtomCenteredFunction(ArchiveSection):
     # TODO: design system for writing basis functions like gaussian or slater orbitals
 
 
-class AtomCenteredBasisSet(BasisSet):
+class AtomCenteredBasisSet(BasisSetComponent):
     """
     Defines an atom-centered basis set.
     """
@@ -348,7 +348,7 @@ class APWOrbital(APWBaseOrbital):
 
     type = Quantity(
         type=MEnum('apw', 'lapw', 'slapw'),  # ? add 'spherical_dirac'
-        description=r"""
+        description="""
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
         |------|-------------|----------------|
@@ -419,7 +419,7 @@ class APWLocalOrbital(APWBaseOrbital):
         )
 
 
-class APWLChannel(BasisSet):
+class APWLChannel(BasisSetComponent):
     """
     Collection of all (S)(L)APW and local orbital components that contribute
     to a single $l$-channel. $l$ here stands for the angular momentum parameter
@@ -468,12 +468,12 @@ class APWLChannel(BasisSet):
 
     @check_normalized
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        # call order: parent of `BasisSet``, then `self`
-        super(BasisSet, self).normalize(archive, logger)
+        # call order: parent of `BasisSetComponent``, then `self`
+        super(BasisSetComponent, self).normalize(archive, logger)
         self.n_orbitals = len(self.orbitals)
 
 
-class MuffinTinRegion(BasisSet, Mesh):
+class MuffinTinRegion(BasisSetComponent, Mesh):
     """
     Muffin-tin region around atoms, containing the augmented part of the APW basis set.
     The latter is structured by l-channel. Each channel contains a base (S)(L)APW definition,
@@ -543,13 +543,13 @@ class BasisSetContainer(NumericalSettings):
         The naming conventions of the same code are used. See the parser implementation for the possible values.
         The number of tiers varies, but a typical example would be `low`, `medium`, `high`.
         """,
-    )
+    )  # TODO: rename to `code_specific_tier`
 
     # TODO: add reference to `electronic_structure`,
     # specifying to which electronic structure representation the basis set is applied
     # e.g. wavefunction, density, grids for subroutines, etc.
 
-    basis_set_components = SubSection(sub_section=BasisSet.m_def, repeats=True)
+    basis_set_components = SubSection(sub_section=BasisSetComponent.m_def, repeats=True)
 
     def _determine_apw(self) -> Optional[str]:
         """
@@ -641,7 +641,7 @@ def generate_apw(
     }
     """
 
-    basis_set_components: list[BasisSet] = []
+    basis_set_components: list[BasisSetComponent] = []
     if cutoff is not None:
         pw = APWPlaneWaveBasisSet(cutoff_energy=cutoff)
         basis_set_components.append(pw)

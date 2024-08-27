@@ -16,9 +16,9 @@ Sometimes, a region is defined in terms of another schema section, e.g. an atom 
 
 Note that typically, different kinds of regions also have different mathematical formulations.
 Each formulation has its own dedicated section, to facilitate their reuse.
-These are all derived from the abstract section `BasisSet`, so that `basis_set_components: list[BasisSet]`.
+These are all derived from the abstract section `BasisSetComponent`, so that `basis_set_components: list[BasisSetComponent]`.
 
-Generically, `BasisSet` will allude to the the formula at large and just focus on capturing the _subtype_, as well as relevant _parameters_.
+Generically, `BasisSetComponent` will allude to the the formula at large and just focus on capturing the _subtype_, as well as relevant _parameters_.
 The most relevant ones are those that most commonly listed in the Method section of an article.
 These typically also influence the _precision_ most.
 Extra, code-specific subtypes and parameters can be added by their respective parsers.
@@ -30,9 +30,9 @@ ModelMethod
 └── NumericalSettings[0]
 └── ...
 └── NumericalSettings[n] = BasisSetContainer
-                            └── BasisSet[1]
+                            └── BasisSetComponent[1]
                             └── ...
-                            └── BasisSet[n]
+                            └── BasisSetComponent[n]
                                 └──> AtomsState
                                 └──> BaseModelMethod
 ```
