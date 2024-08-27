@@ -23,7 +23,6 @@ import pytest
 from nomad.datamodel import EntryArchive
 from nomad.metainfo import Quantity
 from nomad.units import ureg
-
 from nomad_simulations.schema_packages.physical_property import (
     PhysicalProperty,
     validate_quantity_wrt_value,

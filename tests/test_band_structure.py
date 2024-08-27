@@ -21,7 +21,6 @@ from typing import Optional
 import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
-
 from nomad_simulations.schema_packages.properties import ElectronicEigenvalues
 
 from . import logger

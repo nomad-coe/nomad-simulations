@@ -54,6 +54,7 @@ class BaseGreensFunction(PhysicalProperty):
 
     Further information in M. Wallerberger et al., Comput. Phys. Commun. 235, 2 (2019).
     """
+
     # ! we use `atoms_state_ref` and `orbitals_state_ref` to enforce order in the matrices
 
     n_atoms = Quantity(
@@ -108,7 +109,22 @@ class BaseGreensFunction(PhysicalProperty):
     )
 
     space_id = Quantity(
-        type=MEnum('r', 'rt', 'rw', 'rit', 'riw', 'k', 'kt', 'kw', 'kit', 'kiw', 't', 'it', 'w', 'iw'),
+        type=MEnum(
+            'r',
+            'rt',
+            'rw',
+            'rit',
+            'riw',
+            'k',
+            'kt',
+            'kw',
+            'kit',
+            'kiw',
+            't',
+            'it',
+            'w',
+            'iw',
+        ),
         description="""
         String used to identify the space in which the Green's function property is represented. The spaces are:
 
@@ -136,7 +152,10 @@ class BaseGreensFunction(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! n_orbitals need to be set up during initialization of the class
-        self.rank = [int(kwargs.get('n_atoms')), int(kwargs.get('n_correlated_orbitals'))]
+        self.rank = [
+            int(kwargs.get('n_atoms')),
+            int(kwargs.get('n_correlated_orbitals')),
+        ]
 
     def resolve_space_id(self) -> str:
         """
@@ -167,7 +186,9 @@ class BaseGreensFunction(PhysicalProperty):
                 str: _description_
             """
             for space_id, variable_cls in space_map.items():
-                space_variable = get_variables(variables=self.variables, variable_cls=variable_cls)
+                space_variable = get_variables(
+                    variables=self.variables, variable_cls=variable_cls
+                )
                 if len(space_variable) > 0:
                     return space_id
             return ''
@@ -179,11 +200,12 @@ class BaseGreensFunction(PhysicalProperty):
         super().normalize(archive, logger)
 
         space_id = self.resolve_space_id()
-        if (self.space_id is not None and self.space_id != space_id):
+        if self.space_id is not None and self.space_id != space_id:
             logger.warning(
                 f'The stored `space_id`, {self.space_id}, does not coincide with the resolved one, {space_id}. We will update it.'
             )
         self.space_id = space_id
+
 
 class ElectronicGreensFunction(BaseGreensFunction):
     """
@@ -271,12 +293,18 @@ class QuasiparticleWeight(PhysicalProperty):
     electron-electron interactions and takes values between 0 and 1, with Z = 1 representing a non-correlated
     system, and Z = 0 the Mott state.
     """
+
     # ! we use `atoms_state_ref` and `orbitals_state_ref` to enforce order in the matrices
 
     iri = 'http://fairmat-nfdi.eu/taxonomy/HybridizationFunction'
 
     system_correlation_strengths = Quantity(
-        type=MEnum('non-correlated metal', 'strongly-correlated metal', 'OSMI', 'Mott insulator'),
+        type=MEnum(
+            'non-correlated metal',
+            'strongly-correlated metal',
+            'OSMI',
+            'Mott insulator',
+        ),
         description="""
         String used to identify the type of system based on the strength of the electron-electron interactions.
 
@@ -338,7 +366,10 @@ class QuasiparticleWeight(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! n_orbitals need to be set up during initialization of the class
-        self.rank = [int(kwargs.get('n_atoms')), int(kwargs.get('n_correlated_orbitals'))]
+        self.rank = [
+            int(kwargs.get('n_atoms')),
+            int(kwargs.get('n_correlated_orbitals')),
+        ]
         self.name = self.m_def.name
 
     def is_valid_quasiparticle_weight(self) -> bool:
@@ -380,7 +411,10 @@ class QuasiparticleWeight(PhysicalProperty):
             return
 
         system_correlation_strengths = self.resolve_system_correlation_strengths()
-        if (self.system_correlation_strengths is not None and self.system_correlation_strengths != system_correlation_strengths):
+        if (
+            self.system_correlation_strengths is not None
+            and self.system_correlation_strengths != system_correlation_strengths
+        ):
             logger.warning(
                 f'The stored `system_correlation_strengths`, {self.system_correlation_strengths}, does not coincide with the resolved one, {system_correlation_strengths}. We will update it.'
             )

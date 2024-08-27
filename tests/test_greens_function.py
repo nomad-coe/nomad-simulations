@@ -20,7 +20,6 @@ from typing import Optional, Union
 
 import pytest
 from nomad.datamodel import EntryArchive
-
 from nomad_simulations.schema_packages.properties import (
     QuasiparticleWeight,
 )
@@ -64,7 +63,15 @@ class TestBaseGreensFunction:
             ([KMesh(), MatsubaraFrequency()], 'kiw'),
         ],
     )
-    def test_resolve_space_id(self, variables: list[Union[WignerSeitz, KMesh, Time, ImaginaryTime, Frequency, MatsubaraFrequency]], result: str):
+    def test_resolve_space_id(
+        self,
+        variables: list[
+            Union[
+                WignerSeitz, KMesh, Time, ImaginaryTime, Frequency, MatsubaraFrequency
+            ]
+        ],
+        result: str,
+    ):
         """
         Test the `resolve_space_id` method of the `BaseGreensFunction` class.
         """
@@ -94,7 +101,16 @@ class TestBaseGreensFunction:
             ('', [KMesh(), MatsubaraFrequency()], 'kiw'),
         ],
     )
-    def test_normalize(self, space_id: str, variables: list[Union[WignerSeitz, KMesh, Time, ImaginaryTime, Frequency, MatsubaraFrequency]], result: Optional[str]):
+    def test_normalize(
+        self,
+        space_id: str,
+        variables: list[
+            Union[
+                WignerSeitz, KMesh, Time, ImaginaryTime, Frequency, MatsubaraFrequency
+            ]
+        ],
+        result: Optional[str],
+    ):
         """
         Test the `normalize` method of the `BaseGreensFunction` class.
         """
@@ -103,7 +119,6 @@ class TestBaseGreensFunction:
         gfs.space_id = space_id if space_id else None
         gfs.normalize(archive=EntryArchive(), logger=logger)
         assert gfs.space_id == result
-
 
 
 class TestQuasiparticleWeight:
@@ -127,7 +142,6 @@ class TestQuasiparticleWeight:
         quasiparticle_weight.value = value
         assert quasiparticle_weight.is_valid_quasiparticle_weight() == result
 
-
     @pytest.mark.parametrize(
         'value, result',
         [
@@ -138,7 +152,9 @@ class TestQuasiparticleWeight:
             ([[1.0, 0.8, 0.2]], None),
         ],
     )
-    def test_resolve_system_correlation_strengths(self, value: list[float], result: Optional[str]):
+    def test_resolve_system_correlation_strengths(
+        self, value: list[float], result: Optional[str]
+    ):
         """
         Test the `resolve_system_correlation_strengths` method of the `QuasiparticleWeight` class.
         """

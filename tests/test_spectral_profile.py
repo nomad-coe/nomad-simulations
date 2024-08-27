@@ -22,7 +22,6 @@ import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
 from nomad.units import ureg
-
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.general import Simulation
 from nomad_simulations.schema_packages.model_system import AtomicCell, ModelSystem
