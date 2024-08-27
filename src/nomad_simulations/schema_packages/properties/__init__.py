@@ -17,7 +17,7 @@
 # limitations under the License.
 
 from .band_gap import ElectronicBandGap
-from .band_structure import ElectronicBandStructure, ElectronicEigenvalues
+from .band_structure import ElectronicBandStructure, ElectronicEigenvalues, Occupancy
 from .energies import (
     EnergyContribution,
     FermiLevel,
@@ -27,6 +27,12 @@ from .energies import (
 )
 from .fermi_surface import FermiSurface
 from .forces import BaseForce, ForceContribution, TotalForce
+from .greens_function import (
+    ElectronicGreensFunction,
+    ElectronicSelfEnergy,
+    HybridizationFunction,
+    QuasiparticleWeight,
+)
 from .hopping_matrix import CrystalFieldSplitting, HoppingMatrix
 from .permittivity import Permittivity
 from .spectral_profile import (

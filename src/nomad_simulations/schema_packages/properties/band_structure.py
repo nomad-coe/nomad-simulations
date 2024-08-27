@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
+from nomad_simulations.schema_packages.atoms_state import AtomsState, OrbitalsState
 from nomad_simulations.schema_packages.numerical_settings import KSpace
 from nomad_simulations.schema_packages.physical_property import (
     PhysicalProperty,
@@ -92,8 +93,8 @@ class ElectronicEigenvalues(BaseElectronicEigenvalues):
         shape=['*', 'n_bands'],
         description="""
         Occupation of the electronic eigenvalues. This is a number depending whether the `spin_channel` has been set or not.
-        If `spin_channel` is set, then this number is between 0 and 2, where 0 means that the state is unoccupied and 2 means
-        that the state is fully occupied; if `spin_channel` is not set, then this number is between 0 and 1. The shape of
+        If `spin_channel` is set, then this number is between 0 and 1, where 0 means that the state is unoccupied and 1 means
+        that the state is fully occupied; if `spin_channel` is not set, then this number is between 0 and 2. The shape of
         this quantity is defined as `[K.n_points, K.dimensionality, n_bands]`, where `K` is a `variable` which can
         be `KMesh` or `KLinePath`, depending whether the simulation mapped the whole Brillouin zone or just a specific
         path.
@@ -337,6 +338,59 @@ class ElectronicBandStructure(ElectronicEigenvalues):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         self.name = self.m_def.name
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class Occupancy(PhysicalProperty):
+    """
+    Electrons occupancy of an atom per orbital and spin. This is a number defined between 0 and 1 for
+    spin-polarized systems, and between 0 and 2 for non-spin-polarized systems. This property is
+    important when studying if an orbital or spin channel are fully occupied, at half-filling, or
+    fully emptied, which have an effect on the electron-electron interaction effects.
+    """
+
+    iri = 'http://fairmat-nfdi.eu/taxonomy/Occupancy'
+
+    atoms_state_ref = Quantity(
+        type=AtomsState,
+        description="""
+        Reference to the `AtomsState` section in which the occupancy is calculated.
+        """,
+    )
+
+    orbitals_state_ref = Quantity(
+        type=OrbitalsState,
+        description="""
+        Reference to the `OrbitalsState` section in which the occupancy is calculated.
+        """,
+    )
+
+    spin_channel = Quantity(
+        type=np.int32,
+        description="""
+        Spin channel of the corresponding electronic property. It can take values of 0 and 1.
+        """,
+    )
+
+    value = Quantity(
+        type=np.float64,
+        description="""
+        Value of the electronic occupancy in the atom defined by `atoms_state_ref` and the orbital
+        defined by `orbitals_state_ref`. the orbital. If `spin_channel` is set, then this number is
+        between 0 and 1, where 0 means that the state is unoccupied and 1 means that the state is
+        fully occupied; if `spin_channel` is not set, then this number is between 0 and 2.
+        """,
+    )
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    # TODO add extraction from `ElectronicEigenvalues.occupation`
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)

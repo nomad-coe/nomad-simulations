@@ -39,12 +39,17 @@ from nomad_simulations.schema_packages.properties import (
     ElectronicBandStructure,
     ElectronicDensityOfStates,
     ElectronicEigenvalues,
+    ElectronicGreensFunction,
+    ElectronicSelfEnergy,
     FermiLevel,
     FermiSurface,
     HoppingMatrix,
+    HybridizationFunction,
     KineticEnergy,
+    Occupancy,
     Permittivity,
     PotentialEnergy,
+    QuasiparticleWeight,
     Temperature,
     TotalEnergy,
     TotalForce,
@@ -110,6 +115,24 @@ class Outputs(ArchiveSection):
 
     electronic_band_structures = SubSection(
         sub_section=ElectronicBandStructure.m_def, repeats=True
+    )
+
+    occupancies = SubSection(sub_section=Occupancy.m_def, repeats=True)
+
+    electronic_greens_functions = SubSection(
+        sub_section=ElectronicGreensFunction.m_def, repeats=True
+    )
+
+    electronic_self_energies = SubSection(
+        sub_section=ElectronicSelfEnergy.m_def, repeats=True
+    )
+
+    hybridization_functions = SubSection(
+        sub_section=HybridizationFunction.m_def, repeats=True
+    )
+
+    quasiparticle_weights = SubSection(
+        sub_section=QuasiparticleWeight.m_def, repeats=True
     )
 
     permittivities = SubSection(sub_section=Permittivity.m_def, repeats=True)

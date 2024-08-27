@@ -171,7 +171,73 @@ class Frequency(Variables):
         unit='joule',
         shape=['n_points'],
         description="""
-        Points in which the frequency is discretized in joules.
+        Points in which the frequency is discretized, in joules.
+        """,
+    )
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class MatsubaraFrequency(Variables):
+    """ """
+
+    points = Quantity(
+        type=np.complex128,
+        unit='joule',
+        shape=['n_points'],
+        description="""
+        Points in which the imaginary or Matsubara frequency is discretized, in joules.
+        """,
+    )
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class Time(Variables):
+    """ """
+
+    points = Quantity(
+        type=np.float64,
+        unit='second',
+        shape=['n_points'],
+        description="""
+        Points in which the time is discretized, in seconds.
+        """,
+    )
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.name = self.m_def.name
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class ImaginaryTime(Variables):
+    """ """
+
+    points = Quantity(
+        type=np.complex128,
+        unit='second',
+        shape=['n_points'],
+        description="""
+        Points in which the imaginary time is discretized, in seconds.
         """,
     )
 

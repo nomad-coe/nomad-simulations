@@ -39,7 +39,8 @@ class HoppingMatrix(PhysicalProperty):
     n_orbitals = Quantity(
         type=np.int32,
         description="""
-        Number of orbitals in the tight-binding model.
+        Number of orbitals in the tight-binding model. The `entity_ref` reference is used to refer to
+        the `OrbitalsState` section.
         """,
     )
 
@@ -85,7 +86,8 @@ class CrystalFieldSplitting(PhysicalProperty):
     n_orbitals = Quantity(
         type=np.int32,
         description="""
-        Number of orbitals in the tight-binding model.
+        Number of orbitals in the tight-binding model. The `entity_ref` reference is used to refer to
+        the `OrbitalsState` section.
         """,
     )
 
