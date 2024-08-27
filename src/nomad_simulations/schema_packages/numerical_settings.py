@@ -310,11 +310,14 @@ class KMesh(Mesh):
     """
 
     label = Quantity(
-        type=MEnum('k-mesh', 'q-mesh', 'g-mesh'),
+        type=MEnum('k-mesh', 'g-mesh', 'q-mesh'),
         default='k-mesh',
         description="""
-        Label used to identify the kidn of `KMesh` with the reciprocal vector used. In linear response, `k` is used for
-        refering to the wave-vector of electrons, while `q` is used for the scattering effect of the Coulomb potential.
+        Label used to identify the meaning of the reciprocal grid.
+        The actual meaning of `k` vs `g` vs `q` is context-dependent, though typically:
+        - `g` is used for the primitive vectors (typically within the Brillouin zone).
+        - `k` for a generic reciprocal vector.
+        - `q` for any momentum change imparted by a scattering event.
         """,
     )
 
