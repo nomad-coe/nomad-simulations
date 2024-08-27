@@ -348,7 +348,7 @@ class APWOrbital(APWBaseOrbital):
 
     type = Quantity(
         type=MEnum('apw', 'lapw', 'slapw'),  # ? add 'spherical_dirac'
-        description="""
+        description=r"""
         Type of augmentation contribution. Abbreviations stand for:
         | name | description | radial product |
         |------|-------------|----------------|
