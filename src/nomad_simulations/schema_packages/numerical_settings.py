@@ -371,7 +371,7 @@ class KMesh(Mesh):
         unit='m',
         description="""
         Amount of sampled k-points per unit reciprocal length along each axis. Contains the least precise density out of all axes.
-        Should only be compared between calulations of similar dimensionality.
+        Should only be compared between calculations of similar dimensionality.
         """,
     )
 

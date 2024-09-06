@@ -152,8 +152,8 @@ class XCFunctional(ArchiveSection):
         type=str,
         description="""
         Provides the name of one of the exchange or correlation (XC) functional following the libxc
-        convention (see https://www.tddft.org/programs/libxc/).
-        """,
+        convention. For the code base containing the conventions, see https://gitlab.com/libxc/libxc.
+        """,  # TODO: step away from the libxc naming convention
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
