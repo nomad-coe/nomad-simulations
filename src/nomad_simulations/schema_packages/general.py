@@ -116,6 +116,18 @@ class Program(Entity):
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
+    subroutine_name_internal = Quantity(
+        type=str,
+        description="""
+        Specifies the name of the subroutine of the program at large.
+        This only applies when the routine produced (almost) all of the output,
+        so the naming is representative. This naming is mostly meant for users
+        who are familiar with the program's structure.
+        """,
+        a_eln=ELNAnnotation(component='StringEditQuantity'),
+    )
+
+
     compilation_host = Quantity(
         type=str,
         description="""
