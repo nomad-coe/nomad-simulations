@@ -127,7 +127,6 @@ class Program(Entity):
         a_eln=ELNAnnotation(component='StringEditQuantity'),
     )
 
-
     compilation_host = Quantity(
         type=str,
         description="""
