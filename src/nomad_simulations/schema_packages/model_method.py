@@ -106,6 +106,15 @@ class ModelMethod(BaseModelMethod):
         """,
     )
 
+    # ? Not sure about this, as it is more linked to a workflow in a way, but one may apply different models to different systems stored within a single entry
+    model_system_ref = Quantity(
+        type=ModelSystem,
+        description="""
+        Reference to the `ModelSystem` section to which the model was applied.
+        """,
+        a_eln=ELNAnnotation(component='ReferenceEditQuantity'),
+    )
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
