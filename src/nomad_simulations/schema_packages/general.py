@@ -309,7 +309,9 @@ class Simulation(BaseSimulation, Schema):
         # Finding which is the representative system of a calculation: typically, we will
         # define it as the last system reported (TODO CHECK THIS!).
         # TODO extend adding the proper representative system extraction using `normalizer.py`
-        if self.model_system is None:
+        if self.model_system is None or (
+            isinstance(self.model_system, list) and len(self.model_system) == 0
+        ):
             logger.error('No system information reported.')
             return
         system_ref = self.model_system[-1]
