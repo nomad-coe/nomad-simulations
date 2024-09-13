@@ -18,12 +18,15 @@
 
 import pytest
 
+from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.model_system import (
     AtomicCell,
+    Cell,
     ModelSystem,
     Symmetry,
 )
 from nomad_simulations.schema_packages.utils import (
+    check_simulation_cell,
     get_sibling_section,
     get_variables,
     is_not_representative,
@@ -93,3 +96,110 @@ def test_get_variables(variables: list, result: list, result_length: int):
     assert len(energies) == result_length
     for i, energy in enumerate(energies):  # asserting energies == result does not work
         assert energy.n_points == result[i].n_points
+
+
+@pytest.mark.parametrize(
+    'cell_1, cell_2, result',
+    [
+        (None, None, False),  # both are None
+        (Cell(), None, False),  # one cell is None
+        (Cell(), Cell(), False),  # both cells are empty
+        (
+            Cell(positions=[[1, 0, 0]]),
+            Cell(),
+            False,
+        ),  # one cell has positions, the other is empty
+        (
+            Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+            Cell(positions=[[1, 0, 0]]),
+            False,
+        ),  # length mismatch
+        (
+            Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+            Cell(positions=[[1, 0, 0], [0, -1, 0]]),
+            False,
+        ),  # different positions
+        (
+            Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            True,
+        ),  # same ordered positions
+        (
+            Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            Cell(positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]]),
+            True,
+        ),  # different ordered positions but same cell
+        (
+            AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            False,
+        ),  # one atomic cell and another cell (missing chemical symbols)
+        (
+            AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            False,
+        ),  # missing chemical symbols
+        (
+            AtomicCell(
+                positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                atoms_state=[
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='O'),
+                ],
+            ),
+            AtomicCell(
+                positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                atoms_state=[
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='O'),
+                ],
+            ),
+            True,
+        ),  # same ordered positions and chemical symbols
+        (
+            AtomicCell(
+                positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                atoms_state=[
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='O'),
+                ],
+            ),
+            AtomicCell(
+                positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                atoms_state=[
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='Cu'),
+                    AtomsState(chemical_symbol='O'),
+                ],
+            ),
+            False,
+        ),  # same ordered positions but different chemical symbols
+        (
+            AtomicCell(
+                positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                atoms_state=[
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='O'),
+                ],
+            ),
+            AtomicCell(
+                positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]],
+                atoms_state=[
+                    AtomsState(chemical_symbol='H'),
+                    AtomsState(chemical_symbol='O'),
+                    AtomsState(chemical_symbol='H'),
+                ],
+            ),
+            True,
+        ),  # different ordered positions but same chemical symbols
+    ],
+)
+def test_check_simulation_cell(cell_1: Cell, cell_2: Cell, result: bool):
+    """
+    Test the `check_simulation_cell` utility function.
+    """
+    assert check_simulation_cell(cell_1=cell_1, cell_2=cell_2) == result

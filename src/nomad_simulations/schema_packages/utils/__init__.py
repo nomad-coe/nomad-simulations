@@ -18,6 +18,7 @@
 
 from .utils import (
     RussellSaundersState,
+    check_simulation_cell,
     get_composition,
     get_sibling_section,
     get_variables,

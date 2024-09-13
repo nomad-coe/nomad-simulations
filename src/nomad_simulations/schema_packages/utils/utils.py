@@ -28,6 +28,8 @@ if TYPE_CHECKING:
     from nomad.datamodel.data import ArchiveSection
     from structlog.stdlib import BoundLogger
 
+    from nomad_simulations.schema_packages.model_system import Cell
+
 
 def get_sibling_section(
     section: 'ArchiveSection',
@@ -168,3 +170,54 @@ def get_composition(children_names: 'list[str]') -> str:
     children_count_tup = np.unique(children_names, return_counts=True)
     formula = ''.join([f'{name}({count})' for name, count in zip(*children_count_tup)])
     return formula if formula else None
+
+
+def check_simulation_cell(cell_1: 'Cell', cell_2: 'Cell') -> bool:
+    """
+    Check if the two `Cell` objects are the same by checking if the defined `positions` are all matching. If
+    the objects are `AtomicCell`, it checks if the `AtomsState[*].chemical_symbol` are the same.
+
+    Args:
+        cell_1 (Cell): The first `Cell` to compare.
+        cell_2 (Cell): The second `Cell` to compare.
+
+    Returns:
+        bool: True if the cells are the same, False otherwise.
+    """
+    # If any of the cells is None or the positions are empty, return False
+    if cell_1 is None or cell_2 is None:
+        return False
+    if cell_1.positions is None or cell_2.positions is None:
+        return False
+
+    # The `positions` should have the same length (same number of positions)
+    if len(cell_1.positions) != len(cell_2.positions):
+        return False
+    n_positions = len(cell_1.positions)
+
+    # Check that all the `positions`` of `cell_1` match with the ones in `cell_2`
+    check_positions = []
+    for i1, pos1 in enumerate(cell_1.positions):
+        for i2, pos2 in enumerate(cell_2.positions):
+            if np.allclose(pos1, pos2):
+                check_positions.append([i1, i2])
+                break
+    if len(check_positions) != n_positions:
+        return False
+
+    # If the cells are not `AtomicCell`, finish function (using m_def.name to avoid circular import problems)
+    if cell_1.m_def.name == 'Cell' and cell_2.m_def.name == 'Cell':
+        return True
+    if cell_1.m_def.name != 'AtomicCell' or cell_2.m_def.name != 'AtomicCell':
+        return False
+
+    # Check that the `chemical_symbol` of the atoms in `cell_1` match with the ones in `cell_2`
+    try:
+        for atom in check_positions:
+            element_1 = cell_1.atoms_state[atom[0]].chemical_symbol
+            element_2 = cell_2.atoms_state[atom[1]].chemical_symbol
+            if element_1 != element_2:
+                return False
+    except Exception:
+        return False
+    return True
