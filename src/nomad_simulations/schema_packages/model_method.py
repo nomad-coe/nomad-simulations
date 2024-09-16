@@ -352,6 +352,9 @@ class DFT(ModelMethodElectronic):
             highest_rung_abbrev = max(abbrevs, key=lambda x: rung_order[x])
         except KeyError:
             return 'unavailable'
+        except (ValueError, TypeError):
+            if not abbrevs:
+                return 'unavailable'
         return self._jacobs_ladder_map.get(highest_rung_abbrev, 'unavailable')
 
     def resolve_exact_exchange_mixing_factor(
