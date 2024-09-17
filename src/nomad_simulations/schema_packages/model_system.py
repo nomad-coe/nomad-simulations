@@ -312,6 +312,10 @@ class Cell(GeometricSpace):
         if not isinstance(other, Cell):
             return False
 
+        # If the `positions` are empty, return False
+        if self.positions is None or other.positions is None:
+            return False
+
         # The `positions` should have the same length (same number of positions)
         if len(self.positions) != len(other.positions):
             return False
@@ -321,6 +325,9 @@ class Cell(GeometricSpace):
         if len(check_positions) != n_positions:
             return False
         return True
+
+    def __ne__(self, other: 'Cell') -> bool:
+        return not self.__eq__(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -384,6 +391,9 @@ class AtomicCell(Cell):
         except Exception:
             return False
         return True
+
+    def __ne__(self, other: 'AtomicCell') -> bool:
+        return not self.__eq__(other)
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """

@@ -21,6 +21,5 @@ from .utils import (
     get_composition,
     get_sibling_section,
     get_variables,
-    is_equal_cell,
     is_not_representative,
 )

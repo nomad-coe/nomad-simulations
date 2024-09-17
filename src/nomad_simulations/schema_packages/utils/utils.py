@@ -175,25 +175,3 @@ def get_composition(children_names: 'list[str]') -> str:
     children_count_tup = np.unique(children_names, return_counts=True)
     formula = ''.join([f'{name}({count})' for name, count in zip(*children_count_tup)])
     return formula if formula else None
-
-
-def is_equal_cell(cell_1: 'Cell', cell_2: 'Cell') -> bool:
-    """
-    Check if the two `Cell` objects are the same by checking if the defined `positions` are all matching. If
-    the objects are `AtomicCell`, it checks if the `AtomsState[*].chemical_symbol` are the same.
-
-    Args:
-        cell_1 (Cell): The first `Cell` to compare.
-        cell_2 (Cell): The second `Cell` to compare.
-
-    Returns:
-        bool: True if the cells are the same, False otherwise.
-    """
-    # TODO extend this function to compare more information of the cells (`lattice_vectors`) and check ase.Atoms functions
-    # If any of the cells is None or the positions are empty, return False
-    if cell_1 is None or cell_2 is None:
-        return False
-    if cell_1.positions is None or cell_2.positions is None:
-        return False
-
-    return cell_1 == cell_2

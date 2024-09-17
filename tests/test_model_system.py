@@ -22,7 +22,10 @@ import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
 
+from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.model_system import (
+    AtomicCell,
+    Cell,
     ChemicalFormula,
     ModelSystem,
     Symmetry,
@@ -32,10 +35,159 @@ from . import logger
 from .conftest import generate_atomic_cell
 
 
+class TestCell:
+    """
+    Test the `Cell` section defined in model_system.py
+    """
+
+    @pytest.mark.parametrize(
+        'cell_1, cell_2, result',
+        [
+            (Cell(), None, False),  # one cell is None
+            (Cell(), Cell(), False),  # both cells are empty
+            (
+                Cell(positions=[[1, 0, 0]]),
+                Cell(),
+                False,
+            ),  # one cell has positions, the other is empty
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+                Cell(positions=[[1, 0, 0]]),
+                False,
+            ),  # length mismatch
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+                Cell(positions=[[1, 0, 0], [0, -1, 0]]),
+                False,
+            ),  # different positions
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                True,
+            ),  # same ordered positions
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                Cell(positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]]),
+                True,
+            ),  # different ordered positions but same cell
+        ],
+    )
+    def test_eq(self, cell_1: Cell, cell_2: Cell, result: bool):
+        """
+        Test the `__eq__` operator function of `Cell`.
+        """
+        assert (cell_1 == cell_2) == result
+
+
 class TestAtomicCell:
     """
     Test the `AtomicCell`, `Cell` and `GeometricSpace` classes defined in model_system.py
     """
+
+    @pytest.mark.parametrize(
+        'cell_1, cell_2, result',
+        [
+            (Cell(), None, False),  # one cell is None
+            (Cell(), Cell(), False),  # both cells are empty
+            (
+                Cell(positions=[[1, 0, 0]]),
+                Cell(),
+                False,
+            ),  # one cell has positions, the other is empty
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+                Cell(positions=[[1, 0, 0]]),
+                False,
+            ),  # length mismatch
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+                Cell(positions=[[1, 0, 0], [0, -1, 0]]),
+                False,
+            ),  # different positions
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                True,
+            ),  # same ordered positions
+            (
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                Cell(positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]]),
+                True,
+            ),  # different ordered positions but same cell
+            (
+                AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                False,
+            ),  # one atomic cell and another cell (missing chemical symbols)
+            (
+                AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+                False,
+            ),  # missing chemical symbols
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                True,
+            ),  # same ordered positions and chemical symbols
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='Cu'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                False,
+            ),  # same ordered positions but different chemical symbols
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                        AtomsState(chemical_symbol='H'),
+                    ],
+                ),
+                True,
+            ),  # different ordered positions but same chemical symbols
+        ],
+    )
+    def test_eq(self, cell_1: Cell, cell_2: Cell, result: bool):
+        """
+        Test the `__eq__` operator function of `AtomicCell`.
+        """
+        assert (cell_1 == cell_2) == result
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
