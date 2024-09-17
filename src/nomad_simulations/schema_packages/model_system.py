@@ -309,6 +309,7 @@ class Cell(GeometricSpace):
         return check_positions
 
     def __eq__(self, other: 'Cell') -> bool:
+        # TODO implement checks on `lattice_vectors` and other quantities to ensure the equality of primitive cells
         if not isinstance(other, Cell):
             return False
 
