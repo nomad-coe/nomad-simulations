@@ -26,9 +26,9 @@ from nomad_simulations.schema_packages.model_system import (
     Symmetry,
 )
 from nomad_simulations.schema_packages.utils import (
-    check_simulation_cell,
     get_sibling_section,
     get_variables,
+    is_equal_cell,
     is_not_representative,
 )
 from nomad_simulations.schema_packages.variables import Energy2 as Energy
@@ -198,8 +198,8 @@ def test_get_variables(variables: list, result: list, result_length: int):
         ),  # different ordered positions but same chemical symbols
     ],
 )
-def test_check_simulation_cell(cell_1: Cell, cell_2: Cell, result: bool):
+def test_is_equal_cell(cell_1: Cell, cell_2: Cell, result: bool):
     """
-    Test the `check_simulation_cell` utility function.
+    Test the `is_equal_cell` utility function.
     """
-    assert check_simulation_cell(cell_1=cell_1, cell_2=cell_2) == result
+    assert is_equal_cell(cell_1=cell_1, cell_2=cell_2) == result

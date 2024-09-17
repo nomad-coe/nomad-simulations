@@ -21,6 +21,7 @@ from math import factorial
 from typing import TYPE_CHECKING
 
 import numpy as np
+from nomad.config import config
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -29,6 +30,10 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
     from nomad_simulations.schema_packages.model_system import Cell
+
+configuration = config.get_plugin_entry_point(
+    'nomad_simulations.schema_packages:nomad_simulations_plugin'
+)
 
 
 def get_sibling_section(
@@ -172,7 +177,7 @@ def get_composition(children_names: 'list[str]') -> str:
     return formula if formula else None
 
 
-def check_simulation_cell(cell_1: 'Cell', cell_2: 'Cell') -> bool:
+def is_equal_cell(cell_1: 'Cell', cell_2: 'Cell') -> bool:
     """
     Check if the two `Cell` objects are the same by checking if the defined `positions` are all matching. If
     the objects are `AtomicCell`, it checks if the `AtomsState[*].chemical_symbol` are the same.
@@ -184,6 +189,7 @@ def check_simulation_cell(cell_1: 'Cell', cell_2: 'Cell') -> bool:
     Returns:
         bool: True if the cells are the same, False otherwise.
     """
+    # TODO extend this function to compare more information of the cells (`lattice_vectors`) and check ase.Atoms functions
     # If any of the cells is None or the positions are empty, return False
     if cell_1 is None or cell_2 is None:
         return False
@@ -199,7 +205,9 @@ def check_simulation_cell(cell_1: 'Cell', cell_2: 'Cell') -> bool:
     check_positions = []
     for i1, pos1 in enumerate(cell_1.positions):
         for i2, pos2 in enumerate(cell_2.positions):
-            if np.allclose(pos1, pos2):
+            if np.allclose(
+                pos1, pos2, atol=configuration.equal_cell_positions_tolerance
+            ):
                 check_positions.append([i1, i2])
                 break
     if len(check_positions) != n_positions:
