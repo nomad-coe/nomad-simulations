@@ -296,7 +296,7 @@ class Cell(GeometricSpace):
         """,
     )
 
-    def _check_positions(self, positions_1, positions_2) -> list[int, int]:
+    def _check_positions(self, positions_1, positions_2) -> list:
         # Check that all the `positions`` of `cell_1` match with the ones in `cell_2`
         check_positions = []
         for i1, pos1 in enumerate(positions_1):
@@ -308,7 +308,7 @@ class Cell(GeometricSpace):
                     break
         return check_positions
 
-    def __eq__(self, other: 'Cell') -> bool:
+    def __eq__(self, other) -> bool:
         # TODO implement checks on `lattice_vectors` and other quantities to ensure the equality of primitive cells
         if not isinstance(other, Cell):
             return False
@@ -327,7 +327,7 @@ class Cell(GeometricSpace):
             return False
         return True
 
-    def __ne__(self, other: 'Cell') -> bool:
+    def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -373,7 +373,7 @@ class AtomicCell(Cell):
         # Set the name of the section
         self.name = self.m_def.name
 
-    def __eq__(self, other: 'AtomicCell') -> bool:
+    def __eq__(self, other) -> bool:
         if not isinstance(other, AtomicCell):
             return False
 
@@ -393,7 +393,7 @@ class AtomicCell(Cell):
             return False
         return True
 
-    def __ne__(self, other: 'AtomicCell') -> bool:
+    def __ne__(self, other) -> bool:
         return not self.__eq__(other)
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:

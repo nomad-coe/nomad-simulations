@@ -18,17 +18,14 @@
 
 import pytest
 
-from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.model_system import (
     AtomicCell,
-    Cell,
     ModelSystem,
     Symmetry,
 )
 from nomad_simulations.schema_packages.utils import (
     get_sibling_section,
     get_variables,
-    is_equal_cell,
     is_not_representative,
 )
 from nomad_simulations.schema_packages.variables import Energy2 as Energy
