@@ -296,6 +296,32 @@ class Cell(GeometricSpace):
         """,
     )
 
+    def _check_positions(self, positions_1, positions_2) -> list[int, int]:
+        # Check that all the `positions`` of `cell_1` match with the ones in `cell_2`
+        check_positions = []
+        for i1, pos1 in enumerate(positions_1):
+            for i2, pos2 in enumerate(positions_2):
+                if np.allclose(
+                    pos1, pos2, atol=configuration.equal_cell_positions_tolerance
+                ):
+                    check_positions.append([i1, i2])
+                    break
+        return check_positions
+
+    def __eq__(self, other: 'Cell') -> bool:
+        if not isinstance(other, Cell):
+            return False
+
+        # The `positions` should have the same length (same number of positions)
+        if len(self.positions) != len(other.positions):
+            return False
+        n_positions = len(self.positions)
+
+        check_positions = self._check_positions(self.positions, other.positions)
+        if len(check_positions) != n_positions:
+            return False
+        return True
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
@@ -338,6 +364,26 @@ class AtomicCell(Cell):
         super().__init__(m_def, m_context, **kwargs)
         # Set the name of the section
         self.name = self.m_def.name
+
+    def __eq__(self, other: 'AtomicCell') -> bool:
+        if not isinstance(other, AtomicCell):
+            return False
+
+        # Compare positions using the parent sections's `__eq__` method
+        if not super().__eq__(other):
+            return False
+
+        # Check that the `chemical_symbol` of the atoms in `cell_1` match with the ones in `cell_2`
+        check_positions = self._check_positions(self.positions, other.positions)
+        try:
+            for atom in check_positions:
+                element_1 = self.atoms_state[atom[0]].chemical_symbol
+                element_2 = other.atoms_state[atom[1]].chemical_symbol
+                if element_1 != element_2:
+                    return False
+        except Exception:
+            return False
+        return True
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """
