@@ -202,7 +202,7 @@ class XCFunctional(ArchiveSection):
             self.libxc_name = libxc_name_weight + self.libxc_name
 
         # ! check with @ndaelman-hu if this makes sense (COMMENTED OUT FOR NOW)
-        # Appending `"+alpha"` in `libxc_name` for hybrids in which the `exact_exchange_mixing_factoris` included
+        # Appending `"+alpha"` in `libxc_name` for hybrids in which the `exact_exchange_mixing_factor` is included
         # libxc_name_alpha = ''
         # if (
         #     self.name == 'hybrid'
@@ -349,7 +349,9 @@ class DFT(ModelMethodElectronic):
                 continue
 
         try:
-            highest_rung_abbrev = max(abbrevs, key=lambda x: rung_order[x])
+            highest_rung_abbrev = (
+                max(abbrevs, key=lambda x: rung_order[x]) if abbrevs else None
+            )
         except KeyError:
             return 'unavailable'
         return self._jacobs_ladder_map.get(highest_rung_abbrev, 'unavailable')
