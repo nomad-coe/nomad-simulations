@@ -138,8 +138,15 @@ class BeyondDFT(SimulationWorkflow):
         Returns:
             list[Outputs]: A list of all the `Outputs` sections from the `tasks`.
         """
+        # Initial check
+        if not self.tasks:
+            return []
+
+        # Populate the list of outputs from the last element in `tasks`
         all_outputs = []
         for task in self.tasks:
+            if not task.outputs:
+                continue
             all_outputs.append(task.outputs[-1])
         return all_outputs
 
