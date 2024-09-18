@@ -45,16 +45,25 @@ def test_get_sibling_section():
     parent_section.symmetry.append(sibling_section)
     assert get_sibling_section(section, '', logger) is None
     assert get_sibling_section(section, 'symmetry', logger) == sibling_section
-    assert get_sibling_section(sibling_section, 'cell', logger) == section
+    assert get_sibling_section(sibling_section, 'cell', logger).type == section.type
     assert get_sibling_section(section, 'symmetry', logger, index_sibling=2) is None
     section2 = AtomicCell(type='primitive')
     parent_section.cell.append(section2)
     assert (
-        get_sibling_section(sibling_section, 'cell', logger, index_sibling=0) == section
+        get_sibling_section(sibling_section, 'cell', logger, index_sibling=0).type
+        == 'original'
     )
     assert (
-        get_sibling_section(sibling_section, 'cell', logger, index_sibling=1)
-        == section2
+        get_sibling_section(sibling_section, 'cell', logger, index_sibling=0).type
+        == section.type
+    )
+    assert (
+        get_sibling_section(sibling_section, 'cell', logger, index_sibling=1).type
+        == section2.type
+    )
+    assert (
+        get_sibling_section(sibling_section, 'cell', logger, index_sibling=1).type
+        == 'primitive'
     )
 
 

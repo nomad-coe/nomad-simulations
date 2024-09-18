@@ -21,12 +21,19 @@ from math import factorial
 from typing import TYPE_CHECKING
 
 import numpy as np
+from nomad.config import config
 
 if TYPE_CHECKING:
     from typing import Optional
 
     from nomad.datamodel.data import ArchiveSection
     from structlog.stdlib import BoundLogger
+
+    from nomad_simulations.schema_packages.model_system import Cell
+
+configuration = config.get_plugin_entry_point(
+    'nomad_simulations.schema_packages:nomad_simulations_plugin'
+)
 
 
 def get_sibling_section(
