@@ -24,6 +24,7 @@ from nomad.units import ureg
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
+    from nomad.ureg import pint
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -278,45 +279,63 @@ class Cell(GeometricSpace):
         """,
     )
 
-    def _check_positions(self, positions_1, positions_2) -> list:
-        # Check that all the `positions`` of `cell_1` match with the ones in `cell_2`
-        check_positions = []
-        for i1, pos1 in enumerate(positions_1):
-            for i2, pos2 in enumerate(positions_2):
-                if np.allclose(
-                    pos1, pos2, atol=configuration.equal_cell_positions_tolerance
-                ):
-                    check_positions.append([i1, i2])
-                    break
-        return check_positions
-
-    def is_equal_cell(self, other) -> bool:
-        """
-        Check if the cell is equal to an`other` cell by comparing the `positions`.
-        Args:
-            other: The other cell to compare with.
-        Returns:
-            bool: True if the cells are equal, False otherwise.
-        """
-        # TODO implement checks on `lattice_vectors` and other quantities to ensure the equality of primitive cells
-        if not isinstance(other, Cell):
-            return False
-
-        # If the `positions` are empty, return False
-        if self.positions is None or other.positions is None:
-            return False
-
-        # The `positions` should have the same length (same number of positions)
-        if len(self.positions) != len(other.positions):
-            return False
-        n_positions = len(self.positions)
-
-        check_positions = self._check_positions(
-            positions_1=self.positions, positions_2=other.positions
+    @staticmethod
+    def _convert_positions(positions: 'pint.Quantity') -> np.ndarray:
+        return np.round(
+            positions.to_base().magnitude,
+            decimals=configuration.equal_cell_positions_tolerance,
+            out=None,
         )
-        if len(check_positions) != n_positions:
-            return False
-        return True
+
+    def _lt_positions(self, other_cell: 'Cell') -> Optional[bool]:
+        try:
+            return set(self._convert_positions(self.positions)) < set(
+                self._convert_positions(other_cell.positions)
+            )
+        except AttributeError:
+            return None
+
+    def _le_positions(self, other_cell: 'Cell') -> Optional[bool]:
+        try:
+            return set(self._convert_positions(self.positions)) <= set(
+                self._convert_positions(other_cell.positions)
+            )
+        except AttributeError:
+            return None
+
+    def _gt_positions(self, other_cell: 'Cell') -> Optional[bool]:
+        try:
+            return set(self._convert_positions(self.positions)) > set(
+                self._convert_positions(other_cell.positions)
+            )
+        except AttributeError:
+            return None
+
+    def _ge_positions(self, other_cell: 'Cell') -> Optional[bool]:
+        try:
+            set(self._convert_positions(self.positions)) >= set(
+                self._convert_positions(other_cell.positions)
+            )
+        except AttributeError:
+            return None
+
+    def __lt__(self, other) -> bool:
+        pos = self._lt_positions(other)
+        return (
+            pos if pos is not None else False
+        )  # None is considered failure to match another `Cell`
+
+    def __le__(self, other) -> bool:
+        pos = self._le_positions(other)
+        return pos if pos is not None else False
+
+    def __gt__(self, other) -> bool:
+        pos = self._gt_positions(other)
+        return pos if pos is not None else False
+
+    def __ge__(self, other) -> bool:
+        pos = self._ge_positions(other)
+        return pos if pos is not None else False
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -361,56 +380,66 @@ class AtomicCell(Cell):
         # Set the name of the section
         self.name = self.m_def.name
 
-    def is_equal_cell(self, other) -> bool:
-        """
-        Check if the atomic cell is equal to an`other` atomic cell by comparing the `positions` and
-        the `AtomsState[*].chemical_symbol`.
-        Args:
-            other: The other atomic cell to compare with.
-        Returns:
-            bool: True if the atomic cells are equal, False otherwise.
-        """
-        if not isinstance(other, AtomicCell):
-            return False
-
-        # Compare positions using the parent sections's `__eq__` method
-        if not super().is_equal_cell(other=other):
-            return False
-
-        # Check that the `chemical_symbol` of the atoms in `cell_1` match with the ones in `cell_2`
-        check_positions = self._check_positions(
-            positions_1=self.positions, positions_2=other.positions
-        )
+    @staticmethod
+    def _extract_chemical_symbols(
+        atoms_states: list[AtomsState],
+    ) -> Optional[list[str]]:
         try:
-            for atom in check_positions:
-                element_1 = self.atoms_state[atom[0]].chemical_symbol
-                element_2 = other.atoms_state[atom[1]].chemical_symbol
-                if element_1 != element_2:
-                    return False
-        except Exception:
-            return False
-        return True
+            return [atom_state.chemical_symbol for atom_state in atoms_states]
+        except AttributeError:
+            return None
 
-    def get_chemical_symbols(self, logger: 'BoundLogger') -> list[str]:
-        """
-        Get the chemical symbols of the atoms in the atomic cell. These are defined on `atoms_state[*].chemical_symbol`.
+    def _lt_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
+        try:
+            return self._extract_chemical_symbols(
+                self.atoms_state
+            ) < self._extract_chemical_symbols(other_cell.atoms_state)
+        except (AttributeError, TypeError):
+            return None
 
-        Args:
-            logger (BoundLogger): The logger to log messages.
+    def _le_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
+        try:
+            return self._extract_chemical_symbols(
+                self.atoms_state
+            ) <= self._extract_chemical_symbols(other_cell.atoms_state)
+        except (AttributeError, TypeError):
+            return None
 
-        Returns:
-            list: The list of chemical symbols of the atoms in the atomic cell.
-        """
-        if not self.atoms_state:
-            return []
+    def _gt_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
+        try:
+            return self._extract_chemical_symbols(
+                self.atoms_state
+            ) > self._extract_chemical_symbols(other_cell.atoms_state)
+        except (AttributeError, TypeError):
+            return None
 
-        chemical_symbols = []
-        for atom_state in self.atoms_state:
-            if not atom_state.chemical_symbol:
-                logger.warning('Could not find `AtomsState[*].chemical_symbol`.')
-                return []
-            chemical_symbols.append(atom_state.chemical_symbol)
-        return chemical_symbols
+    def _ge_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
+        try:
+            return self._extract_chemical_symbols(
+                self.atoms_state
+            ) >= self._extract_chemical_symbols(other_cell.atoms_state)
+        except (AttributeError, TypeError):
+            return None
+
+    def __lt__(self, other) -> bool:
+        pos = self._lt_positions(other)
+        chem = self._lt_chemical_symbols(other)
+        return pos and chem if pos is not None and chem is not None else False
+
+    def __le__(self, other) -> bool:
+        pos = self._le_positions(other)
+        chem = self._le_chemical_symbols(other)
+        return pos and chem if pos is not None and chem is not None else False
+
+    def __gt__(self, other) -> bool:
+        pos = self._gt_positions(other)
+        chem = self._gt_chemical_symbols(other)
+        return pos and chem if pos is not None and chem is not None else False
+
+    def __ge__(self, other) -> bool:
+        pos = self._ge_positions(other)
+        chem = self._ge_chemical_symbols(other)
+        return pos and chem if pos is not None and chem is not None else False
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """
