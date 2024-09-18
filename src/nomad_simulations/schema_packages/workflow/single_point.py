@@ -47,25 +47,29 @@ class SinglePoint(SimulationWorkflow):
         """,
     )
 
-    def generate_task(self) -> Task:
+    def generate_task(self, archive: 'EntryArchive', logger: 'BoundLogger') -> Task:
         """
         Generates the `Task` section for the `SinglePoint` workflow with their `inputs` and `outputs`.
 
         Returns:
             Task: The generated `Task` section.
         """
+        # Populate `_input_systems`, `_input_methods` and `_outputs`
+        self._resolve_inputs_outputs_from_archive(archive=archive, logger=logger)
+
+        # Generate the `Task` section
         task = Task()
-        if self._input_systems is not None and len(self._input_systems) > 0:
+        if self._input_systems:
             task.m_add_sub_section(
                 Task.inputs,
                 Link(name='Input Model System', section=self._input_systems[0]),
             )
-        if self._input_methods is not None and len(self._input_methods) > 0:
+        if self._input_methods:
             task.m_add_sub_section(
                 Task.inputs,
                 Link(name='Input Model Method', section=self._input_methods[0]),
             )
-        if self._outputs is not None and len(self._outputs) > 0:
+        if self._outputs:
             task.m_add_sub_section(
                 Task.outputs,
                 Link(name='Output Data', section=self._outputs[-1]),
@@ -95,7 +99,7 @@ class SinglePoint(SimulationWorkflow):
 
         # Generate the `tasks` section if this does not exist
         if not self.tasks:
-            task = self.generate_task()
+            task = self.generate_task(archive=archive, logger=logger)
             self.tasks.append(task)
 
         # Resolve `n_scf_steps`
