@@ -126,7 +126,7 @@ class BeyondDFTMethod(ArchiveSection):
         return None
 
 
-class BeyondDFTWorkflow(SimulationWorkflow):
+class BeyondDFT(SimulationWorkflow):
     method = SubSection(sub_section=BeyondDFTMethod.m_def)
 
     def resolve_all_outputs(self) -> list[Outputs]:

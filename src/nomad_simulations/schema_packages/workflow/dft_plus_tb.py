@@ -29,8 +29,8 @@ from nomad.metainfo import Quantity, Reference
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.properties import FermiLevel
 from nomad_simulations.schema_packages.workflow import (
+    BeyondDFT,
     BeyondDFTMethod,
-    BeyondDFTWorkflow,
 )
 
 
@@ -50,7 +50,7 @@ class DFTPlusTBMethod(BeyondDFTMethod):
     )
 
 
-class DFTPlusTB(BeyondDFTWorkflow):
+class DFTPlusTB(BeyondDFT):
     """
     DFT+TB workflow is composed of two tasks: the initial DFT calculation + the final TB projection. This
     workflow section is used to define the same energy reference for both the DFT and TB calculations, by
