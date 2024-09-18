@@ -31,8 +31,8 @@ from nomad_simulations.schema_packages.workflow import (
     SimulationWorkflow,
 )
 
+from ..conftest import generate_simulation
 from . import logger
-from .conftest import generate_simulation
 
 
 class TestSimulationWorkflow:

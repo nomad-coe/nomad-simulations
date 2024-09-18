@@ -24,8 +24,8 @@ import pytest
 from nomad_simulations.schema_packages.properties import Permittivity
 from nomad_simulations.schema_packages.variables import Frequency, KMesh, Variables
 
+from ..conftest import generate_k_space_simulation
 from . import logger
-from .conftest import generate_k_space_simulation
 
 
 class TestPermittivity:
