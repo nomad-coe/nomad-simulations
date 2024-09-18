@@ -106,7 +106,9 @@ class BeyondDFTMethod(ArchiveSection):
     inherit and the method references need to be defined for each specific case.
     """
 
-    def resolve_beyonddft_method_ref(self, task: Task) -> Optional[BaseModelMethod]:
+    def resolve_beyonddft_method_ref(
+        self, task: Optional[Task]
+    ) -> Optional[BaseModelMethod]:
         """
         Resolves the `ModelMethod` reference for the `task`.
 
@@ -116,8 +118,10 @@ class BeyondDFTMethod(ArchiveSection):
         Returns:
             Optional[BaseModelMethod]: The resolved `ModelMethod` reference.
         """
+        if not task or not task.inputs:
+            return None
         for input in task.inputs:
-            if input.name == 'Input Model Method':
+            if input.section is not None and isinstance(input.section, BaseModelMethod):
                 return input.section
         return None
 
