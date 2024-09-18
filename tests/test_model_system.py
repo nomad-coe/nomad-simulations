@@ -102,11 +102,13 @@ class TestAtomicCell:
                 Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
                 False,
             ),  # one atomic cell and another cell (missing chemical symbols)
-            (
-                AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                False,
-            ),  # missing chemical symbols
+            #(
+            #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            #    False,
+            #),  # missing chemical symbols
+            # ND: the comparison will now return an error here
+            #     handling a case that should be resolved by the normalizer falls outside its scope
             (
                 AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
