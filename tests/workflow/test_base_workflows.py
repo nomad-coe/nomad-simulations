@@ -20,14 +20,14 @@ from typing import Optional
 
 import pytest
 from nomad.datamodel import EntryArchive
-from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
+from nomad.datamodel.metainfo.workflow import Link, Task
 
 from nomad_simulations.schema_packages.model_method import BaseModelMethod, ModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs
 from nomad_simulations.schema_packages.workflow import (
+    BeyondDFT,
     BeyondDFTMethod,
-    BeyondDFTWorkflow,
     SimulationWorkflow,
 )
 
@@ -211,5 +211,84 @@ class TestBeyondDFTMethod:
 
 
 class TestBeyondDFT:
-    def test_resolve_all_outputs(self):
-        assert True
+    @pytest.mark.parametrize(
+        'tasks, result',
+        [
+            # no task
+            (None, []),
+            # empty task
+            ([Task()], []),
+            # task only contains inputs
+            (
+                [Task(inputs=[Link(name='Input Model System', section=ModelSystem())])],
+                [],
+            ),
+            # one task with one output
+            (
+                [Task(outputs=[Link(name='Output Data 1', section=Outputs())])],
+                [Link(name='Output Data 1', section=Outputs())],
+            ),
+            # one task with multiple outputs (only last is resolved)
+            (
+                [
+                    Task(
+                        outputs=[
+                            Link(name='Output Data 1', section=Outputs()),
+                            Link(name='Output Data 2', section=Outputs()),
+                        ]
+                    )
+                ],
+                [Link(name='Output Data 2', section=Outputs())],
+            ),
+            # multiple task with one output each
+            (
+                [
+                    Task(
+                        outputs=[Link(name='Task 1:Output Data 1', section=Outputs())]
+                    ),
+                    Task(
+                        outputs=[Link(name='Task 2:Output Data 1', section=Outputs())]
+                    ),
+                ],
+                [
+                    Link(name='Task 1:Output Data 1', section=Outputs()),
+                    Link(name='Task 2:Output Data 1', section=Outputs()),
+                ],
+            ),
+            # multiple task with two outputs each (only last is resolved)
+            (
+                [
+                    Task(
+                        outputs=[
+                            Link(name='Task 1:Output Data 1', section=Outputs()),
+                            Link(name='Task 1:Output Data 2', section=Outputs()),
+                        ]
+                    ),
+                    Task(
+                        outputs=[
+                            Link(name='Task 2:Output Data 1', section=Outputs()),
+                            Link(name='Task 2:Output Data 2', section=Outputs()),
+                        ]
+                    ),
+                ],
+                [
+                    Link(name='Task 1:Output Data 2', section=Outputs()),
+                    Link(name='Task 2:Output Data 2', section=Outputs()),
+                ],
+            ),
+        ],
+    )
+    def test_resolve_all_outputs(
+        self, tasks: Optional[list[Task]], result: list[Outputs]
+    ):
+        """
+        Test the `resolve_all_outputs` method of the `BeyondDFT` section.
+        """
+        workflow = BeyondDFT()
+        if tasks is not None:
+            workflow.tasks = tasks
+        if result is not None:
+            for i, output in enumerate(workflow.resolve_all_outputs()):
+                assert output.name == result[i].name
+        else:
+            assert workflow.resolve_all_outputs() == result
