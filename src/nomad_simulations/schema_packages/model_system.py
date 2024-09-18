@@ -1,3 +1,23 @@
+#
+# Copyright The NOMAD Authors.
+#
+# This file is part of NOMAD. See https://nomad-lab.eu for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+from functools import lru_cache
+from hashlib import sha1
 import re
 from typing import TYPE_CHECKING, Optional
 
@@ -24,7 +44,7 @@ from nomad.units import ureg
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
-    from nomad.ureg import pint
+    import pint
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -201,6 +221,62 @@ class GeometricSpace(Entity):
             return
 
 
+class PartialOrderBit:
+    def __init__(self, representative_variable):
+        self.representative_variable = representative_variable
+
+    def __hash__(self):
+        return self.representative_variable.__hash__()
+
+    def _check_implemented(func: callable):
+        def wrapper(self, other):
+            if not isinstance(other, self.__class__):
+                return NotImplemented
+            return func(self, other)
+
+        return wrapper
+
+    @_check_implemented
+    def __eq__(self, other):
+        return self.representative_variable == other.representative_variable
+
+    @_check_implemented
+    def __lt__(self, other):
+        return False
+
+    @_check_implemented
+    def __gt__(self, other):
+        return False
+
+    def __le__(self, other):
+        return self.__eq__(other)
+
+    def __ge__(self, other):
+        return self.__eq__(other)
+
+    # __ne__ assumes that usage in a finite set with its comparison definitions
+
+
+class HashedPositions(PartialOrderBit):
+    # `representative_variable` is a `pint.Quantity` object
+
+    def __hash__(self):
+        hash_str = sha1(
+            np.ascontiguousarray(
+                np.round(
+                    self.representative_variable.to_base_units().magnitude,
+                    decimals=configuration.equal_cell_positions_tolerance,
+                    out=None,
+                )
+            ).tobytes()
+        ).hexdigest()
+        return int(hash_str, 16)
+
+    def __eq__(self, other):
+        """Equality as defined between HashedPositions."""
+        return np.allclose(self.representative_variable, other.representative_variable)
+
+
 class Cell(GeometricSpace):
     """
     A base section used to specify the cell quantities of a system at a given moment in time.
@@ -280,62 +356,53 @@ class Cell(GeometricSpace):
     )
 
     @staticmethod
-    def _convert_positions(positions: 'pint.Quantity') -> np.ndarray:
-        return np.round(
-            positions.to_base().magnitude,
-            decimals=configuration.equal_cell_positions_tolerance,
-            out=None,
+    def _generate_comparer(positions: 'pint.Quantity') -> tuple:
+        return (HashedPositions(pos) for pos in positions)
+
+    def _check_implemented(func: callable):
+        def wrapper(self, other):
+            if not isinstance(other, self.__class__):
+                return False  # ? should this throw an error instead?
+            try:
+                return func(self, other)
+            except (TypeError, NotImplementedError):
+                return False
+
+        return wrapper
+
+    @_check_implemented
+    def __lt__(self, other) -> bool:
+        return set(self._generate_comparer(self.positions)) < set(
+            self._generate_comparer(other.positions)
         )
 
-    def _lt_positions(self, other_cell: 'Cell') -> Optional[bool]:
-        try:
-            return set(self._convert_positions(self.positions)) < set(
-                self._convert_positions(other_cell.positions)
-            )
-        except AttributeError:
-            return None
-
-    def _le_positions(self, other_cell: 'Cell') -> Optional[bool]:
-        try:
-            return set(self._convert_positions(self.positions)) <= set(
-                self._convert_positions(other_cell.positions)
-            )
-        except AttributeError:
-            return None
-
-    def _gt_positions(self, other_cell: 'Cell') -> Optional[bool]:
-        try:
-            return set(self._convert_positions(self.positions)) > set(
-                self._convert_positions(other_cell.positions)
-            )
-        except AttributeError:
-            return None
-
-    def _ge_positions(self, other_cell: 'Cell') -> Optional[bool]:
-        try:
-            set(self._convert_positions(self.positions)) >= set(
-                self._convert_positions(other_cell.positions)
-            )
-        except AttributeError:
-            return None
-
-    def __lt__(self, other) -> bool:
-        pos = self._lt_positions(other)
-        return (
-            pos if pos is not None else False
-        )  # None is considered failure to match another `Cell`
-
-    def __le__(self, other) -> bool:
-        pos = self._le_positions(other)
-        return pos if pos is not None else False
-
+    @_check_implemented
     def __gt__(self, other) -> bool:
-        pos = self._gt_positions(other)
-        return pos if pos is not None else False
+        return set(self._generate_comparer(self.positions)) > set(
+            self._generate_comparer(other.positions)
+        )
 
+    @_check_implemented
+    def __le__(self, other) -> bool:
+        return set(self._generate_comparer(self.positions)) <= set(
+            self._generate_comparer(other.positions)
+        )
+
+    @_check_implemented
     def __ge__(self, other) -> bool:
-        pos = self._ge_positions(other)
-        return pos if pos is not None else False
+        return set(self._generate_comparer(self.positions)) >= set(
+            self._generate_comparer(other.positions)
+        )
+
+    @_check_implemented
+    def __eq__(self, other) -> bool:
+        return set(self._generate_comparer(self.positions)) == set(
+            self._generate_comparer(other.positions)
+        )
+
+    def __ne__(self, other) -> bool:
+        # this does not hold in general, but here we use finite sets
+        return not self.__eq__(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -381,65 +448,53 @@ class AtomicCell(Cell):
         self.name = self.m_def.name
 
     @staticmethod
-    def _extract_chemical_symbols(
-        atoms_states: list[AtomsState],
-    ) -> Optional[list[str]]:
-        try:
-            return [atom_state.chemical_symbol for atom_state in atoms_states]
-        except AttributeError:
-            return None
+    def _generate_comparer(positions: 'pint.Quantity', atoms_states: 'list[AtomsState]') -> tuple:
+        # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
+        return (
+            (HashedPositions(pos), PartialOrderBit(st.chemical_symbol))
+            for pos, st in zip(positions, atoms_states)
+        )
 
-    def _lt_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
-        try:
-            return self._extract_chemical_symbols(
-                self.atoms_state
-            ) < self._extract_chemical_symbols(other_cell.atoms_state)
-        except (AttributeError, TypeError):
-            return None
+    def _check_implemented(func: callable):
+        def wrapper(self, other):
+            if not isinstance(other, self.__class__):
+                return False  # ? should this throw an error instead?
+            try:
+                return func(self, other)
+            except (TypeError, NotImplementedError):
+                return False
 
-    def _le_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
-        try:
-            return self._extract_chemical_symbols(
-                self.atoms_state
-            ) <= self._extract_chemical_symbols(other_cell.atoms_state)
-        except (AttributeError, TypeError):
-            return None
+        return wrapper
 
-    def _gt_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
-        try:
-            return self._extract_chemical_symbols(
-                self.atoms_state
-            ) > self._extract_chemical_symbols(other_cell.atoms_state)
-        except (AttributeError, TypeError):
-            return None
-
-    def _ge_chemical_symbols(self, other_cell: 'AtomicCell') -> Optional[bool]:
-        try:
-            return self._extract_chemical_symbols(
-                self.atoms_state
-            ) >= self._extract_chemical_symbols(other_cell.atoms_state)
-        except (AttributeError, TypeError):
-            return None
-
+    @_check_implemented
     def __lt__(self, other) -> bool:
-        pos = self._lt_positions(other)
-        chem = self._lt_chemical_symbols(other)
-        return pos and chem if pos is not None and chem is not None else False
+        return set(self._generate_comparer(self.positions, self.atoms_state)) < set(
+            self._generate_comparer(other.positions, other.atoms_state)
+        )
 
-    def __le__(self, other) -> bool:
-        pos = self._le_positions(other)
-        chem = self._le_chemical_symbols(other)
-        return pos and chem if pos is not None and chem is not None else False
-
+    @_check_implemented
     def __gt__(self, other) -> bool:
-        pos = self._gt_positions(other)
-        chem = self._gt_chemical_symbols(other)
-        return pos and chem if pos is not None and chem is not None else False
+        return set(self._generate_comparer(self.positions, self.atoms_state)) > set(
+            self._generate_comparer(other.positions, other.atoms_state)
+        )
 
+    @_check_implemented
+    def __le__(self, other) -> bool:
+        return set(self._generate_comparer(self.positions, self.atoms_state)) <= set(
+            self._generate_comparer(other.positions, other.atoms_state)
+        )
+
+    @_check_implemented
     def __ge__(self, other) -> bool:
-        pos = self._ge_positions(other)
-        chem = self._ge_chemical_symbols(other)
-        return pos and chem if pos is not None and chem is not None else False
+        return set(self._generate_comparer(self.positions, self.atoms_state)) >= set(
+            self._generate_comparer(other.positions, other.atoms_state)
+        )
+
+    @_check_implemented
+    def __eq__(self, other) -> bool:
+        return set(self._generate_comparer(self.positions, self.atoms_state)) == set(
+            self._generate_comparer(other.positions, other.atoms_state)
+        )
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """
