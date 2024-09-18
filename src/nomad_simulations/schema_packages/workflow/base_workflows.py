@@ -49,17 +49,20 @@ class SimulationWorkflow(Workflow):
         description="""Methodological parameters used during the workflow.""",
     )
 
-    def resolve_inputs_outputs(
+    def _resolve_inputs_outputs_from_archive(
         self, archive: 'EntryArchive', logger: 'BoundLogger'
     ) -> None:
         """
-        Resolves the `inputs` and `outputs` sections from the archive sections under `data` and stores
+        Resolves the `ModelSystem`, `ModelMethod`, and `Outputs` sections from the archive and stores
         them in private attributes.
 
         Args:
             archive (EntryArchive): The archive to resolve the sections from.
             logger (BoundLogger): The logger to log messages.
         """
+        self._input_systems = []
+        self._input_methods = []
+        self._outputs = []
         if (
             not archive.data.model_system
             or not archive.data.model_method
@@ -73,14 +76,26 @@ class SimulationWorkflow(Workflow):
         self._input_methods = archive.data.model_method
         self._outputs = archive.data.outputs
 
+    def resolve_inputs_outputs(
+        self, archive: 'EntryArchive', logger: 'BoundLogger'
+    ) -> None:
+        """
+        Resolves the `inputs` and `outputs` of the `SimulationWorkflow`.
+
+        Args:
+            archive (EntryArchive): The archive to resolve the sections from.
+            logger (BoundLogger): The logger to log messages.
+        """
+        self._resolve_inputs_outputs_from_archive(archive=archive, logger=logger)
+
         # Resolve `inputs`
-        if not self.inputs:
+        if not self.inputs and self._input_systems:
             self.m_add_sub_section(
                 Workflow.inputs,
                 Link(name='Input Model System', section=self._input_systems[0]),
             )
         # Resolve `outputs`
-        if not self.outputs:
+        if not self.outputs and self._outputs:
             self.m_add_sub_section(
                 Workflow.outputs,
                 Link(name='Output Data', section=self._outputs[-1]),

@@ -37,6 +37,54 @@ from . import logger
 
 class TestSimulationWorkflow:
     @pytest.mark.parametrize(
+        'model_system, model_method, outputs',
+        [
+            # empty sections in archive.data
+            (None, None, None),
+            # only one section in archive.data
+            (ModelSystem(), None, None),
+            # another section in archive.data
+            (None, ModelMethod(), None),
+            # only two sections in archive.data
+            (ModelSystem(), ModelMethod(), None),
+            # all sections in archive.data
+            (ModelSystem(), ModelMethod(), Outputs()),
+        ],
+    )
+    def test_resolve_inputs_outputs_from_archive(
+        self,
+        model_system: Optional[ModelSystem],
+        model_method: Optional[ModelMethod],
+        outputs: Optional[Outputs],
+    ):
+        """
+        Test the `_resolve_inputs_outputs_from_archive` method of the `SimulationWorkflow` section.
+        """
+        archive = EntryArchive()
+        simulation = generate_simulation(
+            model_system=model_system, model_method=model_method, outputs=outputs
+        )
+        archive.data = simulation
+        workflow = SimulationWorkflow()
+        archive.workflow2 = workflow
+        workflow._resolve_inputs_outputs_from_archive(archive=archive, logger=logger)
+        if (
+            model_system is not None
+            and model_method is not None
+            and outputs is not None
+        ):
+            for input_system in workflow._input_systems:
+                assert isinstance(input_system, ModelSystem)
+            for input_method in workflow._input_methods:
+                assert isinstance(input_method, ModelMethod)
+            for output in workflow._outputs:
+                assert isinstance(output, Outputs)
+        else:
+            assert not workflow._input_systems
+            assert not workflow._input_methods
+            assert not workflow._outputs
+
+    @pytest.mark.parametrize(
         'model_system, model_method, outputs, workflow_inputs, workflow_outputs',
         [
             # empty sections in archive.data
@@ -84,8 +132,6 @@ class TestSimulationWorkflow:
             assert workflow.inputs[0].name == workflow_inputs[0].name
             # ! direct comparison of section does not work (probably an issue with references)
             # assert workflow.inputs[0].section == workflow_inputs[0].section
-            assert workflow._input_systems[0] == model_system
-            assert workflow._input_methods[0] == model_method
         if not workflow_outputs:
             assert workflow.outputs == workflow_outputs
         else:
@@ -93,7 +139,6 @@ class TestSimulationWorkflow:
             assert workflow.outputs[0].name == workflow_outputs[0].name
             # ! direct comparison of section does not work (probably an issue with references)
             # assert workflow.outputs[0].section == workflow_outputs[0].section
-            assert workflow._outputs[0] == outputs
 
     @pytest.mark.parametrize(
         'model_system, model_method, outputs, workflow_inputs, workflow_outputs',
