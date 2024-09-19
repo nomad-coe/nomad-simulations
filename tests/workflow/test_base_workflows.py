@@ -260,7 +260,7 @@ class TestBeyondDFT:
         'tasks, result',
         [
             # no task
-            (None, []),
+            (None, None),
             # empty task
             ([Task()], []),
             # task only contains inputs
