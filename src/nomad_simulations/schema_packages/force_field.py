@@ -203,8 +203,7 @@ class HarmonicBond(BondPotential):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if not self.name:
-            self.name = 'HarmonicBond'
+        self.name = 'HarmonicBond'
         if not self.functional_form:
             self.functional_form = 'harmonic'
         elif self.functional_form != 'harmonic':
@@ -230,8 +229,7 @@ class CubicBond(BondPotential):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if not self.name:
-            self.name = 'CubicBond'
+        self.name = 'CubicBond'
         if not self.functional_form:
             self.functional_form = 'cubic'
         elif self.functional_form != 'cubic':
@@ -266,8 +264,7 @@ class MorseBond(BondPotential):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if not self.name:
-            self.name = 'MorseBond'
+        self.name = 'MorseBond'
         if not self.functional_form:
             self.functional_form = 'morse'
         elif self.functional_form != 'morse':
@@ -297,8 +294,7 @@ class FeneBond(BondPotential):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if not self.name:
-            self.name = 'FeneBond'
+        self.name = 'FeneBond'
         if not self.functional_form:
             self.functional_form = 'fene'
         elif self.functional_form != 'fene':
@@ -341,8 +337,7 @@ class TabulatedBond(BondPotential):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if not self.name:
-            self.name = 'TabulatedBond'
+        self.name = 'TabulatedBond'
         if not self.functional_form:
             self.functional_form = 'tabulated'
         elif self.functional_form != 'tabulated':
@@ -386,8 +381,7 @@ class AnglePotential(Potential):
     def normalize(self, archive, logger) -> None:
         super().normalize(archive, logger)
 
-        if not self.name:
-            self.name = 'AnglePotential'
+        self.name = 'AnglePotential'
         if not self.type:
             self.type = 'angle'
         elif self.type != 'angle':
