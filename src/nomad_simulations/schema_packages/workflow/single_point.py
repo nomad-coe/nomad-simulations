@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-from nomad.datamodel.metainfo.workflow import Link, Task
+from nomad.datamodel.metainfo.workflow import Link
 from nomad.metainfo import Quantity
 
 from nomad_simulations.schema_packages.outputs import SCFOutputs

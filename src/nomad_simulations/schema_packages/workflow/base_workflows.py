@@ -25,11 +25,10 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
-from nomad.metainfo import Quantity, SectionProxy, SubSection
+from nomad.datamodel.metainfo.workflow import Workflow
+from nomad.metainfo import SubSection
 
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
-from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs
 
 

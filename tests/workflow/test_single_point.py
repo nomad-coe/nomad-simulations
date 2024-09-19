@@ -20,9 +20,9 @@ from typing import Optional
 
 import pytest
 from nomad.datamodel import EntryArchive
-from nomad.datamodel.metainfo.workflow import Link, Task
+from nomad.datamodel.metainfo.workflow import Link
 
-from nomad_simulations.schema_packages.model_method import BaseModelMethod, ModelMethod
+from nomad_simulations.schema_packages.model_method import ModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
 from nomad_simulations.schema_packages.workflow import SinglePoint
