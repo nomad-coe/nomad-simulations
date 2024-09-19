@@ -147,12 +147,25 @@ class DFTPlusTB(BeyondDFT):
         """
         Overwrites the Fermi level in the TB calculation with the Fermi level from the DFT calculation.
         """
-        dft_output = self.tasks[0].outputs[-1]
+        # Check if the `outputs` of the DFT task exist
+        dft_task = self.tasks[0]
+        if not dft_task.outputs:
+            self.link_tasks()
+
+        # Check if the `fermi_levels` exist in the DFT output
+        if not dft_task.m_xpath('outputs[-1].section'):
+            return None
+        dft_output = dft_task.outputs[-1].section
         if not dft_output.fermi_levels:
             return None
         fermi_level = dft_output.fermi_levels[-1]
 
-        tb_output = self.tasks[1].outputs[-1]
+        # Assign the Fermi level to the TB output
+        tb_task = self.tasks[1]
+        if not tb_task.m_xpath('outputs[-1].section'):
+            return None
+        tb_output = tb_task.outputs[-1].section
+        # ? Does appending like this work creating information in the TB entry?
         tb_output.fermi_levels.append(FermiLevel(value=fermi_level.value))
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
@@ -183,4 +196,5 @@ class DFTPlusTB(BeyondDFT):
         self.link_tasks()
 
         # Overwrite the Fermi level in the TB calculation
+        # ? test if overwritting works
         self.overwrite_fermi_level()
