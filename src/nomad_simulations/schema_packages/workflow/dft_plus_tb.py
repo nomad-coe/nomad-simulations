@@ -81,6 +81,11 @@ class DFTPlusTB(BeyondDFT):
         """
         method = DFTPlusTBMethod()
 
+        # Check if TaskReference exists for both tasks
+        for task in self.tasks:
+            if not task.task:
+                return None
+
         # DFT method reference
         dft_method = method.resolve_beyonddft_method_ref(task=self.tasks[0].task)
         if dft_method is not None:
@@ -98,6 +103,14 @@ class DFTPlusTB(BeyondDFT):
         """
         Links the `outputs` of the DFT task with the `inputs` of the TB task.
         """
+        # Initial checks on the `inputs` and `tasks[*].outputs`
+        if not self.inputs:
+            return None
+        for task in self.tasks:
+            if not task.m_xpath('task.outputs'):
+                return None
+
+        # Assign dft task `inputs` to the `self.inputs[0]`
         dft_task = self.tasks[0]
         dft_task.inputs = [
             Link(
@@ -105,24 +118,27 @@ class DFTPlusTB(BeyondDFT):
                 section=self.inputs[0],
             )
         ]
+        # and rewrite dft task `outputs` and its name
         dft_task.outputs = [
             Link(
                 name='Output DFT Data',
-                section=dft_task.outputs[-1],
+                section=dft_task.task.outputs[-1],
             )
         ]
 
+        # Assign tb task `inputs` to the `dft_task.outputs[-1]`
         tb_task = self.tasks[1]
         tb_task.inputs = [
             Link(
                 name='Output DFT Data',
-                section=dft_task.outputs[-1],
+                section=dft_task.task.outputs[-1],
             ),
         ]
+        # and rewrite tb task `outputs` and its name
         tb_task.outputs = [
             Link(
                 name='Output TB Data',
-                section=tb_task.outputs[-1],
+                section=tb_task.task.outputs[-1],
             )
         ]
 
