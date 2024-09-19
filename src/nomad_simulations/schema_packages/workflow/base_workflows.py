@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
-from nomad.metainfo import SubSection
+from nomad.metainfo import SectionProxy, SubSection
 
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
@@ -55,6 +55,15 @@ def check_n_tasks(n_tasks: Optional[int] = None):
         return wrapper
 
     return decorator
+
+
+# class BaseWorkflow(ArchiveSection):
+#     pass
+
+# class Workflow(BaseWorkflow):
+#     tasks = SubSection(sub_section=SectionProxy('ModelSystem'), repeats=True)
+
+# class WorkflowReference(BaseWorkflow)¨
 
 
 class SimulationWorkflow(Workflow):
