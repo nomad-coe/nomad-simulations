@@ -28,7 +28,7 @@ from nomad_simulations.schema_packages.model_system import (
 )
 from nomad_simulations.schema_packages.outputs import Outputs
 from nomad_simulations.schema_packages.utils import (
-    extract_simulation_subsections,
+    extract_all_simulation_subsections,
     get_sibling_section,
     get_variables,
     is_not_representative,
@@ -166,13 +166,13 @@ def test_get_variables(variables: list, result: list, result_length: int):
         ),
     ],
 )
-def test_extract_simulation_subsections(
+def test_extract_all_simulation_subsections(
     archive: EntryArchive, subsection_indices: list, result: list
 ):
     """
-    Test the `extract_simulation_subsections` utility function.
+    Test the `extract_all_simulation_subsections` utility function.
     """
-    system, method, output = extract_simulation_subsections(
+    system, method, output = extract_all_simulation_subsections(
         archive=archive,
         i_system=subsection_indices[0],
         i_method=subsection_indices[1],
