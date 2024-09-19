@@ -23,11 +23,12 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-from nomad.datamodel.metainfo.workflow import Link
+    from nomad_simulations.schema_packages.workflow import SinglePoint
+
+from nomad.datamodel.metainfo.workflow import Link, TaskReference
 from nomad.metainfo import Quantity, Reference
 
-from nomad_simulations.schema_packages.model_method import BaseModelMethod
-from nomad_simulations.schema_packages.properties import FermiLevel
+from nomad_simulations.schema_packages.model_method import DFT, TB, ModelMethod
 from nomad_simulations.schema_packages.workflow import (
     BeyondDFT,
     BeyondDFTMethod,
@@ -42,159 +43,126 @@ class DFTPlusTBMethod(BeyondDFTMethod):
     """
 
     dft_method_ref = Quantity(
-        type=Reference(BaseModelMethod),
-        description="""Reference to the DFT `ModelMethod` section in the DFT task.""",
+        type=Reference(DFT),
+        description="""
+        Reference to the DFT `ModelMethod` section in the DFT task.
+        """,
     )
     tb_method_ref = Quantity(
-        type=Reference(BaseModelMethod),
-        description="""Reference to the GW `ModelMethod` section in the TB task.""",
+        type=Reference(TB),
+        description="""
+        Reference to the TB `ModelMethod` section in the TB task.
+        """,
     )
 
 
 class DFTPlusTB(BeyondDFT):
     """
-    DFT+TB workflow is composed of two tasks: the initial DFT calculation + the final TB projection. This
-    workflow section is used to define the same energy reference for both the DFT and TB calculations, by
-    setting it up to the DFT calculation. The structure of the workflow is:
+    A base section used to represent a DFT+TB calculation workflow. The `DFTPlusTB` workflow is composed of
+    two tasks: the initial DFT calculation + the final TB projection.
 
-        - `self.inputs[0]`: the initial `ModelSystem` section in the DFT entry,
-        - `self.outputs[0]`: the outputs section in the TB entry,
-        - `tasks[0]`:
-            - `tasks[0].task` (TaskReference): the reference to the `SinglePoint` task in the DFT entry,
-            - `tasks[0].inputs[0]`: the initial `ModelSystem` section in the DFT entry,
-            - `tasks[0].outputs[0]`: the outputs section in the DFT entry,
-        - `tasks[1]`:
-            - `tasks[1].task` (TaskReference): the reference to the `SinglePoint` task in the TB entry,
-            - `tasks[1].inputs[0]`: the outputs section in the DFT entry,
-            - `tasks[1].outputs[0]`: the outputs section in the TB entry,
-        - `method`: references to the `ModelMethod` sections in the DFT and TB entries.
+    The section only needs to be populated with (everything else is handled by the `normalize` function):
+        i. The `tasks` as `TaskReference` sections, adding `task` to the specific archive.workflow2 sections.
+        ii. The `inputs` and `outputs` as `Link` sections pointing to the specific archives.
+
+    Note 1: the `inputs[0]` of the `DFTPlusTB` coincides with the `inputs[0]` of the DFT task (`ModelSystem` section).
+    Note 2: the `outputs[-1]` of the `DFTPlusTB` coincides with the `outputs[-1]` of the TB task (`Outputs` section).
+    Note 3: the `outputs[-1]` of the DFT task is used as `inputs[0]` of the TB task.
+
+    The archive.workflow2 section is:
+        - name = 'DFT+TB'
+        - method = DFTPlusTBMethod(
+            dft_method_ref=dft_archive.data.model_method[-1],
+            tb_method_ref=tb_archive.data.model_method[-1],
+        )
+        - inputs = [
+            Link(name='Input Model System', section=dft_archive.data.model_system[0]),
+        ]
+        - outputs = [
+            Link(name='Output TB Data', section=tb_archive.data.outputs[-1]),
+        ]
+        - tasks = [
+            TaskReference(
+                name='DFT SinglePoint Task',
+                task=dft_archive.workflow2
+                inputs=[
+                    Link(name='Input Model System', section=dft_archive.data.model_system[0]),
+                ],
+                outputs=[
+                    Link(name='Output DFT Data', section=dft_archive.data.outputs[-1]),
+                ]
+            ),
+            TaskReference(
+                name='TB SinglePoint Task',
+                task=tb_archive.workflow2,
+                inputs=[
+                    Link(name='Output DFT Data', section=dft_archive.data.outputs[-1]),
+                ],
+                outputs=[
+                    Link(name='Output tb Data', section=tb_archive.data.outputs[-1]),
+                ]
+            ),
+        ]
     """
 
     @check_n_tasks(n_tasks=2)
-    def resolve_method(self) -> DFTPlusTBMethod:
-        """
-        Resolves the `DFT` and `TB` `ModelMethod` references for the `tasks` in the workflow by using the
-        `resolve_beyonddft_method_ref` method from the `BeyondDFTMethod` section.
+    def link_task_inputs_outputs(self, tasks: list[TaskReference]) -> None:
+        dft_task = tasks[0]
+        tb_task = tasks[1]
 
-        Returns:
-            DFTPlusTBMethod: The resolved `DFTPlusTBMethod` section.
-        """
-        method = DFTPlusTBMethod()
-
-        # Check if TaskReference exists for both tasks
-        for task in self.tasks:
-            if not task.task:
-                return None
-
-        # DFT method reference
-        dft_method = method.resolve_beyonddft_method_ref(task=self.tasks[0].task)
-        if dft_method is not None:
-            method.dft_method_ref = dft_method
-
-        # TB method reference
-        tb_method = method.resolve_beyonddft_method_ref(task=self.tasks[1].task)
-        if tb_method is not None:
-            method.tb_method_ref = tb_method
-
-        return method
-
-    @check_n_tasks(n_tasks=2)
-    def link_tasks(self) -> None:
-        """
-        Links the `outputs` of the DFT task with the `inputs` of the TB task.
-        """
-        # Initial checks on the `inputs` and `tasks[*].outputs`
-        if not self.inputs:
+        # Initial check
+        if not dft_task.m_xpath('task.outputs'):
             return None
-        for task in self.tasks:
-            if not task.m_xpath('task.outputs'):
-                return None
 
-        # Assign dft task `inputs` to the `self.inputs[0]`
-        dft_task = self.tasks[0]
+        # Input of DFT Task is the ModelSystem
         dft_task.inputs = [
-            Link(
-                name='Input Model System',
-                section=self.inputs[0],
-            )
+            Link(name='Input Model System', section=self.inputs[0]),
         ]
-        # and rewrite dft task `outputs` and its name
+        # Output of DFT Task is the output section of the DFT entry
         dft_task.outputs = [
-            Link(
-                name='Output DFT Data',
-                section=dft_task.task.outputs[-1],
-            )
+            Link(name='Output DFT Data', section=dft_task.task.outputs[-1]),
+        ]
+        # Input of TB Task is the output of the DFT task
+        tb_task.inputs = [
+            Link(name='Output DFT Data', section=dft_task.task.outputs[-1]),
+        ]
+        # Output of TB Task is the output section of the TB entry
+        tb_task.outputs = [
+            Link(name='Output TB Data', section=self.outputs[-1]),
         ]
 
-        # Assign tb task `inputs` to the `dft_task.outputs[-1]`
-        tb_task = self.tasks[1]
-        tb_task.inputs = [
-            Link(
-                name='Output DFT Data',
-                section=dft_task.task.outputs[-1],
-            ),
-        ]
-        # and rewrite tb task `outputs` and its name
-        tb_task.outputs = [
-            Link(
-                name='Output TB Data',
-                section=tb_task.task.outputs[-1],
-            )
-        ]
+    # TODO check if implementing overwritting the FermiLevel.value in the TB entry from the DFT entry
 
     @check_n_tasks(n_tasks=2)
-    def overwrite_fermi_level(self) -> None:
-        """
-        Overwrites the Fermi level in the TB calculation with the Fermi level from the DFT calculation.
-        """
-        # Check if the `outputs` of the DFT task exist
-        dft_task = self.tasks[0]
-        if not dft_task.outputs:
-            self.link_tasks()
-
-        # Check if the `fermi_levels` exist in the DFT output
-        if not dft_task.m_xpath('outputs[-1].section'):
-            return None
-        dft_output = dft_task.outputs[-1].section
-        if not dft_output.fermi_levels:
-            return None
-        fermi_level = dft_output.fermi_levels[-1]
-
-        # Assign the Fermi level to the TB output
-        tb_task = self.tasks[1]
-        if not tb_task.m_xpath('outputs[-1].section'):
-            return None
-        tb_output = tb_task.outputs[-1].section
-        # ? Does appending like this work creating information in the TB entry?
-        tb_output.fermi_levels.append(FermiLevel(value=fermi_level.value))
-
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
-        # Initial check for the number of tasks
-        if not self.tasks or len(self.tasks) != 2:
-            logger.error('A `DFTPlusTB` workflow must have two tasks.')
-            return
-
-        # Check if tasks are `SinglePoint`
+        # Check if `tasks` are not SinglePoints
         for task in self.tasks:
-            if task.m_def.name != 'SinglePoint':
+            if not task.task:
                 logger.error(
-                    'A `DFTPlusTB` workflow must have two `SinglePoint` tasks.'
+                    'A `DFTPlusTB` workflow must have two `SinglePoint` tasks references.'
+                )
+                return
+            if not isinstance(task.task, 'SinglePoint'):
+                logger.error(
+                    'The referenced tasks in the `DFTPlusTB` workflow must be of type `SinglePoint`.'
                 )
                 return
 
-        # Define names of the workflow and `tasks`
+        # Define name of the workflow
         self.name = 'DFT+TB'
-        self.tasks[0].name = 'DFT SinglePoint'
-        self.tasks[1].name = 'TB SinglePoint'
 
-        # Resolve method refs for each task and store under `method`
-        self.method = self.resolve_method()
+        # Resolve `method`
+        method_refs = self.resolve_method_refs(
+            tasks=self.tasks,
+            tasks_names=['DFT SinglePoint Task', 'TB SinglePoint Task'],
+        )
+        if method_refs is not None and len(method_refs) == 2:
+            self.method = DFTPlusTBMethod(
+                dft_method_ref=method_refs[0],
+                tb_method_ref=method_refs[1],
+            )
 
-        # Link the tasks
-        self.link_tasks()
-
-        # Overwrite the Fermi level in the TB calculation
-        # ? test if overwritting works
-        self.overwrite_fermi_level()
+        # Resolve `tasks[*].inputs` and `tasks[*].outputs`
+        self.link_task_inputs_outputs(tasks=self.tasks)
