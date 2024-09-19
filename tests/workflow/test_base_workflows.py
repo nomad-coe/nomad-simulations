@@ -16,243 +16,12 @@
 # limitations under the License.
 #
 
-from typing import Optional
 
 import pytest
-from nomad.datamodel import EntryArchive
 from nomad.datamodel.metainfo.workflow import Link, Task
 
-from nomad_simulations.schema_packages.model_method import BaseModelMethod, ModelMethod
-from nomad_simulations.schema_packages.model_system import ModelSystem
-from nomad_simulations.schema_packages.outputs import Outputs
-from nomad_simulations.schema_packages.workflow import (
-    BeyondDFT,
-    BeyondDFTMethod,
-    SimulationWorkflow,
-)
-
-from ..conftest import generate_simulation
-from . import logger
-
-
-class TestSimulationWorkflow:
-    @pytest.mark.parametrize(
-        'model_system, model_method, outputs',
-        [
-            # empty sections in archive.data
-            (None, None, None),
-            # only one section in archive.data
-            (ModelSystem(), None, None),
-            # another section in archive.data
-            (None, ModelMethod(), None),
-            # only two sections in archive.data
-            (ModelSystem(), ModelMethod(), None),
-            # all sections in archive.data
-            (ModelSystem(), ModelMethod(), Outputs()),
-        ],
-    )
-    def test_resolve_inputs_outputs_from_archive(
-        self,
-        model_system: Optional[ModelSystem],
-        model_method: Optional[ModelMethod],
-        outputs: Optional[Outputs],
-    ):
-        """
-        Test the `_resolve_inputs_outputs_from_archive` method of the `SimulationWorkflow` section.
-        """
-        archive = EntryArchive()
-        simulation = generate_simulation(
-            model_system=model_system, model_method=model_method, outputs=outputs
-        )
-        archive.data = simulation
-        workflow = SimulationWorkflow()
-        archive.workflow2 = workflow
-        workflow._resolve_inputs_outputs_from_archive(archive=archive, logger=logger)
-        if (
-            model_system is not None
-            and model_method is not None
-            and outputs is not None
-        ):
-            for input_system in workflow._input_systems:
-                assert isinstance(input_system, ModelSystem)
-            for input_method in workflow._input_methods:
-                assert isinstance(input_method, ModelMethod)
-            for output in workflow._outputs:
-                assert isinstance(output, Outputs)
-        else:
-            assert not workflow._input_systems
-            assert not workflow._input_methods
-            assert not workflow._outputs
-
-    @pytest.mark.parametrize(
-        'model_system, model_method, outputs, workflow_inputs, workflow_outputs',
-        [
-            # empty sections in archive.data
-            (None, None, None, [], []),
-            # only one section in archive.data
-            (ModelSystem(), None, None, [], []),
-            # another section in archive.data
-            (None, ModelMethod(), None, [], []),
-            # only two sections in archive.data
-            (ModelSystem(), ModelMethod(), None, [], []),
-            # all sections in archive.data
-            (
-                ModelSystem(),
-                ModelMethod(),
-                Outputs(),
-                [Link(name='Input Model System', section=ModelSystem())],
-                [Link(name='Output Data', section=Outputs())],
-            ),
-        ],
-    )
-    def test_resolve_inputs_outputs(
-        self,
-        model_system: Optional[ModelSystem],
-        model_method: Optional[ModelMethod],
-        outputs: Optional[Outputs],
-        workflow_inputs: list[Link],
-        workflow_outputs: list[Link],
-    ):
-        """
-        Test the `resolve_inputs_outputs` method of the `SimulationWorkflow` section.
-        """
-        archive = EntryArchive()
-        simulation = generate_simulation(
-            model_system=model_system, model_method=model_method, outputs=outputs
-        )
-        archive.data = simulation
-        workflow = SimulationWorkflow()
-        archive.workflow2 = workflow
-
-        workflow.resolve_inputs_outputs(archive=archive, logger=logger)
-        if not workflow_inputs:
-            assert workflow.inputs == workflow_inputs
-        else:
-            assert len(workflow.inputs) == 1
-            assert workflow.inputs[0].name == workflow_inputs[0].name
-            # ! direct comparison of section does not work (probably an issue with references)
-            # assert workflow.inputs[0].section == workflow_inputs[0].section
-        if not workflow_outputs:
-            assert workflow.outputs == workflow_outputs
-        else:
-            assert len(workflow.outputs) == 1
-            assert workflow.outputs[0].name == workflow_outputs[0].name
-            # ! direct comparison of section does not work (probably an issue with references)
-            # assert workflow.outputs[0].section == workflow_outputs[0].section
-
-    @pytest.mark.parametrize(
-        'model_system, model_method, outputs, workflow_inputs, workflow_outputs',
-        [
-            # empty sections in archive.data
-            (None, None, None, [], []),
-            # only one section in archive.data
-            (ModelSystem(), None, None, [], []),
-            # another section in archive.data
-            (None, ModelMethod(), None, [], []),
-            # only two sections in archive.data
-            (ModelSystem(), ModelMethod(), None, [], []),
-            # all sections in archive.data
-            (
-                ModelSystem(),
-                ModelMethod(),
-                Outputs(),
-                [Link(name='Input Model System', section=ModelSystem())],
-                [Link(name='Output Data', section=Outputs())],
-            ),
-        ],
-    )
-    def test_normalize(
-        self,
-        model_system: Optional[ModelSystem],
-        model_method: Optional[ModelMethod],
-        outputs: Optional[Outputs],
-        workflow_inputs: list[Link],
-        workflow_outputs: list[Link],
-    ):
-        """
-        Test the `normalize` method of the `SimulationWorkflow` section.
-        """
-        archive = EntryArchive()
-        simulation = generate_simulation(
-            model_system=model_system, model_method=model_method, outputs=outputs
-        )
-        archive.data = simulation
-        workflow = SimulationWorkflow()
-        archive.workflow2 = workflow
-
-        workflow.normalize(archive=archive, logger=logger)
-        if not workflow_inputs:
-            assert workflow.inputs == workflow_inputs
-        else:
-            assert len(workflow.inputs) == 1
-            assert workflow.inputs[0].name == workflow_inputs[0].name
-            # ! direct comparison of section does not work (probably an issue with references)
-            # assert workflow.inputs[0].section == workflow_inputs[0].section
-            assert workflow._input_systems[0] == model_system
-            assert workflow._input_methods[0] == model_method
-            # Extra attribute from the `normalize` function
-            # ! direct comparison of section does not work (probably an issue with references)
-            # assert workflow.initial_structure == workflow_inputs[0].section
-        if not workflow_outputs:
-            assert workflow.outputs == workflow_outputs
-        else:
-            assert len(workflow.outputs) == 1
-            assert workflow.outputs[0].name == workflow_outputs[0].name
-            # ! direct comparison of section does not work (probably an issue with references)
-            # assert workflow.outputs[0].section == workflow_outputs[0].section
-            assert workflow._outputs[0] == outputs
-
-
-class TestBeyondDFTMethod:
-    @pytest.mark.parametrize(
-        'task, result',
-        [
-            # no task
-            (None, None),
-            # empty task
-            (Task(), None),
-            # task only contains ModelSystem
-            (
-                Task(inputs=[Link(name='Input Model System', section=ModelSystem())]),
-                None,
-            ),
-            # no `section` in the link
-            (
-                Task(inputs=[Link(name='Input Model Method')]),
-                None,
-            ),
-            # task only contains ModelMethod
-            (
-                Task(inputs=[Link(name='Input Model Method', section=ModelMethod())]),
-                ModelMethod(),
-            ),
-            # task contains both ModelSystem and ModelMethod
-            (
-                Task(
-                    inputs=[
-                        Link(name='Input Model System', section=ModelSystem()),
-                        Link(name='Input Model Method', section=ModelMethod()),
-                    ]
-                ),
-                ModelMethod(),
-            ),
-        ],
-    )
-    def test_resolve_beyonddft_method_ref(
-        self, task: Optional[Task], result: Optional[BaseModelMethod]
-    ):
-        """
-        Test the `resolve_beyonddft_method_ref` method of the `BeyondDFTMethod` section.
-        """
-        beyond_dft_method = BeyondDFTMethod()
-        # ! direct comparison of section does not work (probably an issue with references)
-        if result is not None:
-            assert (
-                beyond_dft_method.resolve_beyonddft_method_ref(task=task).m_def.name
-                == result.m_def.name
-            )
-        else:
-            assert beyond_dft_method.resolve_beyonddft_method_ref(task=task) == result
+from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
+from nomad_simulations.schema_packages.workflow import BeyondDFT
 
 
 class TestBeyondDFT:
@@ -263,77 +32,43 @@ class TestBeyondDFT:
             (None, None),
             # empty task
             ([Task()], []),
-            # task only contains inputs
-            (
-                [Task(inputs=[Link(name='Input Model System', section=ModelSystem())])],
-                [],
-            ),
+            # no outputs
+            ([Task(name='task')], []),
             # one task with one output
+            ([Task(outputs=[Link(section=Outputs())])], [Outputs]),
+            # one task with two outputs (last one is SCF type)
             (
-                [Task(outputs=[Link(name='Output Data 1', section=Outputs())])],
-                [Link(name='Output Data 1', section=Outputs())],
+                [Task(outputs=[Link(section=Outputs()), Link(section=SCFOutputs())])],
+                [SCFOutputs],
             ),
-            # one task with multiple outputs (only last is resolved)
+            # two tasks with one output each
             (
                 [
-                    Task(
-                        outputs=[
-                            Link(name='Output Data 1', section=Outputs()),
-                            Link(name='Output Data 2', section=Outputs()),
-                        ]
-                    )
+                    Task(outputs=[Link(section=Outputs())]),
+                    Task(outputs=[Link(section=SCFOutputs())]),
                 ],
-                [Link(name='Output Data 2', section=Outputs())],
+                [Outputs, SCFOutputs],
             ),
-            # multiple task with one output each
+            # two tasks with two outputs each (note order of the last outputs types)
             (
                 [
-                    Task(
-                        outputs=[Link(name='Task 1:Output Data 1', section=Outputs())]
-                    ),
-                    Task(
-                        outputs=[Link(name='Task 2:Output Data 1', section=Outputs())]
-                    ),
+                    Task(outputs=[Link(section=Outputs()), Link(section=SCFOutputs())]),
+                    Task(outputs=[Link(section=SCFOutputs()), Link(section=Outputs())]),
                 ],
-                [
-                    Link(name='Task 1:Output Data 1', section=Outputs()),
-                    Link(name='Task 2:Output Data 1', section=Outputs()),
-                ],
-            ),
-            # multiple task with two outputs each (only last is resolved)
-            (
-                [
-                    Task(
-                        outputs=[
-                            Link(name='Task 1:Output Data 1', section=Outputs()),
-                            Link(name='Task 1:Output Data 2', section=Outputs()),
-                        ]
-                    ),
-                    Task(
-                        outputs=[
-                            Link(name='Task 2:Output Data 1', section=Outputs()),
-                            Link(name='Task 2:Output Data 2', section=Outputs()),
-                        ]
-                    ),
-                ],
-                [
-                    Link(name='Task 1:Output Data 2', section=Outputs()),
-                    Link(name='Task 2:Output Data 2', section=Outputs()),
-                ],
+                [SCFOutputs, Outputs],
             ),
         ],
     )
-    def test_resolve_all_outputs(
-        self, tasks: Optional[list[Task]], result: list[Outputs]
-    ):
+    def test_resolve_all_outputs(self, tasks: list[Task], result: list[Outputs]):
         """
         Test the `resolve_all_outputs` method of the `BeyondDFT` section.
         """
         workflow = BeyondDFT()
-        if tasks is not None:
-            workflow.tasks = tasks
-        if result is not None:
-            for i, output in enumerate(workflow.resolve_all_outputs()):
-                assert output.name == result[i].name
+        workflow.tasks = tasks
+        all_outputs = workflow.resolve_all_outputs()
+        if not result:
+            assert all_outputs == result
         else:
-            assert workflow.resolve_all_outputs() == result
+            # ! comparing directly does not work becasue one is a section, the other a reference
+            for i, output in enumerate(all_outputs):
+                assert isinstance(output.section, result[i])
