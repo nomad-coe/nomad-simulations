@@ -188,10 +188,12 @@ class TestDFTPlusTB:
         """
         Test the `overwrite_fermi_level` method of the `DFTPlusTB` section.
         """
+        # TODO implement once testing in a real case is tested (Wannier90 parser)
         assert True
 
     def test_normalize(self):
         """
         Test the `normalize` method of the `DFTPlusTB` section.
         """
+        # TODO implement once testing in a real case is tested (Wannier90 parser)
         assert True
