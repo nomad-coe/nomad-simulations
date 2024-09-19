@@ -161,7 +161,7 @@ def get_composition(children_names: 'list[str]') -> str:
     return formula if formula else None
 
 
-def extract_simulation_subsections(
+def extract_all_simulation_subsections(
     archive: 'EntryArchive',
     i_system: int = 0,
     i_method: int = -1,
