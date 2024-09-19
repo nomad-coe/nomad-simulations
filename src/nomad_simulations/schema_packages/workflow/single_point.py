@@ -30,89 +30,63 @@ from nomad.datamodel.metainfo.workflow import Link, Task
 from nomad.metainfo import Quantity
 
 from nomad_simulations.schema_packages.outputs import SCFOutputs
+from nomad_simulations.schema_packages.utils import extract_all_simulation_subsections
 from nomad_simulations.schema_packages.workflow import SimulationWorkflow
 
 
 class SinglePoint(SimulationWorkflow):
     """
-    A `SimulationWorkflow` used to represent a single point calculation workflow. The `SinglePoint`
+    A base section used to represent a single point calculation workflow. The `SinglePoint`
     workflow is the minimum workflow required to represent a simulation. The self-consistent steps of
-    scf simulation are represented in the `SinglePoint` workflow.
+    scf simulation are represented inside the `SinglePoint` workflow.
+
+    The section only needs to be instantiated, and everything else will be extracted from the `normalize` function.
+    The archive needs to have `archive.data` sub-sections (model_sytem, model_method, outputs) populated.
+
+    The archive.workflow2 section is:
+        - name = 'SinglePoint'
+        - inputs = [
+            Link(name='Input Model System', section=archive.data.model_system[0]),
+            Link(name='Input Model Method', section=archive.data.model_method[-1]),
+        ]
+        - outputs = [
+            Link(name='Output Data', section=archive.data.outputs[-1]),
+        ]
+        - tasks = []
     """
 
     n_scf_steps = Quantity(
         type=np.int32,
+        default=1,
         description="""
-        The number of self-consistent field (SCF) steps in the simulation.
+        The number of self-consistent field (SCF) steps in the simulation. This is calculated
+        in the normalizer by storing the length of the `SCFOutputs` section in archive.data. Defaults
+        to 1.
         """,
     )
-
-    def generate_task(self, archive: 'EntryArchive', logger: 'BoundLogger') -> Task:
-        """
-        Generates the `Task` section for the `SinglePoint` workflow with their `inputs` and `outputs`.
-
-        Returns:
-            Task: The generated `Task` section.
-        """
-        # Populate `_input_systems`, `_input_methods` and `_outputs`
-        self._resolve_inputs_outputs_from_archive(archive=archive, logger=logger)
-
-        # Generate the `Task` section
-        task = Task()
-        if self._input_systems:
-            task.m_add_sub_section(
-                Task.inputs,
-                Link(name='Input Model System', section=self._input_systems[0]),
-            )
-        if self._input_methods:
-            task.m_add_sub_section(
-                Task.inputs,
-                Link(name='Input Model Method', section=self._input_methods[0]),
-            )
-        if self._outputs:
-            task.m_add_sub_section(
-                Task.outputs,
-                Link(name='Output Data', section=self._outputs[-1]),
-            )
-        return task
-
-    def resolve_n_scf_steps(self) -> int:
-        """
-        Resolves the number of self-consistent field (SCF) steps in the simulation.
-
-        Returns:
-            int: The number of SCF steps.
-        """
-        # Initial check
-        if not self.outputs:
-            return 1
-        for output in self.outputs:
-            # Check if `self.outputs` has a `section`
-            if not output.section:
-                continue
-            # Check if the section is `SCFOutputs`
-            if not isinstance(output.section, SCFOutputs):
-                continue
-            scf_output = output.section
-            # Check if there are `scf_steps`
-            if not scf_output.scf_steps:
-                continue
-            return len(scf_output.scf_steps)
-        return 1
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
-        # SinglePoint can only have one task; if it has more, delete the `tasks`
-        if self.tasks is not None and len(self.tasks) > 1:
-            logger.error('A `SinglePoint` workflow must have only one task.')
-            self.tasks: list[Task] = []
+        # Define name
+        self.name = 'SinglePoint'
+
+        # Define `inputs` and `outputs`
+        input_model_system, input_model_method, output = (
+            extract_all_simulation_subsections(archive=archive)
+        )
+        if not input_model_system or not input_model_method or not output:
+            logger.warning(
+                'Could not find the ModelSystem, ModelMethod, or Outputs section in the archive.data section of the SinglePoint entry.'
+            )
             return
+        self.inputs = [
+            Link(name='Input Model System', section=input_model_system),
+            Link(name='Input Model Method', section=input_model_method),
+        ]
+        self.outputs = [Link(name='Output Data', section=output)]
 
-        # Generate the `tasks` section if this does not exist
-        if not self.tasks:
-            task = self.generate_task(archive=archive, logger=logger)
-            self.tasks.append(task)
-
-        # Resolve `n_scf_steps`
-        self.n_scf_steps = self.resolve_n_scf_steps()
+        # Resolve the `n_scf_steps` if the output is of `SCFOutputs` type
+        if isinstance(output, SCFOutputs):
+            if output.scf_steps is not None and len(output.scf_steps) > 0:
+                self.n_scf_steps = len(output.scf_steps)
