@@ -1,3 +1,8 @@
+import pytest
+import numpy as np
+from typing import List, Tuple, Dict, Any
+
+
 from nomad_simulations.schema_packages.general import Simulation
 
 # from nomad_simulations.schema_packages.method import ModelMethod
@@ -18,9 +23,45 @@ from nomad.datamodel import EntryArchive
 from structlog.stdlib import BoundLogger
 from nomad.units import ureg
 
-import numpy as np
 
 MOL = 6.022140857e23
+
+
+def approx(value, abs=0, rel=1e-6):
+    return pytest.approx(value, abs=abs, rel=rel)
+
+
+def assert_dict_equal(d1, d2):
+    """
+    Recursively assert that two dictionaries are equal.
+
+    Args:
+        d1 (dict): First dictionary to compare.
+        d2 (dict): Second dictionary to compare.
+    """
+
+    assert isinstance(d1, dict), f'Expected dict, got {type(d1)}'
+    assert isinstance(d2, dict), f'Expected dict, got {type(d2)}'
+    assert d1.keys() == d2.keys(), f'Keys mismatch: {d1.keys()} != {d2.keys()}'
+
+    for key in d1:
+        if isinstance(d1[key], dict) and isinstance(d2[key], dict):
+            assert_dict_equal(d1[key], d2[key])
+        else:
+            if isinstance(d1[key], (str, bool)):
+                assert (
+                    d1[key] == d2[key]
+                ), f"Value mismatch for key '{key}': {d1[key]} != {d2[key]}"
+            elif isinstance(d1[key], np.ndarray):
+                assert np.isclose(
+                    d1[key], d2[key]
+                ).all(), f"Value mismatch for key '{key}': {d1[key]} != {d2[key]}"
+            elif abs(d1[key]) == float('inf'):
+                assert 'inf' == d2[key] if d1[key] > 0 else '-inf' == d2[key]
+            else:
+                assert d1[key] == approx(
+                    d2[key]
+                ), f"Value mismatch for key '{key}': {d1[key]} != {d2[key]}"
 
 
 def get_simulation_template():
@@ -47,6 +88,87 @@ def populate_potential(
     sec_potential.particle_labels = particle_labels
 
     return sec_potential
+
+
+# Test Data
+
+# BOND POTENTIALS
+
+# System: 3 x OH molecules
+#   particle number       particle label
+#   0                     O
+#   1                     H
+#   2                     O
+#   3                     H
+#   4                     O
+#   5                     H
+
+
+# harmonic
+results_harmonic_bond = {
+    'n_interactions': 3,
+    'n_particles': 2,
+    'particle_indices': [[0, 1], [2, 3], [3, 4]],
+    'particle_labels': [['O', 'H'], ['O', 'H'], ['O', 'H']],
+    'equilibrium_value': 9.6e-11,
+    'force_constant': 0.8302695202135819,
+    'name': 'HarmonicBond',
+    'type': 'bond',
+    'functional_form': 'harmonic',
+}
+data_harmonic_bond = (
+    HarmonicBond,
+    3,
+    2,
+    [('O', 'H'), ('O', 'H'), ('O', 'H')],
+    [(0, 1), (2, 3), (3, 4)],
+    {
+        'equilibrium_value': 0.96 * ureg.angstrom,
+        'force_constant': 3500 * ureg.kJ / MOL / ureg.nanometer**2,
+    },
+    results_harmonic_bond,
+)
+
+
+@pytest.mark.parametrize(
+    'potential_class, n_interactions, n_particles, particle_labels, particle_indices, parameters, results',
+    [
+        data_harmonic_bond,
+    ],
+)
+def test_potential(
+    potential_class: Potential,
+    n_interactions: int,
+    n_particles: int,
+    particle_labels: List[Tuple[str, str]],
+    particle_indices: List[Tuple[int, int]],
+    parameters: Dict[str, Any],
+    results: Dict[str, Any],
+):
+    """_summary_
+
+    Args:
+        input (str): _description_
+        result (Dict[Any]): _description_
+    """
+
+    data = get_simulation_template()
+    sec_FF = data.model_method[0]
+    sec_potential = populate_potential(
+        potential_class,
+        n_interactions=n_interactions,
+        n_particles=n_particles,
+        particle_labels=particle_labels,
+        particle_indices=particle_indices,
+    )
+    for key, value in parameters.items():
+        setattr(sec_potential, key, value)
+
+    sec_FF.contributions.append(sec_potential)
+    sec_FF.contributions[-1].normalize(EntryArchive, BoundLogger)
+
+    potential_dict = sec_FF.contributions[-1].m_to_dict()
+    assert_dict_equal(potential_dict, results)
 
 
 # System: 3 x OH molecules
@@ -85,6 +207,7 @@ ctr_potential += 1
 # # data.model_method[0].normalize(EntryArchive, BoundLogger)
 # sec_potential = data.model_method[0].contributions
 # print(sec_potential)
+
 
 # Cubic bond potential
 sec_cubic_bond = populate_potential(

@@ -916,6 +916,7 @@ class ModelSystem(System):
     # TODO improve description and add an example using the case in atom_indices
     bond_list = Quantity(
         type=np.int32,
+        shape=['*', 2],
         description="""
         List of pairs of atom indices corresponding to bonds (e.g., as defined by a force field)
         within this atoms_group.

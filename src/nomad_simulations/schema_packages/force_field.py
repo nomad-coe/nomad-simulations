@@ -358,33 +358,46 @@ class TabulatedBond(BondPotential):
                 logger.error('bins and forces have different length in TabulatedBond')
 
 
-# class AnglePotential(Potential):
-#     """
-#     Section containing information about bond potentials.
+class AnglePotential(Potential):
+    """
+    Section containing information about angle potentials.
 
-#     Suggested types are: harmonic, tabulated
-#     """
+    Suggested types are: ... ? harmonic, cubic, Morse, fene, tabulated
+    """
 
-#     equilibrium_value = Quantity(
-#         type=np.float64,
-#         unit='degree',
-#         shape=[],
-#         description="""
-#         Specifies the equilibrium angle.
-#         """,
-#     )
+    equilibrium_value = Quantity(
+        type=np.float64,
+        unit='degree',
+        shape=[],
+        description="""
+        Specifies the equilibrium angle.
+        """,
+    )
 
-#     force_constant = Quantity(
-#         type=np.float64,
-#         shape=[],
-#         unit='J / degree**2',
-#         description="""
-#         Specifies the force constant of the angle potential.
-#         """,
-#     )
+    force_constant = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='J / degree**2',
+        description="""
+        Specifies the force constant of the angle potential.
+        """,
+    )
 
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        if not self.name:
+            self.name = 'AnglePotential'
+        if not self.type:
+            self.type = 'angle'
+        elif self.type != 'angle':
+            logger.warning('Incorrect type set for AnglePotential.')
+
+        if self.n_particles:
+            if self.n_particles != 3:
+                logger.warning('Incorrect number of particles set for AnglePotential.')
+            else:
+                self.n_particles = 3
 
 
 # class HarmonicAngle(AnglePotential):

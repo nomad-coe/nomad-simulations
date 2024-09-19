@@ -45,11 +45,18 @@ class BaseForce(PhysicalProperty):
     """
 
     value = Quantity(
-        type=np.dtype(np.float64),
+        type=np.float64,
+        shape=['*'],
         unit='newton',
         description="""
         """,
     )
+
+    def __init__(
+        self, m_def: 'Section' = None, m_context: 'Context' = None, **kwargs
+    ) -> None:
+        super().__init__(m_def, m_context, **kwargs)
+        self.rank = [3]
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
