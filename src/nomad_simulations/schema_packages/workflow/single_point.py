@@ -83,18 +83,30 @@ class SinglePoint(SimulationWorkflow):
         Returns:
             int: The number of SCF steps.
         """
+        # Initial check
+        if not self.outputs:
+            return 1
         for output in self.outputs:
-            if not isinstance(output, SCFOutputs):
+            # Check if `self.outputs` has a `section`
+            if not output.section:
                 continue
-            if output.scf_steps is not None:
-                return len(output.scf_steps)
+            # Check if the section is `SCFOutputs`
+            if not isinstance(output.section, SCFOutputs):
+                continue
+            scf_output = output.section
+            # Check if there are `scf_steps`
+            if not scf_output.scf_steps:
+                continue
+            return len(scf_output.scf_steps)
         return 1
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
+        # SinglePoint can only have one task; if it has more, delete the `tasks`
         if self.tasks is not None and len(self.tasks) > 1:
             logger.error('A `SinglePoint` workflow must have only one task.')
+            self.tasks = None
             return
 
         # Generate the `tasks` section if this does not exist
