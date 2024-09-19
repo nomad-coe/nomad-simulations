@@ -32,6 +32,7 @@ from nomad_simulations.schema_packages.workflow import (
     BeyondDFT,
     BeyondDFTMethod,
 )
+from nomad_simulations.schema_packages.workflow.base_workflows import check_n_tasks
 
 
 class DFTPlusTBMethod(BeyondDFTMethod):
@@ -69,6 +70,7 @@ class DFTPlusTB(BeyondDFT):
         - `method`: references to the `ModelMethod` sections in the DFT and TB entries.
     """
 
+    @check_n_tasks(n_tasks=2)
     def resolve_method(self) -> DFTPlusTBMethod:
         """
         Resolves the `DFT` and `TB` `ModelMethod` references for the `tasks` in the workflow by using the
@@ -91,6 +93,7 @@ class DFTPlusTB(BeyondDFT):
 
         return method
 
+    @check_n_tasks(n_tasks=2)
     def link_tasks(self) -> None:
         """
         Links the `outputs` of the DFT task with the `inputs` of the TB task.
@@ -123,6 +126,7 @@ class DFTPlusTB(BeyondDFT):
             )
         ]
 
+    @check_n_tasks(n_tasks=2)
     def overwrite_fermi_level(self) -> None:
         """
         Overwrites the Fermi level in the TB calculation with the Fermi level from the DFT calculation.
@@ -139,7 +143,7 @@ class DFTPlusTB(BeyondDFT):
         super().normalize(archive, logger)
 
         # Initial check for the number of tasks
-        if len(self.tasks) != 2:
+        if not self.tasks or len(self.tasks) != 2:
             logger.error('A `DFTPlusTB` workflow must have two tasks.')
             return
 

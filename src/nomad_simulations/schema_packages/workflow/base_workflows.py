@@ -17,6 +17,7 @@
 # limitations under the License.
 #
 
+from functools import wraps
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
@@ -30,6 +31,30 @@ from nomad.metainfo import SubSection
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs
+
+
+def check_n_tasks(n_tasks: Optional[int] = None):
+    """
+    Check if the `tasks` of a workflow exist. If the `n_tasks` input specified, it checks whether `tasks`
+    is of the same length as `n_tasks`.
+
+    Args:
+        n_tasks (Optional[int], optional): The length of the `tasks` needs to be checked if set to an integer. Defaults to None.
+    """
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if not self.tasks:
+                return None
+            if n_tasks is not None and len(self.tasks) != n_tasks:
+                return None
+
+            return func(self, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class SimulationWorkflow(Workflow):
@@ -144,6 +169,7 @@ class BeyondDFTMethod(ArchiveSection):
 class BeyondDFT(SimulationWorkflow):
     method = SubSection(sub_section=BeyondDFTMethod.m_def)
 
+    @check_n_tasks()
     def resolve_all_outputs(self) -> list[Outputs]:
         """
         Resolves all the `Outputs` sections from the `tasks` in the workflow. This is useful when
@@ -153,10 +179,6 @@ class BeyondDFT(SimulationWorkflow):
         Returns:
             list[Outputs]: A list of all the `Outputs` sections from the `tasks`.
         """
-        # Initial check
-        if not self.tasks:
-            return []
-
         # Populate the list of outputs from the last element in `tasks`
         all_outputs = []
         for task in self.tasks:
