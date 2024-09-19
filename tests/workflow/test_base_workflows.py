@@ -18,10 +18,16 @@
 
 
 import pytest
-from nomad.datamodel.metainfo.workflow import Link, Task
+from nomad.datamodel.metainfo.workflow import Link, Task, TaskReference
 
+from nomad_simulations.schema_packages.model_method import (
+    DFT,
+    TB,
+    ModelMethod,
+)
+from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.outputs import Outputs, SCFOutputs
-from nomad_simulations.schema_packages.workflow import BeyondDFT
+from nomad_simulations.schema_packages.workflow import BeyondDFT, SinglePoint
 
 
 class TestBeyondDFT:
@@ -72,3 +78,91 @@ class TestBeyondDFT:
             # ! comparing directly does not work becasue one is a section, the other a reference
             for i, output in enumerate(all_outputs):
                 assert isinstance(output.section, result[i])
+
+    @pytest.mark.parametrize(
+        'tasks, result',
+        [
+            # no task
+            (None, None),
+            ([TaskReference()], []),
+            ([TaskReference(), TaskReference()], []),
+            (
+                [TaskReference(task=SinglePoint()), TaskReference(task=SinglePoint())],
+                [],
+            ),
+            (
+                [
+                    TaskReference(
+                        task=SinglePoint(inputs=[Link(section=ModelSystem())])
+                    ),
+                    TaskReference(
+                        task=SinglePoint(inputs=[Link(section=ModelSystem())])
+                    ),
+                ],
+                [],
+            ),
+            (
+                [
+                    TaskReference(
+                        task=SinglePoint(
+                            inputs=[
+                                Link(section=ModelSystem()),
+                                Link(section=DFT()),
+                            ]
+                        )
+                    ),
+                    TaskReference(
+                        task=SinglePoint(
+                            inputs=[
+                                Link(section=ModelSystem()),
+                            ]
+                        )
+                    ),
+                ],
+                [DFT],
+            ),
+            (
+                [
+                    TaskReference(
+                        task=SinglePoint(
+                            inputs=[
+                                Link(section=ModelSystem()),
+                                Link(section=DFT()),
+                            ]
+                        )
+                    ),
+                    TaskReference(
+                        task=SinglePoint(
+                            inputs=[
+                                Link(section=ModelSystem()),
+                                Link(section=TB()),
+                            ]
+                        )
+                    ),
+                ],
+                [DFT, TB],
+            ),
+        ],
+    )
+    def test_resolve_method_refs(
+        self, tasks: list[TaskReference], result: list[ModelMethod]
+    ):
+        """
+        Test the `resolve_method_refs` method of the `BeyondDFT` section.
+        """
+        workflow = BeyondDFT()
+        workflow.tasks = tasks
+        method_refs = workflow.resolve_method_refs(
+            tasks=workflow.tasks,
+            tasks_names=['DFT SinglePoint Task', 'TB SinglePoint Task'],
+        )
+
+        if tasks is not None and len(tasks) == 2:
+            assert workflow.tasks[0].name == 'DFT SinglePoint Task'
+            assert workflow.tasks[1].name == 'TB SinglePoint Task'
+        if not result:
+            assert method_refs == result
+        else:
+            # ! comparing directly does not work becasue one is a section, the other a reference
+            for i, method in enumerate(result):
+                assert isinstance(method_refs[i], method)
