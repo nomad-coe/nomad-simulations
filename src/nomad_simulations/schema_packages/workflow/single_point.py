@@ -106,7 +106,7 @@ class SinglePoint(SimulationWorkflow):
         # SinglePoint can only have one task; if it has more, delete the `tasks`
         if self.tasks is not None and len(self.tasks) > 1:
             logger.error('A `SinglePoint` workflow must have only one task.')
-            self.tasks = None
+            self.tasks: list[Task] = []
             return
 
         # Generate the `tasks` section if this does not exist
