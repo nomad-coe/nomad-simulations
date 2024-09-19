@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.workflow import Workflow
+from nomad.datamodel.metainfo.workflow import TaskReference, Workflow
 from nomad.metainfo import SubSection
 
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
@@ -121,25 +121,40 @@ class BeyondDFT(SimulationWorkflow):
             all_outputs.append(task.outputs[-1])
         return all_outputs
 
+    @check_n_tasks()
+    def resolve_method_refs(
+        self, tasks: list[TaskReference], tasks_names: list[str]
+    ) -> list[BaseModelMethod]:
+        """
+        Resolve the references to the `BaseModelMethod` sections in the list of `tasks`. This is useful
+        when defining the `method` section of the `BeyondDFT` workflow.
+
+        Args:
+            tasks (list[TaskReference]): The list of tasks from which resolve the `BaseModelMethod` sections.
+            tasks_names (list[str]): The list of names for each of the tasks forming the BeyondDFT workflow.
+
+        Returns:
+            list[BaseModelMethod]: The list of resolved `BaseModelMethod` sections.
+        """
+        # Initial check on the inputs
+        if len(tasks) != len(tasks_names):
+            return []
+
+        method_refs = []
+        for i, task in enumerate(tasks):
+            # Define names of the tasks
+            task.name = tasks_names[i]
+
+            # Check if task.inputs or task.outputs do not exists for any of the 2 tasks
+            if not task.m_xpath('task.inputs'):
+                continue
+
+            # Resolve the method of each task.inputs
+            for input in task.task.inputs:
+                if isinstance(input.section, BaseModelMethod):
+                    method_refs.append(input.section)
+                    break
+        return method_refs
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-
-
-#     def resolve_beyonddft_method_ref(
-#         self, task: Optional[Task]
-#     ) -> Optional[BaseModelMethod]:
-#         """
-#         Resolves the `ModelMethod` reference for the `task`.
-
-#         Args:
-#             task (Task): The task to resolve the `ModelMethod` reference from.
-
-#         Returns:
-#             Optional[BaseModelMethod]: The resolved `ModelMethod` reference.
-#         """
-#         if not task or not task.inputs:
-#             return None
-#         for input in task.inputs:
-#             if input.section is not None and isinstance(input.section, BaseModelMethod):
-#                 return input.section
-#         return None
