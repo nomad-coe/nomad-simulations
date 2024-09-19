@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.workflow import Link, Task, Workflow
-from nomad.metainfo import SectionProxy, SubSection
+from nomad.metainfo import Quantity, SectionProxy, SubSection
 
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.model_system import ModelSystem
@@ -57,15 +57,6 @@ def check_n_tasks(n_tasks: Optional[int] = None):
     return decorator
 
 
-# class BaseWorkflow(ArchiveSection):
-#     pass
-
-# class Workflow(BaseWorkflow):
-#     tasks = SubSection(sub_section=SectionProxy('ModelSystem'), repeats=True)
-
-# class WorkflowReference(BaseWorkflow)¨
-
-
 class SimulationWorkflow(Workflow):
     """
     A base section used to define the workflows of a simulation with references to specific `tasks`, `inputs`, and `outputs`. The
@@ -73,110 +64,45 @@ class SimulationWorkflow(Workflow):
 
     A `SimulationWorkflow` will be composed of:
         - a `method` section containing methodological parameters used specifically during the workflow,
-        - a list of `inputs` with references to the `ModelSystem` or `ModelMethod` input sections,
+        - a list of `inputs` with references to the `ModelSystem` and, optionally, `ModelMethod` input sections,
         - a list of `outputs` with references to the `Outputs` section,
         - a list of `tasks` containing references to the activity `Simulation` used in the workflow,
     """
 
     method = SubSection(
         sub_section=BaseModelMethod.m_def,
-        description="""Methodological parameters used during the workflow.""",
+        description="""
+        Methodological parameters used during the workflow.
+        """,
     )
-
-    def _resolve_inputs_outputs_from_archive(
-        self, archive: 'EntryArchive', logger: 'BoundLogger'
-    ) -> None:
-        """
-        Resolves the `ModelSystem`, `ModelMethod`, and `Outputs` sections from the archive and stores
-        them in private attributes.
-
-        Args:
-            archive (EntryArchive): The archive to resolve the sections from.
-            logger (BoundLogger): The logger to log messages.
-        """
-        self._input_systems = []
-        self._input_methods = []
-        self._outputs = []
-        if (
-            not archive.data.model_system
-            or not archive.data.model_method
-            or not archive.data.outputs
-        ):
-            logger.info(
-                '`ModelSystem`, `ModelMethod` and `Outputs` required for normalization of `SimulationWorkflow`.'
-            )
-            return None
-        self._input_systems = archive.data.model_system
-        self._input_methods = archive.data.model_method
-        self._outputs = archive.data.outputs
-
-    def resolve_inputs_outputs(
-        self, archive: 'EntryArchive', logger: 'BoundLogger'
-    ) -> None:
-        """
-        Resolves the `inputs` and `outputs` of the `SimulationWorkflow`.
-
-        Args:
-            archive (EntryArchive): The archive to resolve the sections from.
-            logger (BoundLogger): The logger to log messages.
-        """
-        self._resolve_inputs_outputs_from_archive(archive=archive, logger=logger)
-
-        # Resolve `inputs`
-        if not self.inputs and self._input_systems:
-            self.m_add_sub_section(
-                Workflow.inputs,
-                Link(name='Input Model System', section=self._input_systems[0]),
-            )
-        # Resolve `outputs`
-        if not self.outputs and self._outputs:
-            self.m_add_sub_section(
-                Workflow.outputs,
-                Link(name='Output Data', section=self._outputs[-1]),
-            )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-
-        # Resolve the `inputs` and `outputs` from the archive
-        self.resolve_inputs_outputs(archive=archive, logger=logger)
-
-        # Storing the initial `ModelSystem`
-        for link in self.inputs:
-            if isinstance(link.section, ModelSystem):
-                self.initial_structure = link.section
-                break
 
 
 class BeyondDFTMethod(ArchiveSection):
     """
     An abstract section used to store references to the `ModelMethod` sections of each of the
-    archives defining the `tasks` and used to build the standard workflow. This section needs to be
-    inherit and the method references need to be defined for each specific case.
+    archives defining the `tasks` and used to build the standard `BeyondDFT` workflow. This section needs to be
+    inherit and the method references need to be defined for each specific case (see, e.g., dft_plus_tb.py module).
     """
 
-    def resolve_beyonddft_method_ref(
-        self, task: Optional[Task]
-    ) -> Optional[BaseModelMethod]:
-        """
-        Resolves the `ModelMethod` reference for the `task`.
-
-        Args:
-            task (Task): The task to resolve the `ModelMethod` reference from.
-
-        Returns:
-            Optional[BaseModelMethod]: The resolved `ModelMethod` reference.
-        """
-        if not task or not task.inputs:
-            return None
-        for input in task.inputs:
-            if input.section is not None and isinstance(input.section, BaseModelMethod):
-                return input.section
-        return None
+    pass
 
 
 class BeyondDFT(SimulationWorkflow):
-    method = SubSection(sub_section=BeyondDFTMethod.m_def)
+    """
+    A base section used to represent a beyond-DFT workflow and containing a `method` section which uses references
+    to the specific tasks `ModelMethod` sections.
+    """
+
+    method = SubSection(
+        sub_section=BeyondDFTMethod.m_def,
+        description="""
+        Abstract sub section used to populate the `method` of a `BeyondDFT` workflow with references
+        to the corresponding `SinglePoint` entries and their `ModelMethod` sections.
+        """,
+    )
 
     @check_n_tasks()
     def resolve_all_outputs(self) -> list[Outputs]:
@@ -198,3 +124,23 @@ class BeyondDFT(SimulationWorkflow):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+
+
+#     def resolve_beyonddft_method_ref(
+#         self, task: Optional[Task]
+#     ) -> Optional[BaseModelMethod]:
+#         """
+#         Resolves the `ModelMethod` reference for the `task`.
+
+#         Args:
+#             task (Task): The task to resolve the `ModelMethod` reference from.
+
+#         Returns:
+#             Optional[BaseModelMethod]: The resolved `ModelMethod` reference.
+#         """
+#         if not task or not task.inputs:
+#             return None
+#         for input in task.inputs:
+#             if input.section is not None and isinstance(input.section, BaseModelMethod):
+#                 return input.section
+#         return None
