@@ -274,7 +274,10 @@ class HashedPositions(PartialOrderElement):
 
     def __eq__(self, other):
         """Equality as defined between HashedPositions."""
-        if self.representative_variable is None or other.representative_variable is None:
+        if (
+            self.representative_variable is None
+            or other.representative_variable is None
+        ):
             return NotImplemented
         return np.allclose(self.representative_variable, other.representative_variable)
 
@@ -450,7 +453,9 @@ class AtomicCell(Cell):
         self.name = self.m_def.name
 
     @staticmethod
-    def _generate_comparer(positions: 'pint.Quantity', atoms_states: 'list[AtomsState]') -> tuple:
+    def _generate_comparer(
+        positions: 'pint.Quantity', atoms_states: 'list[AtomsState]'
+    ) -> tuple:
         # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
         return (
             (HashedPositions(pos), PartialOrderElement(st.chemical_symbol))

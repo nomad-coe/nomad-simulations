@@ -107,16 +107,16 @@ class TestAtomicCell:
                 Cell(positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]]),
                 {'lt': False, 'gt': False, 'eq': True},
             ),  # different ordered positions but same cell
-            #(
+            # (
             #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             #    Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             #    False,
-            #),  # one atomic cell and another cell (missing chemical symbols)
-            #(
+            # ),  # one atomic cell and another cell (missing chemical symbols)
+            # (
             #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             #    False,
-            #),  # missing chemical symbols
+            # ),  # missing chemical symbols
             # ND: the comparison will now return an error here
             #     handling a case that should be resolved by the normalizer falls outside its scope
             (
@@ -133,7 +133,7 @@ class TestAtomicCell:
                     ],
                 ),
                 {'lt': False, 'gt': False, 'eq': False},
-            ), # chemical symbols are treated as the fundamental set elements
+            ),  # chemical symbols are treated as the fundamental set elements
             (
                 AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -151,7 +151,7 @@ class TestAtomicCell:
                     ],
                 ),
                 {'lt': False, 'gt': True, 'eq': False},
-            ), # one is a subset of the other
+            ),  # one is a subset of the other
             (
                 AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0]],
@@ -159,7 +159,8 @@ class TestAtomicCell:
                         AtomsState(chemical_symbol='H'),
                         AtomsState(chemical_symbol='H'),
                     ],
-                ),AtomicCell(
+                ),
+                AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                     atoms_state=[
                         AtomsState(chemical_symbol='H'),
@@ -168,7 +169,7 @@ class TestAtomicCell:
                     ],
                 ),
                 {'lt': True, 'gt': False, 'eq': False},
-            ), # one is a subset of the other
+            ),  # one is a subset of the other
             (
                 AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
