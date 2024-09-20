@@ -23,17 +23,14 @@ if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
-    from nomad_simulations.schema_packages.workflow import SinglePoint
-
 from nomad.datamodel.metainfo.workflow import Link, TaskReference
 from nomad.metainfo import Quantity, Reference
 
-from nomad_simulations.schema_packages.model_method import DFT, TB, ModelMethod
-from nomad_simulations.schema_packages.workflow import (
-    BeyondDFT,
-    BeyondDFTMethod,
-)
+from nomad_simulations.schema_packages.model_method import DFT, TB
+from nomad_simulations.schema_packages.workflow import BeyondDFT, BeyondDFTMethod
 from nomad_simulations.schema_packages.workflow.base_workflows import check_n_tasks
+
+from .single_point import SinglePoint
 
 
 class DFTPlusTBMethod(BeyondDFTMethod):
@@ -106,7 +103,15 @@ class DFTPlusTB(BeyondDFT):
     """
 
     @check_n_tasks(n_tasks=2)
-    def link_task_inputs_outputs(self, tasks: list[TaskReference]) -> None:
+    def link_task_inputs_outputs(
+        self, tasks: list[TaskReference], logger: 'BoundLogger'
+    ) -> None:
+        if not self.inputs or not self.outputs:
+            logger.warning(
+                'The `DFTPlusTB` workflow needs to have `inputs` and `outputs` defined in order to link with the `tasks`.'
+            )
+            return None
+
         dft_task = tasks[0]
         tb_task = tasks[1]
 
@@ -144,7 +149,7 @@ class DFTPlusTB(BeyondDFT):
                     'A `DFTPlusTB` workflow must have two `SinglePoint` tasks references.'
                 )
                 return
-            if not isinstance(task.task, 'SinglePoint'):
+            if not isinstance(task.task, SinglePoint):
                 logger.error(
                     'The referenced tasks in the `DFTPlusTB` workflow must be of type `SinglePoint`.'
                 )
@@ -158,11 +163,14 @@ class DFTPlusTB(BeyondDFT):
             tasks=self.tasks,
             tasks_names=['DFT SinglePoint Task', 'TB SinglePoint Task'],
         )
-        if method_refs is not None and len(method_refs) == 2:
-            self.method = DFTPlusTBMethod(
-                dft_method_ref=method_refs[0],
-                tb_method_ref=method_refs[1],
-            )
+        if method_refs is not None:
+            method_workflow = DFTPlusTBMethod()
+            for method in method_refs:
+                if isinstance(method, DFT):
+                    method_workflow.dft_method_ref = method
+                elif isinstance(method, TB):
+                    method_workflow.tb_method_ref = method
+            self.method = method_workflow
 
         # Resolve `tasks[*].inputs` and `tasks[*].outputs`
-        self.link_task_inputs_outputs(tasks=self.tasks)
+        self.link_task_inputs_outputs(tasks=self.tasks, logger=logger)
