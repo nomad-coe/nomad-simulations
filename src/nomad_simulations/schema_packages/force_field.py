@@ -2,6 +2,7 @@ import numpy as np
 import pint
 import re
 import typing
+from scipy.interpolate import UnivariateSpline
 
 # from structlog.stdlib import BoundLogger
 from typing import Optional, List, Tuple
@@ -23,6 +24,8 @@ from nomad.metainfo import (
 from nomad_simulations.schema_packages.model_system import ModelSystem
 from nomad_simulations.schema_packages.model_method import BaseModelMethod, ModelMethod
 from nomad_simulations.schema_packages.utils import is_not_representative
+
+MOL = 6.022140857e23
 
 
 class ParameterEntry(ArchiveSection):
@@ -149,6 +152,148 @@ class Potential(BaseModelMethod):
             if self.particle_labels is not None:
                 assert len(self.particle_labels) == self.n_interactions
                 assert len(self.particle_labels[0]) == self.n_particles
+
+
+class TabulatedPotential(Potential):
+    """
+    Abstract class for tabulated potentials. The value of the potential and/or force
+    is stored for a set of corresponding bin distances. The units for bins and forces
+    should be set in the individual subclasses.
+    """
+
+    bins = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        List of bin angles.
+        """,
+    )
+
+    energies = Quantity(
+        type=np.float64,
+        unit='J',
+        shape=[],
+        description="""
+        List of energy values associated with each bin.
+        """,
+    )
+
+    forces = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        List of force values associated with each bin.
+        """,
+    )
+
+    def compute_forces(self, bins, energies, smoothing_factor=None):
+        if smoothing_factor is None:
+            smoothing_factor = len(bins) - np.sqrt(2 * len(bins))
+
+        spline = UnivariateSpline(bins, energies, s=smoothing_factor)
+        forces = -1.0 * spline.derivative()(bins)
+
+        return forces
+
+    def compute_energies(self, bins, forces, smoothing_factor=None):
+        if smoothing_factor is None:
+            smoothing_factor = len(bins) - np.sqrt(2 * len(bins))
+
+        spline = UnivariateSpline(bins, forces, s=smoothing_factor)
+        energies = -1.0 * np.array([spline.integral(bins[0], x) for x in bins])
+        energies -= np.min(energies)
+
+        return energies
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'TabulatedPotential'
+        if not self.functional_form:
+            self.functional_form = 'tabulated'
+        elif self.functional_form != 'tabulated':
+            logger.warning(f'Incorrect functional form set for {self.name}.')
+
+        if self.bins is not None and self.energies is not None:
+            if len(self.bins) != len(self.energies):
+                logger.error(
+                    f'bins and energies values have different length in {self.name}'
+                )
+        if self.bins is not None and self.forces is not None:
+            if len(self.bins) != len(self.forces):
+                logger.error(f'bins and forces have different length in {self.name}')
+
+        if self.bins is not None:
+            smoothing_factor = len(self.bins) - np.sqrt(2 * len(self.bins))
+            tol = 1e-2
+            if self.forces is None and self.energies is not None:
+                try:
+                    # generate forces from energies numerically using spline
+                    self.forces = (
+                        self.compute_forces(
+                            self.bins.magnitude,
+                            self.energies.magnitude,
+                            smoothing_factor=smoothing_factor,
+                        )  # ? How do I deal with units here?
+                    )
+                    # re-derive energies to check consistency of the forces
+                    energies = (
+                        self.compute_energies(
+                            self.bins.magnitude,
+                            self.forces.magnitude,
+                            smoothing_factor=smoothing_factor,
+                        )
+                        * ureg.J
+                    )
+
+                    energies_diff = energies.to('kJ').magnitude * MOL - (
+                        self.energies.to('kJ').magnitude * MOL
+                        - np.min(self.energies.to('kJ').magnitude * MOL)
+                    )
+                    if np.all([x < tol for x in energies_diff]):
+                        print('consistent energies')
+                        # logger.warning(
+                        #     f'Forces were generated from energies in {self.name},'
+                        #     f' but appear to be roughly consistent, with rtol={tol}. '
+                        # )
+                    else:
+                        # logger.warning('inconsistent energies')
+                        print('inconsistent energies')
+                        self.forces = None
+                    # print(energies.to('kJ').magnitude * MOL)
+                    # print(
+                    #     self.energies.to('kJ').magnitude * MOL
+                    #     - np.min(self.energies.to('kJ').magnitude * MOL)
+                    # )
+                    # print(energies_diff)
+                except Exception:
+                    pass
+
+            if self.forces is not None and self.energies is None:
+                try:
+                    # generated energies from forces numerically using spline
+                    self.energies = self.compute_energies(
+                        self.bins, self.forces, smoothing_factor=smoothing_factor
+                    )
+                    # re-derive forces to check consistency of the energies
+                    forces = self.compute_forces(
+                        self.bins, self.energies, smoothing_factor=smoothing_factor
+                    )
+
+                    forces_diff = forces.magnitude * 1000.0 * MOL - (
+                        self.energies.to('kJ').magnitude * 1000.0 * MOL
+                        - np.min(self.energies.to('kJ').magnitude * 1000.0 * MOL)
+                    )
+                    if np.all([x < tol for x in forces_diff]):
+                        print('consistent forces')
+                        # logger.warning(
+                        #     f'Energies were generated from forces in {self.name},'
+                        #     f'but appear to be consistent with rtol={rtol}. '
+                        # )
+                    else:
+                        self.energies = None
+                except Exception:
+                    pass
 
 
 class BondPotential(Potential):
@@ -301,7 +446,7 @@ class FeneBond(BondPotential):
             logger.warning('Incorrect functional form set for FeneBond.')
 
 
-class TabulatedBond(BondPotential):
+class TabulatedBond(TabulatedPotential, BondPotential):
     """
     Section containing information about a tabulated bond potential. The value of the potential and/or force
     is stored for a set of corresponding bin distances.
@@ -313,15 +458,6 @@ class TabulatedBond(BondPotential):
         shape=[],
         description="""
         List of bin distances.
-        """,
-    )
-
-    energies = Quantity(
-        type=np.float64,
-        unit='J',
-        shape=[],
-        description="""
-        List of energy values associated with each bin.
         """,
     )
 
@@ -338,19 +474,6 @@ class TabulatedBond(BondPotential):
         super().normalize(archive, logger)
 
         self.name = 'TabulatedBond'
-        if not self.functional_form:
-            self.functional_form = 'tabulated'
-        elif self.functional_form != 'tabulated':
-            logger.warning('Incorrect functional form set for TabulatedBond.')
-
-        if self.bins is not None and self.energies is not None:
-            if len(self.bins) != len(self.energies):
-                logger.error(
-                    'bins and energies values have different length in TabulatedBond'
-                )
-        if self.bins is not None and self.forces is not None:
-            if len(self.bins != self.forces):
-                logger.error('bins and forces have different length in TabulatedBond')
 
 
 class AnglePotential(Potential):
@@ -394,62 +517,51 @@ class AnglePotential(Potential):
                 self.n_particles = 3
 
 
-# class HarmonicAngle(AnglePotential):
-#     """
-#     Section containing information about a Harmonic angle potential: U(x) = 1/2 k (x-x_0)^2 + C,
-#     where k is the `force_constant` and x_0 is the `equilibrium_value` of the angle x.
-#     C is an arbitrary constant (not stored).
-#     """
+class HarmonicAngle(AnglePotential):
+    """
+    Section containing information about a Harmonic angle potential: U(x) = 1/2 k (x-x_0)^2 + C,
+    where k is the `force_constant` and x_0 is the `equilibrium_value` of the angle x.
+    C is an arbitrary constant (not stored).
+    """
 
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
-#         self.type = 'harmonic'
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'HarmonicAngle'
+        if not self.functional_form:
+            self.functional_form = 'harmonic'
+        elif self.functional_form != 'harmonic':
+            logger.warning('Incorrect functional form set for HarmonicAngle.')
 
 
-# class TabulatedAngle(AnglePotential):
-#     """
-#     Section containing information about a tabulated angle potential. The value of the potential and/or force
-#     is stored for a set of corresponding bin distances.
-#     """
+class TabulatedAngle(BondPotential, TabulatedPotential):
+    """
+    Section containing information about a tabulated bond potential. The value of the potential and/or force
+    is stored for a set of corresponding bin distances.
+    """
 
-#     bins = Quantity(
-#         type=np.float64,
-#         unit='degree',
-#         shape=[],
-#         description="""
-#         List of bin distances.
-#         """,
-#     )
+    bins = Quantity(
+        type=np.float64,
+        unit='degree',
+        shape=[],
+        description="""
+        List of bin angles.
+        """,
+    )
 
-#     energies = Quantity(
-#         type=np.float64,
-#         unit='J',
-#         shape=[],
-#         description="""
-#         List of energy values associated with each bin.
-#         """,
-#     )
+    forces = Quantity(
+        type=np.float64,
+        unit='J/degree',
+        shape=[],
+        description="""
+        List of force values associated with each bin.
+        """,
+    )
 
-#     forces = Quantity(
-#         type=np.float64,
-#         unit='J/degree',
-#         shape=[],
-#         description="""
-#         List of force values associated with each bin.
-#         """,
-#     )
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
 
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
-#         self.type = 'tabulated'
-#         if self.bins is not None and self.energies is not None:
-#             if len(self.bins != self.energies):
-#                 logger.error(
-#                     'bins and energies values have different length in TabulatedBond'
-#                 )
-#         if self.bins is not None and self.forces is not None:
-#             if len(self.bins != self.forces):
-#                 logger.error('bins and forces have different length in TabulatedBond')
+        self.name = 'TabulatedAngle'
 
 
 # class Interactions(ArchiveSection):

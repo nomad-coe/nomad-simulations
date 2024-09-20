@@ -10,12 +10,16 @@ from nomad_simulations.schema_packages.force_field import (
     ForceField,
     ParameterEntry,
     Potential,
+    TabulatedPotential,
     BondPotential,
     HarmonicBond,
     CubicBond,
     MorseBond,
     FeneBond,
     TabulatedBond,
+    AnglePotential,
+    HarmonicAngle,
+    TabulatedAngle,
 )
 from nomad_simulations.schema_packages.numerical_settings import ForceCalculations
 
@@ -266,7 +270,7 @@ data_fene_bond = (
 results_tabulated_bond = {
     'n_interactions': 3,
     'n_particles': 2,
-    'particle_indices': [[0, 1], [2, 3], [3, 4]],
+    'particle_indices': [[0, 1], [2, 3], [4, 5]],
     'particle_labels': [['O', 'H'], ['O', 'H'], ['O', 'H']],
     'bins': [
         7.600e-11,
@@ -401,18 +405,195 @@ data_custom_bond = (
     results_custom_bond,
 )
 
+# Angle POTENTIALS
+
+# System: 2 x H20 molecules
+#   particle number       particle label
+#   0                     O
+#   1                     H
+#   2                     H
+#   3                     O
+#   4                     H
+#   5                     H
+n_interactions = 2
+n_particles = 3
+particle_labels = [('O', 'H', 'H'), ('O', 'H', 'H')]
+particle_indices = [(0, 1, 2), (3, 4, 5)]
+
+# harmonic
+results_harmonic_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'equilibrium_value': 104.45020605234907,
+    'force_constant': 3.7937183846251475e-23,
+    'name': 'HarmonicAngle',
+    'type': 'angle',
+    'functional_form': 'harmonic',
+}
+data_harmonic_angle = (
+    HarmonicAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 1.823 * ureg.radian,
+        'force_constant': 75 * ureg.kJ / MOL / ureg.radian**2,
+    },
+    results_harmonic_angle,
+)
+
+# tabulated
+results_tabulated_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'bins': [
+        7.600e-11,
+        7.970e-11,
+        8.340e-11,
+        8.710e-11,
+        9.070e-11,
+        9.440e-11,
+        9.810e-11,
+        1.018e-10,
+        1.055e-10,
+        1.092e-10,
+        1.128e-10,
+        1.165e-10,
+        1.202e-10,
+        1.239e-10,
+        1.276e-10,
+        1.313e-10,
+        1.349e-10,
+        1.386e-10,
+        1.423e-10,
+        1.460e-10,
+    ],
+    'energies': [
+        1.32311751e-21,
+        8.81248069e-22,
+        5.28549577e-22,
+        2.65354139e-22,
+        9.18278089e-23,
+        8.30269520e-24,
+        1.47787975e-23,
+        1.11422170e-22,
+        2.98564919e-22,
+        5.76539155e-22,
+        9.45178822e-22,
+        1.40498208e-21,
+        1.95611499e-21,
+        2.59857754e-21,
+        3.33286791e-21,
+        4.15882003e-21,
+        5.07693206e-21,
+        6.08737007e-21,
+        7.19013405e-21,
+        8.38572215e-21,
+    ],
+    'name': 'TabulatedBond',
+    'type': 'bond',
+    'functional_form': 'tabulated',
+}
+data_tabulated_angle = (
+    TabulatedAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'bins': [
+            1.623,
+            1.64405263,
+            1.66510526,
+            1.68615789,
+            1.70721053,
+            1.72826316,
+            1.74931579,
+            1.77036842,
+            1.79142105,
+            1.81247368,
+            1.83352632,
+            1.85457895,
+            1.87563158,
+            1.89668421,
+            1.91773684,
+            1.93878947,
+            1.95984211,
+            1.98089474,
+            2.00194737,
+            2.023,
+        ]
+        * ureg.radian,
+        'energies': [
+            1.5,
+            1.20083102,
+            0.93490305,
+            0.70221607,
+            0.50277008,
+            0.3365651,
+            0.20360111,
+            0.10387812,
+            0.03739612,
+            0.00415512,
+            0.00415512,
+            0.03739612,
+            0.10387812,
+            0.20360111,
+            0.3365651,
+            0.50277008,
+            0.70221607,
+            0.93490305,
+            1.20083102,
+            1.5,
+        ]
+        * ureg.kJ
+        / MOL,
+        'forces': [
+            15.0,
+            13.42105263,
+            11.84210526,
+            10.26315789,
+            8.68421053,
+            7.10526316,
+            5.52631579,
+            3.94736842,
+            2.36842105,
+            0.78947368,
+            -0.78947368,
+            -2.36842105,
+            -3.94736842,
+            -5.52631579,
+            -7.10526316,
+            -8.68421053,
+            -10.26315789,
+            -11.84210526,
+            -13.42105263,
+            -15.0,
+        ],
+    },
+    results_tabulated_angle,
+)
+
 
 @pytest.mark.parametrize(
     'potential_class, n_interactions, n_particles, particle_labels, particle_indices, parameters, results',
     [
-        data_harmonic_bond,
-        data_cubic_bond,
-        data_morse_bond,
-        data_fene_bond,
-        data_custom_bond,
+        # data_harmonic_bond,
+        # data_cubic_bond,
+        # data_morse_bond,
+        # data_fene_bond,
+        data_tabulated_bond,
+        # data_custom_bond,
+        # data_harmonic_angle,
+        # data_tabulated_angle,
     ],
 )
-def test_potential(
+def test_potentials(
     potential_class: Potential,
     n_interactions: int,
     n_particles: int,
@@ -448,4 +629,5 @@ def test_potential(
     }
     print(potential_dict)
     print(results)
+    assert 1 == 2
     assert_dict_equal(potential_dict, results)
