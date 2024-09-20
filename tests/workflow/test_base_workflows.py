@@ -84,12 +84,16 @@ class TestBeyondDFT:
         [
             # no task
             (None, None),
+            # only one task
             ([TaskReference()], []),
+            # two empty tasks
             ([TaskReference(), TaskReference()], []),
+            # two tasks with only empty task
             (
                 [TaskReference(task=SinglePoint()), TaskReference(task=SinglePoint())],
                 [],
             ),
+            # two tasks with task with one input ModelSystem each
             (
                 [
                     TaskReference(
@@ -101,6 +105,7 @@ class TestBeyondDFT:
                 ],
                 [],
             ),
+            # two tasks with task with one input ModelSystem each and only DFT input
             (
                 [
                     TaskReference(
@@ -121,6 +126,7 @@ class TestBeyondDFT:
                 ],
                 [DFT],
             ),
+            # two tasks with task with inputs for ModelSystem and DFT and TB
             (
                 [
                     TaskReference(
