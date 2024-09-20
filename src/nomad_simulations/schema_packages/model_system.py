@@ -221,7 +221,7 @@ class GeometricSpace(Entity):
             return
 
 
-class PartialOrderBit:
+class PartialOrderElement:
     def __init__(self, representative_variable):
         self.representative_variable = representative_variable
 
@@ -257,7 +257,7 @@ class PartialOrderBit:
     # __ne__ assumes that usage in a finite set with its comparison definitions
 
 
-class HashedPositions(PartialOrderBit):
+class HashedPositions(PartialOrderElement):
     # `representative_variable` is a `pint.Quantity` object
 
     def __hash__(self):
@@ -274,6 +274,8 @@ class HashedPositions(PartialOrderBit):
 
     def __eq__(self, other):
         """Equality as defined between HashedPositions."""
+        if self.representative_variable is None or other.representative_variable is None:
+            return NotImplemented
         return np.allclose(self.representative_variable, other.representative_variable)
 
 
@@ -451,7 +453,7 @@ class AtomicCell(Cell):
     def _generate_comparer(positions: 'pint.Quantity', atoms_states: 'list[AtomsState]') -> tuple:
         # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
         return (
-            (HashedPositions(pos), PartialOrderBit(st.chemical_symbol))
+            (HashedPositions(pos), PartialOrderElement(st.chemical_symbol))
             for pos, st in zip(positions, atoms_states)
         )
 

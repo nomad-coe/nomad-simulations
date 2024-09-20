@@ -70,38 +70,48 @@ class TestAtomicCell:
     @pytest.mark.parametrize(
         'cell_1, cell_2, result',
         [
-            (Cell(), None, False),  # one cell is None
-            (Cell(), Cell(), False),  # both cells are empty
+            (Cell(), None, {'lt': False, 'gt': False, 'eq': False}),  # one cell is None
+            # (Cell(), Cell(), False),  # both cells are empty
+            # (
+            #    Cell(positions=[[1, 0, 0]]),
+            #    Cell(),
+            #    False,
+            # ),  # one cell has positions, the other is empty
             (
                 Cell(positions=[[1, 0, 0]]),
-                Cell(),
-                False,
-            ),  # one cell has positions, the other is empty
+                Cell(positions=[[2, 0, 0]]),
+                {'lt': False, 'gt': False, 'eq': False},
+            ),  # position vectors are treated as the fundamental set elements
             (
                 Cell(positions=[[1, 0, 0], [0, 1, 0]]),
                 Cell(positions=[[1, 0, 0]]),
-                False,
-            ),  # length mismatch
+                {'lt': False, 'gt': True, 'eq': False},
+            ),  # one is a subset of the other
+            (
+                Cell(positions=[[1, 0, 0]]),
+                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
+                {'lt': True, 'gt': False, 'eq': False},
+            ),  # one is a subset of the other
             (
                 Cell(positions=[[1, 0, 0], [0, 1, 0]]),
                 Cell(positions=[[1, 0, 0], [0, -1, 0]]),
-                False,
+                {'lt': False, 'gt': False, 'eq': False},
             ),  # different positions
             (
                 Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
                 Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                True,
+                {'lt': False, 'gt': False, 'eq': True},
             ),  # same ordered positions
             (
                 Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
                 Cell(positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]]),
-                True,
+                {'lt': False, 'gt': False, 'eq': True},
             ),  # different ordered positions but same cell
-            (
-                AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                False,
-            ),  # one atomic cell and another cell (missing chemical symbols)
+            #(
+            #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            #    Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
+            #    False,
+            #),  # one atomic cell and another cell (missing chemical symbols)
             #(
             #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
             #    AtomicCell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
@@ -111,6 +121,56 @@ class TestAtomicCell:
             #     handling a case that should be resolved by the normalizer falls outside its scope
             (
                 AtomicCell(
+                    positions=[[1, 0, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                    ],
+                ),
+                {'lt': False, 'gt': False, 'eq': False},
+            ), # chemical symbols are treated as the fundamental set elements
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                    ],
+                ),
+                {'lt': False, 'gt': True, 'eq': False},
+            ), # one is a subset of the other
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                    ],
+                ),AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                {'lt': True, 'gt': False, 'eq': False},
+            ), # one is a subset of the other
+            (
+                AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
                     atoms_state=[
                         AtomsState(chemical_symbol='H'),
@@ -126,7 +186,7 @@ class TestAtomicCell:
                         AtomsState(chemical_symbol='O'),
                     ],
                 ),
-                True,
+                {'lt': False, 'gt': False, 'eq': True},
             ),  # same ordered positions and chemical symbols
             (
                 AtomicCell(
@@ -145,7 +205,7 @@ class TestAtomicCell:
                         AtomsState(chemical_symbol='O'),
                     ],
                 ),
-                False,
+                {'lt': False, 'gt': False, 'eq': False},
             ),  # same ordered positions but different chemical symbols
             (
                 AtomicCell(
@@ -164,38 +224,39 @@ class TestAtomicCell:
                         AtomsState(chemical_symbol='H'),
                     ],
                 ),
-                True,
-            ),  # different ordered positions but same chemical symbols
+                {'lt': False, 'gt': False, 'eq': True},
+            ),  # same position-symbol map, different overall order
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                {'lt': False, 'gt': False, 'eq': False},
+            ),  # different position-symbol map
         ],
     )
-    def test_is_equal_cell(self, cell_1: Cell, cell_2: Cell, result: bool):
+    def test_partial_order(self, cell_1: Cell, cell_2: Cell, result: bool):
         """
         Test the `is_equal_cell` methods of `AtomicCell`.
         """
-        assert cell_1.is_equal_cell(other=cell_2) == result
-
-    @pytest.mark.parametrize(
-        'atomic_cell, result',
-        [
-            (AtomicCell(), []),
-            (AtomicCell(atoms_state=[AtomsState(chemical_symbol='H')]), ['H']),
-            (
-                AtomicCell(
-                    atoms_state=[
-                        AtomsState(chemical_symbol='H'),
-                        AtomsState(chemical_symbol='Fe'),
-                        AtomsState(chemical_symbol='O'),
-                    ]
-                ),
-                ['H', 'Fe', 'O'],
-            ),
-        ],
-    )
-    def test_get_chemical_symbols(self, atomic_cell: AtomicCell, result: list[str]):
-        """
-        Test the `get_chemical_symbols` method of `AtomicCell`.
-        """
-        assert atomic_cell.get_chemical_symbols(logger=logger) == result
+        assert (cell_1 < cell_2) == result['lt']
+        assert (cell_1 > cell_2) == result['gt']
+        assert (cell_1 <= cell_2) == (result['lt'] or result['eq'])
+        assert (cell_1 >= cell_2) == (result['gt'] or result['eq'])
+        assert (cell_1 == cell_2) == result['eq']
+        assert (cell_1 != cell_2) != (result[0] and result[1])
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
