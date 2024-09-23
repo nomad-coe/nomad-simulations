@@ -308,7 +308,16 @@ class Cell(GeometricSpace):
                     break
         return check_positions
 
-    def __eq__(self, other) -> bool:
+    def is_equal_cell(self, other) -> bool:
+        """
+        Check if the cell is equal to an`other` cell by comparing the `positions`.
+
+        Args:
+            other: The other cell to compare with.
+
+        Returns:
+            bool: True if the cells are equal, False otherwise.
+        """
         # TODO implement checks on `lattice_vectors` and other quantities to ensure the equality of primitive cells
         if not isinstance(other, Cell):
             return False
@@ -326,9 +335,6 @@ class Cell(GeometricSpace):
         if len(check_positions) != n_positions:
             return False
         return True
-
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -373,12 +379,22 @@ class AtomicCell(Cell):
         # Set the name of the section
         self.name = self.m_def.name
 
-    def __eq__(self, other) -> bool:
+    def is_equal_cell(self, other) -> bool:
+        """
+        Check if the atomic cell is equal to an`other` atomic cell by comparing the `positions` and
+        the `AtomsState[*].chemical_symbol`.
+
+        Args:
+            other: The other atomic cell to compare with.
+
+        Returns:
+            bool: True if the atomic cells are equal, False otherwise.
+        """
         if not isinstance(other, AtomicCell):
             return False
 
-        # Compare positions using the parent sections's `__eq__` method
-        if not super().__eq__(other):
+        # Compare positions using the parent sections's `is_equal_cell` method
+        if not super().is_equal_cell(other=other):
             return False
 
         # Check that the `chemical_symbol` of the atoms in `cell_1` match with the ones in `cell_2`
@@ -392,9 +408,6 @@ class AtomicCell(Cell):
         except Exception:
             return False
         return True
-
-    def __ne__(self, other) -> bool:
-        return not self.__eq__(other)
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """

@@ -72,12 +72,11 @@ class TestCell:
             ),  # different ordered positions but same cell
         ],
     )
-    def test_eq_ne(self, cell_1: Cell, cell_2: Cell, result: bool):
+    def test_is_equal_cell(self, cell_1: Cell, cell_2: Cell, result: bool):
         """
-        Test the `__eq__` and `__ne__` operator functions of `Cell`.
+        Test the `is_equal_cell` method of `Cell`.
         """
-        assert (cell_1 == cell_2) == result
-        assert (cell_1 != cell_2) != result
+        assert cell_1.is_equal_cell(other=cell_2) == result
 
 
 class TestAtomicCell:
@@ -184,12 +183,11 @@ class TestAtomicCell:
             ),  # different ordered positions but same chemical symbols
         ],
     )
-    def test_eq_ne(self, cell_1: Cell, cell_2: Cell, result: bool):
+    def test_is_equal_cell(self, cell_1: Cell, cell_2: Cell, result: bool):
         """
-        Test the `__eq__` and `__ne__` operator functions of `AtomicCell`.
+        Test the `is_equal_cell` method of `AtomicCell`.
         """
-        assert (cell_1 == cell_2) == result
-        assert (cell_1 != cell_2) != result
+        assert cell_1.is_equal_cell(other=cell_2) == result
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
