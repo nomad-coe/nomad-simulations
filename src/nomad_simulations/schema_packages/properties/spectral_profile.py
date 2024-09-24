@@ -109,7 +109,7 @@ class DOSProfile(SpectralProfile):
         Returns:
             (Optional[str]): The resolved `name` of the projected DOS profile.
         """
-        if self.entity_ref is None:
+        if self.entity_ref is None and not self.name == 'ElectronicDensityOfStates':
             logger.warning(
                 'The `entity_ref` is not set for the DOS profile. Could not resolve the `name`.'
             )
