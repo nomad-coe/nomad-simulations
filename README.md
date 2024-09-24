@@ -2,6 +2,7 @@
 ![](https://coveralls.io/repos/github/nomad-coe/nomad-simulations/badge.svg?branch=develop)
 ![](https://img.shields.io/pypi/v/nomad-simulations)
 ![](https://img.shields.io/pypi/pyversions/nomad-simulations)
+[![DOI](https://zenodo.org/badge/744481756.svg)](https://zenodo.org/badge/latestdoi/744481756)
 
 
 
@@ -160,6 +161,8 @@ plugins:
 **Note!**
 Once you modify your `nomad.yaml` file adding `include`, all the default plugins will be disconnected, so you will need to include them as well.
 
+## How to cite this work
+Pizarro, J.M., Boydas, E.B., Daelman, N., Ladines, A.N., Mohr, B. & Rudzinski, J.F., NOMAD Simulations [Computer software]. https://doi.org/xxxxx
 
 ## Main contributors
 | Name | E-mail     | Topics | Github profiles |
