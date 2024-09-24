@@ -211,21 +211,21 @@ class AtomCenteredBasisSet(BasisSetComponent):
         type=str,
         description="""
         AuxC type of basis set.
-        """
+        """,
     )
 
     aux_j_basis_set = Quantity(
         type=str,
         description="""
         AuxJ type of basis set.
-        """
+        """,
     )
 
     aux_jk_basis_set = Quantity(
         type=str,
         description="""
         AuxJK type of basis set.
-        """
+        """,
     )
 
     functional_composition = SubSection(
