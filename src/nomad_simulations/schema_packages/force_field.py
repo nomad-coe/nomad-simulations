@@ -251,49 +251,61 @@ class TabulatedPotential(Potential):
                         - np.min(self.energies.to('kJ').magnitude * MOL)
                     )
                     if np.all([x < tol for x in energies_diff]):
-                        print('consistent energies')
                         logger.warning(
-                            f'Forces were generated from energies in {self.name},'
-                            f' but appear to be roughly consistent, with rtol={tol}. '
+                            f'Tabulated forces were generated from energies in {self.name},'
+                            f'with consistency errors less than tol={tol}. '
                         )
                     else:
-                        # logger.warning('inconsistent energies')
-                        print('inconsistent energies')
+                        logger.warning(
+                            f'Unable to derive tabulated forces from energies in {self.name},'
+                            f'consistency errors were greater than tol={tol}.'
+                        )
                         self.forces = None
-                    # print(energies.to('kJ').magnitude * MOL)
-                    # print(
-                    #     self.energies.to('kJ').magnitude * MOL
-                    #     - np.min(self.energies.to('kJ').magnitude * MOL)
-                    # )
-                    # print(energies_diff)
-                except Exception:
-                    pass
+                except ValueError as e:
+                    logger.warning(
+                        f'Unable to derive tabulated forces from energies in {self.name},'
+                        f'Unkown error occurred in derivation: {e}'
+                    )
 
             if self.forces is not None and self.energies is None:
+                print('in gen energies')
                 try:
                     # generated energies from forces numerically using spline
                     self.energies = self.compute_energies(
-                        self.bins, self.forces, smoothing_factor=smoothing_factor
+                        self.bins.magnitude,
+                        self.forces.magnitude,
+                        smoothing_factor=smoothing_factor,
                     )
                     # re-derive forces to check consistency of the energies
-                    forces = self.compute_forces(
-                        self.bins, self.energies, smoothing_factor=smoothing_factor
+                    forces = (
+                        self.compute_forces(
+                            self.bins.magnitude,
+                            self.energies.magnitude,
+                            smoothing_factor=smoothing_factor,
+                        )
+                        * ureg.J
+                        / self.bins.units
                     )
 
-                    forces_diff = forces.magnitude * 1000.0 * MOL - (
-                        self.energies.to('kJ').magnitude * 1000.0 * MOL
-                        - np.min(self.energies.to('kJ').magnitude * 1000.0 * MOL)
+                    forces_diff = forces.to(f'kJ/{self.bins.units}').magnitude * MOL - (
+                        self.forces.to(f'kJ/{self.bins.units}').magnitude * MOL
                     )
                     if np.all([x < tol for x in forces_diff]):
-                        print('consistent forces')
-                        # logger.warning(
-                        #     f'Energies were generated from forces in {self.name},'
-                        #     f'but appear to be consistent with rtol={rtol}. '
-                        # )
+                        logger.warning(
+                            f'Tabulated energies were generated from forces in {self.name},'
+                            f'with consistency errors less than tol={tol}. '
+                        )
                     else:
+                        logger.warning(
+                            f'Unable to derive tabulated energies from forces in {self.name},'
+                            f'consistency errors were greater than tol={tol}.'
+                        )
                         self.energies = None
-                except Exception:
-                    pass
+                except ValueError as e:
+                    logger.warning(
+                        f'Unable to derive tabulated energies from forces in {self.name},'
+                        f'Unkown error occurred in derivation: {e}'
+                    )
 
 
 class BondPotential(Potential):
@@ -534,7 +546,7 @@ class HarmonicAngle(AnglePotential):
             logger.warning('Incorrect functional form set for HarmonicAngle.')
 
 
-class TabulatedAngle(BondPotential, TabulatedPotential):
+class TabulatedAngle(AnglePotential, TabulatedPotential):
     """
     Section containing information about a tabulated bond potential. The value of the potential and/or force
     is stored for a set of corresponding bin distances.
