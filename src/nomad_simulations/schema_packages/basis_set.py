@@ -200,13 +200,41 @@ class AtomCenteredBasisSet(BasisSetComponent):
     Defines an atom-centered basis set.
     """
 
+    main_basis_set = Quantity(
+        type=str,
+        description="""
+        Name of the main basis set.
+        """,
+    )
+
+    aux_c_basis_set = Quantity(
+        type=str,
+        description="""
+        AuxC type of basis set.
+        """
+    )
+
+    aux_j_basis_set = Quantity(
+        type=str,
+        description="""
+        AuxJ type of basis set.
+        """
+    )
+
+    aux_jk_basis_set = Quantity(
+        type=str,
+        description="""
+        AuxJK type of basis set.
+        """
+    )
+
     functional_composition = SubSection(
         sub_section=AtomCenteredFunction.m_def, repeats=True
     )  # TODO change name
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        # self.name = self.m_def.name
+        self.name = self.m_def.name
         # TODO: set name based on basis functions
         # ? use basis set names from Basis Set Exchange
 
