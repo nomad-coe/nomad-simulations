@@ -308,6 +308,29 @@ class TabulatedPotential(Potential):
                     )
 
 
+class PolynomialPotential(Potential):
+    """
+    Abstract class for potentials with polynomial form:
+    $V(x) = [\left k_1 (x - x_0) + k_2 (x - x_0)^2 + x_3 (x - x_0)^3 + \dots + C$,
+    where $\{x_1, x_2, x_3 \dots}$ are the `force_constants` for each term in the polynomial
+    expression and $x_0$ is the `equilibrium_value` of $x$. $C$ is an arbitrary constant (not stored).
+    This class is intended to be used with another class specifying the potential type, e.g., BondPotential, AnglePotential, etc.
+    """
+
+    force_constants = SubSection(
+        sub_section=ParameterEntry.m_def,
+        repeats=True,
+        description="""
+        List of force constants value and corresponding unit for polynomial potentials.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'PolynomialPotential'
+
+
 class BondPotential(Potential):
     """
     Section containing information about bond potentials.
@@ -351,10 +374,11 @@ class BondPotential(Potential):
 
 
 class HarmonicBond(BondPotential):
-    """
-    Section containing information about a Harmonic bond potential: U(x) = 1/2 k (x-x_0)^2 + C,
-    where k is the `force_constant` and x_0 is the `equilibrium_value` of x.
-    C is an arbitrary constant (not stored).
+    r"""
+    Section containing information about a Harmonic bond potential:
+    $V(r) = \frac{1}{2} k_r (r - r_0)^2 + C$,
+    where $k_r$ is the `force_constant` and $r_0$ is the `equilibrium_value` of $r$.
+    $C$ is an arbitrary constant (not stored).
     """
 
     def normalize(self, archive, logger) -> None:
@@ -368,9 +392,11 @@ class HarmonicBond(BondPotential):
 
 
 class CubicBond(BondPotential):
-    """
-    Section containing information about a Cubic bond potential: U(x) = 1/2 k (x-x_0)^2 + 1/3 k_c (x-x_0)^3,
-    where k is the (harmonic) `force_constant`, k_c is the `force_constant_cubic`, and x_0 is the `equilibrium_value` of x.
+    r"""
+    Section containing information about a Cubic bond potential:
+    $V(r) = \frac{1}{2} k_r (r - r_0)^2 + \frac{1}{3} k_c (r - r_0)^3 + C$,
+    where $k_r$ is the (harmonic) `force_constant`, $k_c$ is the `force_constant_cubic`,
+    and $r_0$ is the `equilibrium_value` of $r$.
     C is an arbitrary constant (not stored).
     """
 
@@ -393,11 +419,63 @@ class CubicBond(BondPotential):
             logger.warning('Incorrect functional form set for CubicBond.')
 
 
-class MorseBond(BondPotential):
+# TODO Add Fourth Power potential from gromacs, might want to make it a more general quartic polynomial, even though it's not as general
+# class QuarticBond(BondPotential):
+#     r"""
+#     Section containing information about a Cubic bond potential:
+#     $V(r) = \frac{1}{2} k_r (r - r_0)^2 + \frac{1}{3} k_c (r - r_0)^3 + C$,
+#     where $k_r$ is the (harmonic) `force_constant`, $k_c$ is the `force_constant_cubic`,
+#     and $r_0$ is the `equilibrium_value` of $r$.
+#     C is an arbitrary constant (not stored).
+#     """
+
+#     force_constant_cubic = Quantity(
+#         type=np.float64,
+#         shape=[],
+#         unit='J / m**3',
+#         description="""
+#         Specifies the cubic force constant of the bond potential.
+#         """,
+#     )
+
+#     def normalize(self, archive, logger) -> None:
+#         super().normalize(archive, logger)
+
+#         self.name = 'CubicBond'
+#         if not self.functional_form:
+#             self.functional_form = 'cubic'
+#         elif self.functional_form != 'cubic':
+#             logger.warning('Incorrect functional form set for CubicBond.')
+
+
+class PolynomialBond(PolynomialPotential, BondPotential):
     """
-    Section containing information about a Morse potential: U(x) = D [1 - exp(- a (x-x_0)]^2 + C,
-    where a = sqrt(k/2D) is the `well_steepness`, with `force constant` k.
-    D is the `well_depth`, and x_0 is the `equilibrium_value` of x. C is an arbitrary constant (not stored).
+    Section containing information about a polynomial bond potential:
+    """
+
+    def __init__(self):
+        docstring = PolynomialPotential.__doc__
+        pattern = r'\$V\(x\)(.*?)(\(not stored\)\.)'
+        match = re.search(pattern, docstring, re.DOTALL)
+        extracted_text = '<functional form missing>'
+        if match:
+            extracted_text = match.group(1).strip()
+        self.__doc__ = rf"""{self.__doc__} {extracted_text}.
+            Here the dependent variable of the potential, $x$, corresponds to the bond distance."""
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'PolynomialBond'
+
+
+class MorseBond(BondPotential):
+    r"""
+    Section containing information about a Morse potential:
+    $V(r) = D \left[ 1 - e^{-a(r - r_0)} \right]^2 + C$,
+    where $a = sqrt(k/2D)$ is the `well_steepness`, with `force constant` k.
+    D is the `well_depth`, and r_0 is the `equilibrium_value` of a.
+    C is an arbitrary constant (not stored).
     """
 
     well_depth = Quantity(
@@ -434,9 +512,11 @@ class MorseBond(BondPotential):
 
 
 class FeneBond(BondPotential):
-    """
-    Section containing information about a FENE potential: U(x) = -1/2 k (X_0)^2 ln[1-((x-x_0)^2)/(X_0^2)] + C,
-    k is the `force_constant`, x_0 is the `equilibrium_value` of x, and X_0 is the maximum allowable bond extension beyond x_0. C is an arbitrary constant (not stored).
+    r"""
+    Section containing information about a FENE potential:
+    $V(r) = -\frac{1}{2} k R_0^2 \ln \left[ 1 - \left( \frac{r - r_0}{R_0} \right)^2 \right] + C$,
+    $k$ is the `force_constant`, $r_0$ is the `equilibrium_value` of $r$, and $R_0$ is the
+    maximum allowable bond extension beyond $r_0$. $C$ is an arbitrary constant (not stored).
     """
 
     maximum_extension = Quantity(
@@ -460,8 +540,8 @@ class FeneBond(BondPotential):
 
 class TabulatedBond(TabulatedPotential, BondPotential):
     """
-    Section containing information about a tabulated bond potential. The value of the potential and/or force
-    is stored for a set of corresponding bin distances.
+    Section containing information about a tabulated bond potential.
+    The value of the potential and/or force is stored for a set of corresponding bin distances.
     """
 
     bins = Quantity(
@@ -492,7 +572,7 @@ class AnglePotential(Potential):
     """
     Section containing information about angle potentials.
 
-    Suggested types are: ... ? harmonic, cubic, Morse, fene, tabulated
+    Suggested types are: harmonic, cosine, fourier_series, urey_bradley, tabulated
     """
 
     equilibrium_value = Quantity(
@@ -530,10 +610,11 @@ class AnglePotential(Potential):
 
 
 class HarmonicAngle(AnglePotential):
-    """
-    Section containing information about a Harmonic angle potential: U(x) = 1/2 k (x-x_0)^2 + C,
-    where k is the `force_constant` and x_0 is the `equilibrium_value` of the angle x.
-    C is an arbitrary constant (not stored).
+    r"""
+    Section containing information about a Harmonic angle potential:
+    $V(\theta) = \frac{1}{2} k_\theta (\theta - \theta_0)^2 + C$,
+    where $k_\theta$ is the `force_constant` and $\theta_0$ is the `equilibrium_value` of
+    the angle $\theta$. $C$ is an arbitrary constant (not stored).
     """
 
     def normalize(self, archive, logger) -> None:
@@ -544,6 +625,139 @@ class HarmonicAngle(AnglePotential):
             self.functional_form = 'harmonic'
         elif self.functional_form != 'harmonic':
             logger.warning('Incorrect functional form set for HarmonicAngle.')
+
+
+class CosineAngle(AnglePotential):
+    r"""
+    Section containing information about a Cosine angle potential:
+    $V(\theta) = \frac{1}{2} k_\theta \left[ \cos(\theta) - \cos(\theta_0) \right]^2 + C$,
+    where $k_\theta$ is the `force_constant` and $\theta_0$ is the `equilibrium_value` of
+    the angle $\theta$. $C$ is an arbitrary constant (not stored).
+
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'CosineAngle'
+        if not self.functional_form:
+            self.functional_form = 'cosine'
+        elif self.functional_form != 'cosine':
+            logger.warning('Incorrect functional form set for CosineAngle.')
+
+
+class RestrictedCosineAngle(AnglePotential):
+    r"""
+    Section containing information about a Restricted Cosine angle potential:
+    $V(\theta) = \frac{1}{2} k_\theta \frac{\left[ \cos(\theta) - \cos(\theta_0) \right]^2}{\sin^2(\theta)} + C$,
+    where $k_\theta$ is the `force_constant` and $\theta_0$ is the `equilibrium_value` of
+    the angle $\theta$. $C$ is an arbitrary constant (not stored).
+
+    """
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'RestrictedCosineAngle'
+        if not self.functional_form:
+            self.functional_form = 'restricted_cosine'
+        elif self.functional_form != 'restricted_cosine':
+            logger.warning('Incorrect functional form set for RestrictedCosineAngle.')
+
+
+# TODO I think this was intended for the dihedral, like RB function, could generalize or just sepecify as dihedral potential
+# TODO Similar to UB pot, just say AKA RB function
+class FourierSeriesAngle(AnglePotential):
+    r"""
+    Section containing information about a Fourier Series angle potential:
+    $V(\theta) = k_1 \left[ 1 + \cos(\theta - \theta_0) \right] +
+    k_2 \left[ 1 + \cos(2(\theta - \theta_0)) \right] + \dots + C$,
+    where $\{k_1, k_2, \dots}$ are the `fourier_force_constants` for each term in the series
+    and $\theta_0$ is the `equilibrium_value` of the angle $\theta$.
+    $C$ is an arbitrary constant (not stored).
+    """
+
+    fourier_force_constants = Quantity(
+        type=np.float64,
+        shape=['*'],
+        unit='J / degree**2',
+        description="""
+        Specifies the force constants for each term in the fourier series representation
+        of the angle potential. The force constants of any "missing" terms must be
+        explicitly set to zero.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'FourierSeriesAngle'
+        if not self.functional_form:
+            self.functional_form = 'fourier_series'
+        elif self.functional_form != 'fourier_series':
+            logger.warning('Incorrect functional form set for FourierSeriesAngle.')
+
+
+# TODO I think we should name these more generally and then say that AKA
+class UreyBradleyAngle(AnglePotential):
+    r"""
+    Section containing information about a Urey-Bradly angle potential:
+    $V(\theta) = \frac{1}{2} k_\theta (\theta - \theta_0)^2 +
+    \frac{1}{2} k_{13} (r_{13} - r_{13}^0)^2 + C$,
+    where where $k_\theta$ is the `force_constant` and $\theta_0$ is the `equilibrium_value` of
+    the angle $\theta$, as for a harmonic angle potential. $k_{13}$ is the `force_constant_UB`
+    for the 1-3 term, and $r_{13}^0$ is the `equilibrium_value_UB` of the 1-3 distance (i.e.,
+    the distance between the edge particles forming the 1-2-3 angle, $\theta$), $r_{13}$.
+    $C$ is an arbitrary constant (not stored).
+    """
+
+    equilibrium_value_UB = Quantity(
+        type=np.float64,
+        unit='m',
+        shape=[],
+        description="""
+        Specifies the equilibrium 1-3 distance.
+        """,
+    )
+
+    force_constant_UB = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='J / m **2',
+        description="""
+        Specifies the force constant of the potential.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'UreyBradleyAngle'
+        if not self.functional_form:
+            self.functional_form = 'urey_bradley'
+        elif self.functional_form != 'urey_bradley':
+            logger.warning('Incorrect functional form set for UreyBradleyAngle.')
+
+
+class PolynomialAngle(PolynomialPotential, AnglePotential):
+    """
+    Section containing information about a polynomial angle potential:
+    """
+
+    def __init__(self):
+        docstring = PolynomialPotential.__doc__
+        pattern = r'\$V\(x\)(.*?)(\(not stored\)\.)'
+        match = re.search(pattern, docstring, re.DOTALL)
+        extracted_text = '<functional form missing>'
+        if match:
+            extracted_text = match.group(1).strip()
+        self.__doc__ = rf"""{self.__doc__} {extracted_text}.
+            Here the dependent variable of the potential, $x$, corresponds to the angle between three particles."""
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'PolynomialAngle'
 
 
 class TabulatedAngle(AnglePotential, TabulatedPotential):
@@ -574,66 +788,6 @@ class TabulatedAngle(AnglePotential, TabulatedPotential):
         super().normalize(archive, logger)
 
         self.name = 'TabulatedAngle'
-
-
-# class Interactions(ArchiveSection):
-#     """
-#     Section containing the list of particles involved in a particular type of interaction and/or any associated parameters.
-#     """
-
-#     type = Quantity(
-#         type=MEnum('bond', 'angle', 'dihedral', 'improper dihedral'),
-#         shape=[],
-#         description="""
-#         Denotes the classification of the interaction.
-#         """,
-#     )
-
-#     name = Quantity(
-#         type=str,
-#         shape=[],
-#         description="""
-#         Specifies the name of the interaction. Can contain information on the species,
-#         cut-offs, potential versions, etc.
-#         """,
-#     )
-
-#     n_interactions = Quantity(
-#         type=np.dtype(np.int32),
-#         shape=[],
-#         description="""
-#         Total number of interactions of this interaction type-name.
-#         """,
-#     )
-
-#     n_particles = Quantity(
-#         type=np.int32,
-#         shape=[],
-#         description="""
-#         Number of particles included in (each instance of) the interaction.
-#         """,
-#     )
-
-#     particle_labels = Quantity(
-#         type=np.dtype(str),
-#         shape=['n_interactions', 'n_atoms'],
-#         description="""
-#         Labels of the particles described by the interaction. In general, the structure is a list of list of tuples.
-#         """,
-#     )
-
-#     particle_indices = Quantity(
-#         type=np.int32,
-#         shape=['n_interactions', 'n_atoms'],
-#         description="""
-#         Indices of the particles in the system described by the interaction. In general, the structure is a list of list of tuples.
-#         """,
-#     )
-
-#     potential = SubSection(sub_section=Potential.m_def, repeats=False)
-
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
 
 
 class ForceField(ModelMethod):
@@ -683,3 +837,38 @@ class ForceField(ModelMethod):
 
         self.name = 'ForceField'
         logger.warning('in force field')
+
+
+## GROMACS BONDED INTERACTIONS
+
+# Fourth power potential -- Use PolynomialBond? (Could also use it for harmonic and cubic but I guess it's better to have simpler forms for these more common ones)
+
+# Linear Angle potential -- useful?
+
+# Bond-Angle cross term -- useful?
+
+# Quartic angle potential -- Use polynomial angle?
+
+# Improper dihedrals
+
+# Improper dihedrals: harmonic type
+
+# Improper dihedrals: periodic type
+
+# Proper dihedrals
+
+# Proper dihedrals: periodic type
+
+# Proper dihedral angles are defined according to the IUPAC/IUB convention, where
+
+# Proper dihedrals: Ryckaert-Bellemans function
+
+# Proper dihedrals: Combined bending-torsion potential
+
+# Bonded pair and 1-4 interactions
+# Most force fields do not use normal Lennard-Jones and Coulomb interactions for atoms separated by three bonds, the so-called 1-4 interactions. These interactions are still affected by the modified electronic distributions due to the chemical bonds and they are modified in the force field by the dihedral terms. For this reason the Lennard-Jones and Coulomb 1-4 interactions are often scaled down, by a fixed factor given by the force field. These factors can be supplied in the topology and the parameters can also be overriden per 1-4 interaction or atom type pair. The pair interactions can be used for any atom pair in a molecule, not only 1-4 pairs. The non-bonded interactions between such pairs should be excluded to avoid double interactions. Plain Lennard-Jones and Coulomb interactions are used which are not affected by the non-bonded interaction treatment and potential modifiers.
+
+# Tabulated bonded interaction functions
+
+
+# ! Need to survey Lammps and maybe openmm and check for other common potential types

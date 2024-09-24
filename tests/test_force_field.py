@@ -19,6 +19,10 @@ from nomad_simulations.schema_packages.force_field import (
     TabulatedBond,
     AnglePotential,
     HarmonicAngle,
+    CosineAngle,
+    RestrictedCosineAngle,
+    FourierSeriesAngle,
+    UreyBradleyAngle,
     TabulatedAngle,
 )
 from nomad_simulations.schema_packages.numerical_settings import ForceCalculations
@@ -213,6 +217,8 @@ data_cubic_bond = (
     results_cubic_bond,
 )
 
+# TODO add polynomial bond
+
 # morse
 results_morse_bond = {
     'n_interactions': 3,
@@ -374,7 +380,7 @@ data_tabulated_bond = (
             0.146,
         ]
         * ureg.nanometer,
-        'energies': [
+        'energies': [  # ! pass in energies and test the auto-generation of forces
             0.7968,
             0.5307,
             0.3183,
@@ -467,6 +473,88 @@ data_harmonic_angle = (
         'force_constant': 75 * ureg.kJ / MOL / ureg.radian**2,
     },
     results_harmonic_angle,
+)
+
+# cosine
+results_cosine_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'equilibrium_value': 104.45020605234907,
+    'force_constant': 3.7937183846251475e-23,
+    'name': 'CosineAngle',
+    'type': 'angle',
+    'functional_form': 'cosine',
+}
+data_cosine_angle = (
+    CosineAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 1.823 * ureg.radian,
+        'force_constant': 75 * ureg.kJ / MOL / ureg.radian**2,
+    },
+    results_cosine_angle,
+)
+
+# TODO add RestrictedCosineAngle
+# TODO add PolynomialAngle
+
+# fourier_series
+results_fourier_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'equilibrium_value': 104.45020605234907,
+    'fourier_force_constants': [5.0582911795001975e-23, 0.0, 1.2645727948750494e-23],
+    'name': 'FourierSeriesAngle',
+    'type': 'angle',
+    'functional_form': 'fourier_series',
+}
+data_fourier_angle = (
+    FourierSeriesAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 1.823 * ureg.radian,
+        'fourier_force_constants': [100, 0, 25] * ureg.kJ / MOL / ureg.radian**2,
+    },
+    results_fourier_angle,
+)
+
+# urey_bradley
+results_ureybradley_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'equilibrium_value': 104.45020605234907,
+    'force_constant': 3.7937183846251475e-23,
+    'equilibrium_value_UB': 1.5140000000000001e-10,
+    'force_constant_UB': 4.9816171212814925e-19,
+    'name': 'UreyBradleyAngle',
+    'type': 'angle',
+    'functional_form': 'urey_bradley',
+}
+data_ureybradley_angle = (
+    UreyBradleyAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 1.823 * ureg.radian,
+        'force_constant': 75 * ureg.kJ / MOL / ureg.radian**2,
+        'equilibrium_value_UB': 1.514 * ureg.angstrom,
+        'force_constant_UB': 300 * ureg.kJ / MOL / ureg.m**2,
+    },
+    results_ureybradley_angle,
 )
 
 # tabulated
@@ -575,31 +663,7 @@ data_tabulated_angle = (
             2.023,
         ]
         * ureg.radian,
-        # 'energies': [ # ! These are the exact energies. We will test the auto-generation of these energies from the forces.
-        #     1.5,
-        #     1.20083102,
-        #     0.93490305,
-        #     0.70221607,
-        #     0.50277008,
-        #     0.3365651,
-        #     0.20360111,
-        #     0.10387812,
-        #     0.03739612,
-        #     0.00415512,
-        #     0.00415512,
-        #     0.03739612,
-        #     0.10387812,
-        #     0.20360111,
-        #     0.3365651,
-        #     0.50277008,
-        #     0.70221607,
-        #     0.93490305,
-        #     1.20083102,
-        #     1.5,
-        # ]
-        # * ureg.kJ
-        # / MOL,
-        'forces': [
+        'forces': [  # ! This time input the forces and test the auto-generation of energies
             15.0,
             13.42105263,
             11.84210526,
@@ -632,13 +696,16 @@ data_tabulated_angle = (
 @pytest.mark.parametrize(
     'potential_class, n_interactions, n_particles, particle_labels, particle_indices, parameters, results',
     [
-        # data_harmonic_bond,
-        # data_cubic_bond,
-        # data_morse_bond,
-        # data_fene_bond,
+        data_harmonic_bond,
+        data_cubic_bond,
+        data_morse_bond,
+        data_fene_bond,
         data_tabulated_bond,
-        # data_custom_bond,
+        data_custom_bond,
         data_harmonic_angle,
+        data_cosine_angle,
+        data_fourier_angle,
+        data_ureybradley_angle,
         data_tabulated_angle,
     ],
 )
