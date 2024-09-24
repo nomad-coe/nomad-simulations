@@ -24,8 +24,8 @@ from nomad.datamodel import EntryArchive
 
 from nomad_simulations.schema_packages.properties import ElectronicEigenvalues
 
+from ..conftest import generate_electronic_eigenvalues
 from . import logger
-from .conftest import generate_electronic_eigenvalues, generate_simulation
 
 
 class TestElectronicEigenvalues:

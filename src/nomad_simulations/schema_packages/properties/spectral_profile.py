@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 import pint
-from nomad.config import config
 from nomad.metainfo import MEnum, Quantity, SubSection
 
 if TYPE_CHECKING:
@@ -15,10 +14,6 @@ from nomad_simulations.schema_packages.physical_property import PhysicalProperty
 from nomad_simulations.schema_packages.properties.band_gap import ElectronicBandGap
 from nomad_simulations.schema_packages.utils import get_sibling_section, get_variables
 from nomad_simulations.schema_packages.variables import Energy2 as Energy
-
-configuration = config.get_plugin_entry_point(
-    'nomad_simulations.schema_packages:nomad_simulations_plugin'
-)
 
 
 class SpectralProfile(PhysicalProperty):

@@ -2,7 +2,6 @@ from typing import TYPE_CHECKING, Optional, Union
 
 import numpy as np
 import pint
-from nomad.config import config
 from nomad.metainfo import Quantity, SubSection
 
 if TYPE_CHECKING:
@@ -19,10 +18,6 @@ from nomad_simulations.schema_packages.physical_property import (
 from nomad_simulations.schema_packages.properties.band_gap import ElectronicBandGap
 from nomad_simulations.schema_packages.properties.fermi_surface import FermiSurface
 from nomad_simulations.schema_packages.utils import get_sibling_section
-
-configuration = config.get_plugin_entry_point(
-    'nomad_simulations.schema_packages:nomad_simulations_plugin'
-)
 
 
 class BaseElectronicEigenvalues(PhysicalProperty):

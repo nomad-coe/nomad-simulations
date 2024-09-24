@@ -14,7 +14,6 @@ from matid.classification.classifications import (
     Surface,
 )
 from nomad.atomutils import Formula, get_normalized_wyckoff, search_aflow_prototype
-from nomad.config import config
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
 from nomad.datamodel.metainfo.basesections import Entity, System
@@ -30,10 +29,6 @@ from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.utils import (
     get_sibling_section,
     is_not_representative,
-)
-
-configuration = config.get_plugin_entry_point(
-    'nomad_simulations.schema_packages:nomad_simulations_plugin'
 )
 
 
