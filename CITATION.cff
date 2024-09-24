@@ -5,18 +5,18 @@ message: >-
   metadata from this file.
 type: software
 authors:
-  - given-names: Nathan
-    family-names: Daelman
-    orcid: 'https://orcid.org/0000-0002-7647-1816'
-  - given-names: Bernadette
-    family-names: Mohr
-    orcid: 'https://orcid.org/0000-0003-0903-0073'
   - given-names: José M.
     family-names: Pizarro
     orcid: 'https://orcid.org/0000-0002-6751-8192'
   - given-names: Esma B.
     family-names: Boydas
     orcid: 'https://orcid.org/0009-0005-6729-4706'
+  - given-names: Nathan
+    family-names: Daelman
+    orcid: 'https://orcid.org/0000-0002-7647-1816'
+  - given-names: Bernadette
+    family-names: Mohr
+    orcid: 'https://orcid.org/0000-0003-0903-0073'
   - given-names: Joseph F.
     family-names: Rudzinski
     orcid: 'https://orcid.org/0000-0003-3403-640X'
@@ -25,8 +25,9 @@ repository-code: 'https://github.com/nomad-coe/nomad-simulations'
 url: 'https://nomad-coe.github.io/nomad-simulations/'
 abstract: >-
   `nomad-simulations` is a plugin for the NOMAD software (https://zenodo.org/doi/10.5281/zenodo.8366162)
-  providing a common data schema for materials science simulations. This schema is utilized
-  within the many available standard parsers in order to convert the output of simulations
-  into a uniform, structured data format. The plugin is community-driven, and users are
-  encouraged to contribtue towards providing Findable, Accessible, Interoperable, and Reusable (FAIR) data.
+  providing a common data standard and analysis tools for parsed Materials Science and Quantum Chemistry
+  simulations. This standard is used as a template and is populated by the many available NOMAD parsers to transform their
+  inputs / outputs into a structured data format. This plugin is community-driven, and users are encourage to
+  contribute towards providing Findable, Accessible, Interoperable, and Reusable (FAIR) data.
+
 license: Apache-2.0
