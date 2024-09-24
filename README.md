@@ -162,8 +162,7 @@ plugins:
 Once you modify your `nomad.yaml` file adding `include`, all the default plugins will be disconnected, so you will need to include them as well.
 
 ## How to cite this work
-NOMAD Simulations, José M. Pizarro, Esma B. Boydas, Nathan Daelman, Alvin Noe Ladines,
-Bernadette Mohr, and Joseph F. https://doi.org/`<zenodo_doi>`
+Pizarro, J.M., Boydas, E.B., Daelman, N., Ladines, A.N., Mohr, B. & Rudzinski, J.F., NOMAD Simulations [Computer software]. https://doi.org/xxxxx
 
 ## Main contributors
 | Name | E-mail     | Topics | Github profiles |
