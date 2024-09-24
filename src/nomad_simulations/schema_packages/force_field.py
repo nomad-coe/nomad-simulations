@@ -252,10 +252,10 @@ class TabulatedPotential(Potential):
                     )
                     if np.all([x < tol for x in energies_diff]):
                         print('consistent energies')
-                        # logger.warning(
-                        #     f'Forces were generated from energies in {self.name},'
-                        #     f' but appear to be roughly consistent, with rtol={tol}. '
-                        # )
+                        logger.warning(
+                            f'Forces were generated from energies in {self.name},'
+                            f' but appear to be roughly consistent, with rtol={tol}. '
+                        )
                     else:
                         # logger.warning('inconsistent energies')
                         print('inconsistent energies')
@@ -670,3 +670,4 @@ class ForceField(ModelMethod):
         super().normalize(archive, logger)
 
         self.name = 'ForceField'
+        logger.warning('in force field')

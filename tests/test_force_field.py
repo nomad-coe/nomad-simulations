@@ -24,7 +24,9 @@ from nomad_simulations.schema_packages.force_field import (
 from nomad_simulations.schema_packages.numerical_settings import ForceCalculations
 
 from nomad.datamodel import EntryArchive
-from structlog.stdlib import BoundLogger
+
+# from structlog.stdlib import BoundLogger
+from . import logger
 from nomad.units import ureg
 
 
@@ -621,7 +623,7 @@ def test_potentials(
     populate_parameters(sec_potential, parameters)
 
     sec_FF.contributions.append(sec_potential)
-    sec_FF.contributions[-1].normalize(EntryArchive, BoundLogger)
+    sec_FF.contributions[-1].normalize(EntryArchive, logger)  # BoundLogger)
 
     potential_dict = sec_FF.contributions[-1].m_to_dict()
     potential_dict = {
