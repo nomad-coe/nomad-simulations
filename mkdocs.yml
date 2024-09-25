@@ -8,7 +8,9 @@ nav:
   - Simulation schema:
     - Overview: general.md
     - ModelSystem: model_system/model_system.md
-    - ModelMethod: model_method/model_method.md
+    - ModelMethod:
+      - ModelMethod: model_method/model_method.md
+      - BasisSet: model_method/basis_set.md
     - Outputs: outputs/outputs.md
   - How to use the Simulation schema: howto_use.md
   - The normalize function: normalize.md
