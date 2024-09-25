@@ -13,6 +13,29 @@ nav:
   - How to use the Simulation schema: howto_use.md
   - The normalize function: normalize.md
   - Contact: contact.md
+  - References:
+    - general.py: references/general.md
+    - model_system.py: references/model_system.md
+    - atoms_state.py: references/atoms_state.md
+    - model_method.py: references/model_method.md
+    - numerical_settings.py: references/numerical_settings.md
+    - basis_set.py: references/basis_set.md
+    - outputs.py: references/outputs.md
+    - physical_property.py: references/physical_property.md
+    - variables.py: references/variables.md
+    - Properties:
+      - band_gap.py: references/properties/band_gap.md
+      - band_structure.py: references/properties/band_structure.md
+      - energies.py: references/properties/energies.md
+      - fermi_surface.py: references/properties/fermi_surface.md
+      - forces.py: references/properties/forces.md
+      - greens_function.py: references/properties/greens_function.md
+      - hopping_matrix.py: references/properties/hopping_matrix.md
+      - permittivity.py: references/properties/permittivity.md
+      - spectral_profile.py: references/properties/spectral_profile.md
+      - thermodynamics.py: references/properties/thermodynamics.md
+    - Utils:
+      - utils.py: references/utils/utils.md
 theme:
   name: material
   font:
@@ -39,6 +62,17 @@ theme:
         name: Switch to light mode
 plugins:
   - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_bases: true  # show inheritance from classes
+            show_source: true  # show source code
+            show_if_no_docstring: true  # show methods if they don't have docstrings
+            show_labels: false  # not showing labels in class attrs
+            docstring_section_style: spacy  # different style for input parameters of methods
+            members_order: source  # order of definitions according to source code
   # - bibtex:
       # bib_file: docs/assets/refs.bib
 markdown_extensions:
@@ -66,6 +100,7 @@ extra_css:
 extra_javascript:
   - 'https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js'
   - 'https://unpkg.com/cytoscape@3.19.1/dist/cytoscape.min.js'
+  - 'https://unpkg.com/mermaid@10.9.0/dist/mermaid.min.js'
   # - assets/code/parse.js
 extra:
   version: 0.1
