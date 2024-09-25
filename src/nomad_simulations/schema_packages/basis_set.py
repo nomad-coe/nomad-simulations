@@ -190,9 +190,40 @@ class AtomCenteredFunction(ArchiveSection):
     Specifies a single function (term) in an atom-centered basis set.
     """
 
-    pass
+    function_type = Quantity(
+        type=str,
+        description="""
+        Type of the function (e.g. GTO for Gaussian, STO for Slater)
+        """,
+    )
 
-    # TODO: design system for writing basis functions like gaussian or slater orbitals
+    exponents = Quantity(
+        type=np.float32,
+        shape=['*'],
+        description="""
+        List of exponents for the basis function.
+        """,
+    )
+
+    contraction_coefficients = Quantity(
+        type=np.float32,
+        shape=['*'],
+        description="""
+        List of contraction coefficients corresponding to the exponents.
+        """,
+    )
+
+    atom_state = SubSection(sub_section=AtomsState.m_def, repeats=False)
+
+    def __init__(self, atom_state: AtomsState, function_type: str, exponents: list, contraction_coefficients: list):
+        self.atom_state = atom_state
+        self.function_type = function_type
+        self.exponents = exponents
+        self.contraction_coefficients = contraction_coefficients
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        self.name = self.m_def.name
 
 
 class AtomCenteredBasisSet(BasisSetComponent):
