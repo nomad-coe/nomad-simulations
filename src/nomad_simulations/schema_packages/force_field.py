@@ -268,7 +268,6 @@ class TabulatedPotential(Potential):
                     )
 
             if self.forces is not None and self.energies is None:
-                print('in gen energies')
                 try:
                     # generated energies from forces numerically using spline
                     self.energies = self.compute_energies(
@@ -308,8 +307,38 @@ class TabulatedPotential(Potential):
                     )
 
 
-class PolynomialPotential(Potential):
+class PolynomialForceConstant(ParameterEntry):
     """
+    Section defining a force constant for a potential of polynomial form.
+    """
+
+    name = Quantity(
+        type=str,
+        shape=[],
+        description="""
+        Name of the force constant.
+        """,
+    )
+
+    exponent = Quantity(
+        type=np.int32,
+        shape=[],
+        description="""
+        Exponent for this term in the polynomial.
+        """,
+    )
+
+    value = Quantity(
+        type=np.float64,
+        shape=[],
+        description="""
+        Value of the force constant.
+        """,
+    )
+
+
+class PolynomialPotential(Potential):
+    r"""
     Abstract class for potentials with polynomial form:
     $V(x) = [\left k_1 (x - x_0) + k_2 (x - x_0)^2 + x_3 (x - x_0)^3 + \dots + C$,
     where $\{x_1, x_2, x_3 \dots}$ are the `force_constants` for each term in the polynomial
@@ -318,7 +347,7 @@ class PolynomialPotential(Potential):
     """
 
     force_constants = SubSection(
-        sub_section=ParameterEntry.m_def,
+        sub_section=PolynomialForceConstant.m_def,
         repeats=True,
         description="""
         List of force constants value and corresponding unit for polynomial potentials.
@@ -329,13 +358,17 @@ class PolynomialPotential(Potential):
         super().normalize(archive, logger)
 
         self.name = 'PolynomialPotential'
+        if not self.functional_form:
+            self.functional_form = 'polynomial'
+        elif self.functional_form != 'polynomial':
+            logger.warning('Incorrect functional form set for PolynomialPotential.')
 
 
 class BondPotential(Potential):
     """
     Section containing information about bond potentials.
 
-    Suggested types are: harmonic, cubic, Morse, fene, tabulated
+    Suggested types are: harmonic, cubic, polynomial, Morse, fene, tabulated
     """
 
     equilibrium_value = Quantity(
@@ -419,47 +452,19 @@ class CubicBond(BondPotential):
             logger.warning('Incorrect functional form set for CubicBond.')
 
 
-# TODO Add Fourth Power potential from gromacs, might want to make it a more general quartic polynomial, even though it's not as general
-# class QuarticBond(BondPotential):
-#     r"""
-#     Section containing information about a Cubic bond potential:
-#     $V(r) = \frac{1}{2} k_r (r - r_0)^2 + \frac{1}{3} k_c (r - r_0)^3 + C$,
-#     where $k_r$ is the (harmonic) `force_constant`, $k_c$ is the `force_constant_cubic`,
-#     and $r_0$ is the `equilibrium_value` of $r$.
-#     C is an arbitrary constant (not stored).
-#     """
-
-#     force_constant_cubic = Quantity(
-#         type=np.float64,
-#         shape=[],
-#         unit='J / m**3',
-#         description="""
-#         Specifies the cubic force constant of the bond potential.
-#         """,
-#     )
-
-#     def normalize(self, archive, logger) -> None:
-#         super().normalize(archive, logger)
-
-#         self.name = 'CubicBond'
-#         if not self.functional_form:
-#             self.functional_form = 'cubic'
-#         elif self.functional_form != 'cubic':
-#             logger.warning('Incorrect functional form set for CubicBond.')
-
-
 class PolynomialBond(PolynomialPotential, BondPotential):
     """
     Section containing information about a polynomial bond potential:
     """
 
     def __init__(self):
+        super().__init__()
         docstring = PolynomialPotential.__doc__
         pattern = r'\$V\(x\)(.*?)(\(not stored\)\.)'
         match = re.search(pattern, docstring, re.DOTALL)
         extracted_text = '<functional form missing>'
         if match:
-            extracted_text = match.group(1).strip()
+            extracted_text = match.group().strip()  # .group(1).strip()
         self.__doc__ = rf"""{self.__doc__} {extracted_text}.
             Here the dependent variable of the potential, $x$, corresponds to the bond distance."""
 
@@ -572,7 +577,7 @@ class AnglePotential(Potential):
     """
     Section containing information about angle potentials.
 
-    Suggested types are: harmonic, cosine, fourier_series, urey_bradley, tabulated
+    Suggested types are: harmonic, cosine, restricted_cosinse, fourier_series, urey_bradley, polynomial, tabulated
     """
 
     equilibrium_value = Quantity(
@@ -745,12 +750,13 @@ class PolynomialAngle(PolynomialPotential, AnglePotential):
     """
 
     def __init__(self):
+        super().__init__()
         docstring = PolynomialPotential.__doc__
         pattern = r'\$V\(x\)(.*?)(\(not stored\)\.)'
         match = re.search(pattern, docstring, re.DOTALL)
         extracted_text = '<functional form missing>'
         if match:
-            extracted_text = match.group(1).strip()
+            extracted_text = match.group().strip()  # .group(1).strip()
         self.__doc__ = rf"""{self.__doc__} {extracted_text}.
             Here the dependent variable of the potential, $x$, corresponds to the angle between three particles."""
 
@@ -788,6 +794,81 @@ class TabulatedAngle(AnglePotential, TabulatedPotential):
         super().normalize(archive, logger)
 
         self.name = 'TabulatedAngle'
+
+
+class DihedralPotential(Potential):
+    """
+    Section containing information about dihedral potentials.
+
+    Suggested types are: fourier_series, tabulated
+
+    # ? Something about angle convention?
+    """
+
+    equilibrium_value = Quantity(
+        type=np.float64,
+        unit='degree',
+        shape=[],
+        description="""
+        Specifies the equilibrium dihedral angle.
+        """,
+    )
+
+    force_constant = Quantity(
+        type=np.float64,
+        shape=[],
+        unit='J / degree**2',
+        description="""
+        Specifies the force constant of the dihedral angle potential.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'DihedralPotential'
+        if not self.type:
+            self.type = 'dihedral'
+        elif self.type != 'dihedral':
+            logger.warning('Incorrect type set for DihedralPotential.')
+
+        if self.n_particles:
+            if self.n_particles != 4:
+                logger.warning(
+                    'Incorrect number of particles set for DihedralPotential.'
+                )
+            else:
+                self.n_particles = 4
+
+
+class TabulatedDihedral(DihedralPotential, TabulatedPotential):
+    """
+    Section containing information about a tabulated bond potential. The value of the potential and/or force
+    is stored for a set of corresponding bin distances.
+    """
+
+    bins = Quantity(
+        type=np.float64,
+        unit='degree',
+        shape=[],
+        description="""
+        List of bin dihedral angles.
+        """,
+    )
+
+    forces = Quantity(
+        type=np.float64,
+        unit='J/degree',
+        shape=[],
+        description="""
+        List of force values associated with each bin.
+        """,
+    )
+
+    def normalize(self, archive, logger) -> None:
+        super().normalize(archive, logger)
+
+        self.name = 'TabulatedDihedral'
 
 
 class ForceField(ModelMethod):

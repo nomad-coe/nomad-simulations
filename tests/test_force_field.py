@@ -14,6 +14,8 @@ from nomad_simulations.schema_packages.force_field import (
     BondPotential,
     HarmonicBond,
     CubicBond,
+    PolynomialForceConstant,
+    PolynomialBond,
     MorseBond,
     FeneBond,
     TabulatedBond,
@@ -23,6 +25,7 @@ from nomad_simulations.schema_packages.force_field import (
     RestrictedCosineAngle,
     FourierSeriesAngle,
     UreyBradleyAngle,
+    PolynomialAngle,
     TabulatedAngle,
 )
 from nomad_simulations.schema_packages.numerical_settings import ForceCalculations
@@ -217,7 +220,56 @@ data_cubic_bond = (
     results_cubic_bond,
 )
 
-# TODO add polynomial bond
+# polynomial
+results_polynomial_bond = {
+    'n_interactions': 3,
+    'n_particles': 2,
+    'particle_indices': [[0, 1], [2, 3], [4, 5]],
+    'particle_labels': [['O', 'H'], ['O', 'H'], ['O', 'H']],
+    'equilibrium_value': 9.6e-11,
+    'force_constants': [
+        {
+            'name': 'k_2',
+            'value': 8.302695202135821e-21,
+            'unit': 'kilojoule / nanometer ** 2',
+            'exponent': 2,
+        },
+        {
+            'name': 'k_4',
+            'value': 3.4871319848970445e-21,
+            'unit': 'kilojoule / nanometer ** 4',
+            'exponent': 4,
+        },
+    ],
+    'name': 'PolynomialBond',
+    'type': 'bond',
+    'functional_form': 'polynomial',
+}
+data_polynomial_bond = (
+    PolynomialBond,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 0.96 * ureg.angstrom,
+        'force_constants': [
+            PolynomialForceConstant(
+                name='k_2',
+                exponent=2,
+                value=5000.0 / MOL,
+                unit=str(ureg.kJ / ureg.nanometer**2),
+            ),
+            PolynomialForceConstant(
+                name='k_4',
+                exponent=4,
+                value=2100.0 / MOL,
+                unit=str(ureg.kJ / ureg.nanometer**4),
+            ),
+        ],
+    },
+    results_polynomial_bond,
+)
 
 # morse
 results_morse_bond = {
@@ -500,8 +552,30 @@ data_cosine_angle = (
     results_cosine_angle,
 )
 
-# TODO add RestrictedCosineAngle
-# TODO add PolynomialAngle
+# restricted cosine
+results_restrictedcosine_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'equilibrium_value': 104.45020605234907,
+    'force_constant': 8.70026082874034e-23,
+    'name': 'RestrictedCosineAngle',
+    'type': 'angle',
+    'functional_form': 'restricted_cosine',
+}
+data_restrictedcosine_angle = (
+    RestrictedCosineAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 1.823 * ureg.radian,
+        'force_constant': 172 * ureg.kJ / MOL / ureg.radian**2,
+    },
+    results_restrictedcosine_angle,
+)
 
 # fourier_series
 results_fourier_angle = {
@@ -555,6 +629,69 @@ data_ureybradley_angle = (
         'force_constant_UB': 300 * ureg.kJ / MOL / ureg.m**2,
     },
     results_ureybradley_angle,
+)
+
+# polynomial
+results_polynomial_angle = {
+    'n_interactions': 2,
+    'n_particles': 3,
+    'particle_indices': [[0, 1, 2], [3, 4, 5]],
+    'particle_labels': [['O', 'H', 'H'], ['O', 'H', 'H']],
+    'equilibrium_value': 104.45020605234907,
+    'force_constants': [
+        {
+            'name': 'k_2',
+            'value': 1.245404280320373e-22,
+            'unit': 'kilojoule / radian ** 2',
+            'exponent': 2,
+        },
+        {
+            'name': 'k_3',
+            'value': -3.3210780808543285e-24,
+            'unit': 'kilojoule / radian ** 4',
+            'exponent': 3,
+        },
+        {
+            'name': 'k_4',
+            'value': 7.472425681922239e-24,
+            'unit': 'kilojoule / radian ** 4',
+            'exponent': 4,
+        },
+    ],
+    'name': 'PolynomialAngle',
+    'type': 'angle',
+    'functional_form': 'polynomial',
+}
+data_polynomial_angle = (
+    PolynomialAngle,
+    n_interactions,
+    n_particles,
+    particle_labels,
+    particle_indices,
+    {
+        'equilibrium_value': 1.823 * ureg.radian,
+        'force_constants': [
+            PolynomialForceConstant(
+                name='k_2',
+                exponent=2,
+                value=75 / MOL,
+                unit=str(ureg.kJ / ureg.radian**2),
+            ),
+            PolynomialForceConstant(
+                name='k_3',
+                exponent=3,
+                value=-2.0 / MOL,
+                unit=str(ureg.kJ / ureg.radian**4),
+            ),
+            PolynomialForceConstant(
+                name='k_4',
+                exponent=4,
+                value=4.5 / MOL,
+                unit=str(ureg.kJ / ureg.radian**4),
+            ),
+        ],
+    },
+    results_polynomial_angle,
 )
 
 # tabulated
@@ -698,14 +835,17 @@ data_tabulated_angle = (
     [
         data_harmonic_bond,
         data_cubic_bond,
+        data_polynomial_bond,
         data_morse_bond,
         data_fene_bond,
         data_tabulated_bond,
         data_custom_bond,
         data_harmonic_angle,
         data_cosine_angle,
+        data_restrictedcosine_angle,
         data_fourier_angle,
         data_ureybradley_angle,
+        data_polynomial_angle,
         data_tabulated_angle,
     ],
 )
