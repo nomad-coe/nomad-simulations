@@ -2,19 +2,26 @@
 ![](https://coveralls.io/repos/github/nomad-coe/nomad-simulations/badge.svg?branch=develop)
 ![](https://img.shields.io/pypi/v/nomad-simulations)
 ![](https://img.shields.io/pypi/pyversions/nomad-simulations)
+[![DOI](https://zenodo.org/badge/744481756.svg)](https://zenodo.org/badge/latestdoi/744481756)
 
 
 
 # `nomad-simulations`
 
-This is a plugin for [NOMAD](https://nomad-lab.eu) which contains the base sections definitions for materials science simulations. This schema can be used at any prefered level by the user, it can be modified and extended, and we welcome external collaborators.
+The `nomad-simulations` is an open-source Python package for managing Materials Science simulation data. It is following the plugin architechture of [NOMAD](https://nomad-lab.eu). This package contains a set of section definitions (Python classes) with quantities (attributes) and methods defined to automate data extraction from different simulation codes. These section definitions can be used at any prefered level by the user, they can be modified and extended, and we welcome external collaborators.
+
+Read more in the [official documentation](https://nomad-coe.github.io/nomad-simulations/) page.
 
 
 ## Getting started
 
 `nomad-simulations` can be installed as a PyPI package using `pip`:
+
+> [!WARNING]
+> Unfortunately, the current plugin mechanism is not supported by the latest nomad-lab version on PyPI and therefore an index url pointing to the NOMAD Gitlab registry needs to be added.
+
 ```sh
-pip install nomad-simulations
+pip install nomad-simulations --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
 
@@ -46,6 +53,11 @@ uv pip install '.[dev]'
 The plugin is still under development. If you would like to contribute, install the package in editable mode (with the added `-e` flag):
 ```sh
 uv pip install -e '.[dev]'
+```
+
+**Note:** If you do not use `uv`, you need to add the `--index-url` flag as in the PyPI command for installing the package:
+```sh
+pip install -e '.[dev]' --index-url https://gitlab.mpcdf.mpg.de/api/v4/projects/2187/packages/pypi/simple
 ```
 
 
@@ -138,7 +150,7 @@ Read the [NOMAD plugin documentation](https://nomad-lab.eu/prod/v1/staging/docs/
 Modify the script under `/nomad/scripts/install_default_plugins.sh` and add the path to this repository pointing to the `@develop` branch:
 ```sh
 <other-content-in-install_default_plugins.sh...>
-pip install git+https://github.com/nomad-coe/nomad-simulations.git@develop
+git+https://github.com/nomad-coe/nomad-simulations.git@develop
 ```
 
 Then, go to your NOMAD folder, activate your NOMAD virtual environment and run:
@@ -160,6 +172,8 @@ plugins:
 **Note!**
 Once you modify your `nomad.yaml` file adding `include`, all the default plugins will be disconnected, so you will need to include them as well.
 
+## How to cite this work
+Pizarro, J.M., Boydas, E.B., Daelman, N., Ladines, A.N., Mohr, B. & Rudzinski, J.F., NOMAD Simulations [Computer software]. https://doi.org/xxxxx
 
 ## Main contributors
 | Name | E-mail     | Topics | Github profiles |
