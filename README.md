@@ -2,7 +2,7 @@
 ![](https://coveralls.io/repos/github/nomad-coe/nomad-simulations/badge.svg?branch=develop)
 ![](https://img.shields.io/pypi/v/nomad-simulations)
 ![](https://img.shields.io/pypi/pyversions/nomad-simulations)
-[![DOI](https://zenodo.org/badge/744481756.svg)](https://zenodo.org/badge/latestdoi/744481756)
+[![DOI](https://zenodo.org/badge/744481756.svg)](https://zenodo.org/doi/10.5281/zenodo.13838811)
 
 
 
