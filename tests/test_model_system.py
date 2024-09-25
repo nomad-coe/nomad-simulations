@@ -1,21 +1,3 @@
-#
-# Copyright The NOMAD Authors.
-#
-# This file is part of NOMAD. See https://nomad-lab.eu for further info.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 from typing import Optional
 
 import numpy as np
@@ -72,12 +54,11 @@ class TestCell:
             ),  # different ordered positions but same cell
         ],
     )
-    def test_eq_ne(self, cell_1: Cell, cell_2: Cell, result: bool):
+    def test_is_equal_cell(self, cell_1: Cell, cell_2: Cell, result: bool):
         """
-        Test the `__eq__` and `__ne__` operator functions of `Cell`.
+        Test the `is_equal_cell` methods of `Cell`.
         """
-        assert (cell_1 == cell_2) == result
-        assert (cell_1 != cell_2) != result
+        assert cell_1.is_equal_cell(other=cell_2) == result
 
 
 class TestAtomicCell:
@@ -184,12 +165,11 @@ class TestAtomicCell:
             ),  # different ordered positions but same chemical symbols
         ],
     )
-    def test_eq_ne(self, cell_1: Cell, cell_2: Cell, result: bool):
+    def test_is_equal_cell(self, cell_1: Cell, cell_2: Cell, result: bool):
         """
-        Test the `__eq__` and `__ne__` operator functions of `AtomicCell`.
+        Test the `is_equal_cell` methods of `AtomicCell`.
         """
-        assert (cell_1 == cell_2) == result
-        assert (cell_1 != cell_2) != result
+        assert cell_1.is_equal_cell(other=cell_2) == result
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
