@@ -191,9 +191,16 @@ class AtomCenteredFunction(ArchiveSection):
     """
 
     function_type = Quantity(
-        type=str,
+        type=MEnum('S', 'P', 'D', 'F', 'G', 'H', 'I', 'J'),
         description="""
-        Type of the function (e.g. GTO for Gaussian, STO for Slater)
+        the angular momentum of the shell to be added.
+        """,
+    )
+
+    n_primitive = Quantity(
+        type=int,
+        description="""
+        Number of primitives.
         """,
     )
 
@@ -215,15 +222,23 @@ class AtomCenteredFunction(ArchiveSection):
 
     atom_state = SubSection(sub_section=AtomsState.m_def, repeats=False)
 
-    def __init__(self, atom_state: AtomsState, function_type: str, exponents: list, contraction_coefficients: list):
+    def __init__(
+        self,
+        atom_state: AtomsState,
+        function_type: str,
+        n_primitive: int,
+        exponents: list,
+        contraction_coefficients: list,
+    ):
         self.atom_state = atom_state
         self.function_type = function_type
+        self.n_primitive = n_primitive
         self.exponents = exponents
         self.contraction_coefficients = contraction_coefficients
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        self.name = self.m_def.name
+        # self.name = self.m_def.name
 
 
 class AtomCenteredBasisSet(BasisSetComponent):
@@ -265,7 +280,7 @@ class AtomCenteredBasisSet(BasisSetComponent):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        self.name = self.m_def.name
+        # self.name = self.m_def.name
         # TODO: set name based on basis functions
         # ? use basis set names from Basis Set Exchange
 
