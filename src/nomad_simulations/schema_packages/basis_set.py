@@ -206,7 +206,7 @@ class AtomCenteredFunction(ArchiveSection):
 
     exponents = Quantity(
         type=np.float32,
-        shape=['*'],
+        shape=['n_primitive'],
         description="""
         List of exponents for the basis function.
         """,
@@ -214,27 +214,11 @@ class AtomCenteredFunction(ArchiveSection):
 
     contraction_coefficients = Quantity(
         type=np.float32,
-        shape=['*'],
+        shape=['n_primitive'],
         description="""
         List of contraction coefficients corresponding to the exponents.
         """,
     )
-
-    atom_state = SubSection(sub_section=AtomsState.m_def, repeats=False)
-
-    def __init__(
-        self,
-        atom_state: AtomsState,
-        function_type: str,
-        n_primitive: int,
-        exponents: list,
-        contraction_coefficients: list,
-    ):
-        self.atom_state = atom_state
-        self.function_type = function_type
-        self.n_primitive = n_primitive
-        self.exponents = exponents
-        self.contraction_coefficients = contraction_coefficients
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -271,6 +255,14 @@ class AtomCenteredBasisSet(BasisSetComponent):
         type=str,
         description="""
         AuxJK type of basis set.
+        """,
+    )
+
+    atoms_ref = Quantity(
+        type=AtomsState,
+        shape=['*'],
+        description="""
+        References to the `AtomsState` sections that define the atoms this basis set applies to.
         """,
     )
 
