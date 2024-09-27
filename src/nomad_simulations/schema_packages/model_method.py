@@ -429,20 +429,39 @@ class TB(ModelMethodElectronic):
         a_eln=ELNAnnotation(component='EnumEditQuantity'),
     )
 
-    # ? these 2 quantities will change when `BasisSet` is defined
-    n_orbitals = Quantity(
+    # ? these 4 quantities will change when `BasisSet` is defined
+    n_orbitals_per_atom = Quantity(
         type=np.int32,
         description="""
-        Number of orbitals used as a basis to obtain the `TB` model.
+        Number of orbitals per atom in the unit cell used as a basis to obtain the `TB` model. This
+        quantity is resolved from `orbitals_ref` via normalization.
+        """,
+    )
+
+    n_atoms_per_unit_cell = Quantity(
+        type=np.int32,
+        description="""
+        Number of atoms per unit cell relevant for the `TB` model. This quantity is resolved from
+        `n_total_orbitals` and `n_orbitals_per_atom` via normalization.
+        """,
+    )
+
+    n_total_orbitals = Quantity(
+        type=np.int32,
+        description="""
+        Total number of orbitals used as a basis to obtain the `TB` model. This quantity is parsed by
+        the specific parsing code. This is related with `n_orbitals_per_atom` and `n_atoms_per_unit_cell` as:
+            `n_total_orbitals` = `n_orbitals_per_atom` * `n_atoms_per_unit_cell`
         """,
     )
 
     orbitals_ref = Quantity(
         type=OrbitalsState,
-        shape=['n_orbitals'],
+        shape=['n_orbitals_per_atom'],
         description="""
-        References to the `OrbitalsState` sections that contain the orbitals information which are
-        relevant for the `TB` model.
+        References to the `OrbitalsState` sections that contain the orbitals per atom in the unit cell information which are
+        relevant for the `TB` model. This quantity is resolved from normalization when the active atoms sub-systems `model_system.model_system[*]`
+        are populated.
 
         Example: hydrogenated graphene with 3 atoms in the unit cell. The full list of `AtomsState` would
         be
@@ -560,8 +579,14 @@ class TB(ModelMethodElectronic):
             model_systems=model_systems, logger=logger
         )
         if orbitals_ref is not None and len(orbitals_ref) > 0 and not self.orbitals_ref:
-            self.n_orbitals = len(orbitals_ref)
+            self.n_orbitals_per_atom = len(orbitals_ref)
             self.orbitals_ref = orbitals_ref
+
+        # Resolve `n_atoms_per_unit_cell` from `n_total_orbitals` and `n_orbitals_per_atom`
+        if self.n_orbitals_per_atom is not None and self.n_total_orbitals is not None:
+            self.n_atoms_per_unit_cell = (
+                self.n_total_orbitals // self.n_orbitals_per_atom
+            )
 
 
 class Wannier(TB):
