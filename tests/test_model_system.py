@@ -193,7 +193,7 @@ class TestAtomicCell:
         """
         Test the `get_chemical_symbols` method of `AtomicCell`.
         """
-        assert atomic_cell.get_chemical_symbols() == result
+        assert atomic_cell.get_chemical_symbols(logger=logger) == result
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
@@ -334,7 +334,7 @@ class TestAtomicCell:
     ):
         atomic_cell = AtomicCell()
         atomic_cell.from_ase_atoms(ase_atoms=ase_atoms, logger=logger)
-        assert atomic_cell.get_chemical_symbols() == chemical_symbols
+        assert atomic_cell.get_chemical_symbols(logger=logger) == chemical_symbols
         assert atomic_cell.periodic_boundary_conditions == pbc
         assert (
             atomic_cell.lattice_vectors.to('angstrom').magnitude
