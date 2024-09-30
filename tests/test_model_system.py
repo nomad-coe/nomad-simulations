@@ -1,5 +1,6 @@
 from typing import Optional
 
+import ase
 import numpy as np
 import pytest
 from nomad.datamodel import EntryArchive
@@ -172,6 +173,29 @@ class TestAtomicCell:
         assert cell_1.is_equal_cell(other=cell_2) == result
 
     @pytest.mark.parametrize(
+        'atomic_cell, result',
+        [
+            (AtomicCell(), []),
+            (AtomicCell(atoms_state=[AtomsState(chemical_symbol='H')]), ['H']),
+            (
+                AtomicCell(
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='Fe'),
+                        AtomsState(chemical_symbol='O'),
+                    ]
+                ),
+                ['H', 'Fe', 'O'],
+            ),
+        ],
+    )
+    def test_get_chemical_symbols(self, atomic_cell: AtomicCell, result: list[str]):
+        """
+        Test the `get_chemical_symbols` method of `AtomicCell`.
+        """
+        assert atomic_cell.get_chemical_symbols(logger=logger) == result
+
+    @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
         [
             (
@@ -216,7 +240,7 @@ class TestAtomicCell:
             ),  # missing lattice_vectors
         ],
     )
-    def test_generate_ase_atoms(
+    def test_to_ase_atoms(
         self,
         chemical_symbols: list[str],
         atomic_numbers: list[int],
@@ -257,6 +281,71 @@ class TestAtomicCell:
             assert (ase_atoms.pbc == periodic_boundary_conditions).all()
             assert (ase_atoms.symbols.numbers == atomic_numbers).all()
             assert ase_atoms.symbols.get_chemical_formula() == formula
+
+    @pytest.mark.parametrize(
+        'ase_atoms, chemical_symbols, pbc, lattice_vectors, positions',
+        [
+            (
+                ase.Atoms(),
+                [],
+                [False, False, False],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                None,
+            ),
+            (
+                ase.Atoms(symbols='CO'),
+                ['C', 'O'],
+                [False, False, False],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                [[0, 0, 0], [0, 0, 0]],
+            ),
+            (
+                ase.Atoms(symbols='CO', pbc=True),
+                ['C', 'O'],
+                [True, True, True],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                [[0, 0, 0], [0, 0, 0]],
+            ),
+            (
+                ase.Atoms(symbols='CO', positions=[[0, 0, 0], [0, 0, 1.1]]),
+                ['C', 'O'],
+                [False, False, False],
+                [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                [[0, 0, 0], [0, 0, 1.1]],
+            ),
+            (
+                ase.Atoms(
+                    symbols='Au', positions=[[0, 5, 5]], cell=[2.9, 5, 5], pbc=[1, 0, 0]
+                ),
+                ['Au'],
+                [True, False, False],
+                [[2.9, 0, 0], [0, 5, 0], [0, 0, 5]],
+                [[0, 5, 5]],
+            ),
+        ],
+    )
+    def test_from_ase_atoms(
+        self,
+        ase_atoms: ase.Atoms,
+        chemical_symbols: list[str],
+        pbc: list[bool],
+        lattice_vectors: list,
+        positions: list,
+    ):
+        atomic_cell = AtomicCell()
+        atomic_cell.from_ase_atoms(ase_atoms=ase_atoms, logger=logger)
+        assert atomic_cell.get_chemical_symbols(logger=logger) == chemical_symbols
+        assert atomic_cell.periodic_boundary_conditions == pbc
+        assert (
+            atomic_cell.lattice_vectors.to('angstrom').magnitude
+            == np.array(lattice_vectors)
+        ).all()
+        if positions is None:
+            assert atomic_cell.positions is None
+        else:
+            assert (
+                atomic_cell.positions.to('angstrom').magnitude == np.array(positions)
+            ).all()
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, lattice_vectors, positions, vectors_results, angles_results, volume',
