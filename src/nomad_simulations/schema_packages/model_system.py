@@ -391,6 +391,27 @@ class AtomicCell(Cell):
             return False
         return True
 
+    def get_chemical_symbols(self, logger: 'BoundLogger') -> list[str]:
+        """
+        Get the chemical symbols of the atoms in the atomic cell. These are defined on `atoms_state[*].chemical_symbol`.
+
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            list: The list of chemical symbols of the atoms in the atomic cell.
+        """
+        if not self.atoms_state:
+            return []
+
+        chemical_symbols = []
+        for atom_state in self.atoms_state:
+            if not atom_state.chemical_symbol:
+                logger.warning('Could not find `AtomsState[*].chemical_symbol`.')
+                return []
+            chemical_symbols.append(atom_state.chemical_symbol)
+        return chemical_symbols
+
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
@@ -403,7 +424,7 @@ class AtomicCell(Cell):
             (Optional[ase.Atoms]): The ASE Atoms object with the basic information from the `AtomicCell`.
         """
         # Initialize ase.Atoms object with labels
-        atoms_labels = [atom_state.chemical_symbol for atom_state in self.atoms_state]
+        atoms_labels = self.get_chemical_symbols(logger=logger)
         ase_atoms = ase.Atoms(symbols=atoms_labels)
 
         # PBC
@@ -435,6 +456,34 @@ class AtomicCell(Cell):
             return None
 
         return ase_atoms
+
+    def from_ase_atoms(self, ase_atoms: ase.Atoms, logger: 'BoundLogger') -> None:
+        """
+        Parses the information from an ASE Atoms object to the `AtomicCell` section.
+
+        Args:
+            ase_atoms (ase.Atoms): The ASE Atoms object to parse.
+            logger (BoundLogger): The logger to log messages.
+        """
+        # `AtomsState[*].chemical_symbol`
+        for symbol in ase_atoms.get_chemical_symbols():
+            atom_state = AtomsState(chemical_symbol=symbol)
+            self.atoms_state.append(atom_state)
+
+        # `periodic_boundary_conditions`
+        self.periodic_boundary_conditions = ase_atoms.get_pbc()
+
+        # `lattice_vectors`
+        cell = ase_atoms.get_cell()
+        self.lattice_vectors = ase.geometry.complete_cell(cell) * ureg('angstrom')
+
+        # `positions`
+        positions = ase_atoms.get_positions()
+        if (
+            not positions.tolist()
+        ):  # ASE assigns a shape=(0, 3) array if no positions are found
+            return None
+        self.positions = positions * ureg('angstrom')
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
