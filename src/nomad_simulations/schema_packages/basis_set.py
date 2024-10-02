@@ -13,7 +13,7 @@ import pint
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import MEnum, Quantity, SubSection
+from nomad.metainfo import MEnum, Quantity, SubSection, JSON
 from nomad.units import ureg
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -191,7 +191,7 @@ class AtomCenteredFunction(ArchiveSection):
     """
 
     function_type = Quantity(
-        type=MEnum('S', 'P', 'D', 'F', 'G', 'H', 'I', 'J'),
+        type=MEnum('s', 'p', 'd', 'f', 'g', 'h', 'i', 'j'),
         description="""
         the angular momentum of the shell to be added.
         """,
@@ -224,7 +224,47 @@ class AtomCenteredFunction(ArchiveSection):
         super().normalize(archive, logger)
         # self.name = self.m_def.name
 
+class AtomCenteredBasisSet(BasisSetComponent):
+    """
+    Defines an atom-centered basis set, using a single JSON quantity for all basis set types,
+    while allowing different AtomState references for each basis set type.
+    """
 
+    basis_set_data = Quantity(
+        type=JSON,  # Use JSON to store basis set information, including atom references
+        description="""
+        JSON object containing all the basis set information along with atom references. Example:
+        {
+            "main_basis_set": {
+                "name": "cc-pVTZ",
+                "atoms_ref": [ref_to_atoms_1, ref_to_atoms_2]
+            },
+            "aux_c_basis_set": {
+                "name": "cc-pVTZ/C",
+                "atoms_ref": [ref_to_atoms_3]
+            },
+            "aux_j_basis_set": {
+                "name": "RIJ",
+                "atoms_ref": [ref_to_atoms_4]
+            },
+            "aux_jk_basis_set": {
+                "name": "aug-cc-pVTZ/JK",
+                "atoms_ref": [ref_to_atoms_1, ref_to_atoms_5]
+            }
+        }
+        """,
+    )
+
+    functional_composition = SubSection(
+        sub_section=AtomCenteredFunction.m_def, repeats=True
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+
+'''
 class AtomCenteredBasisSet(BasisSetComponent):
     """
     Defines an atom-centered basis set.
@@ -275,7 +315,7 @@ class AtomCenteredBasisSet(BasisSetComponent):
         # self.name = self.m_def.name
         # TODO: set name based on basis functions
         # ? use basis set names from Basis Set Exchange
-
+'''
 
 class APWBaseOrbital(ArchiveSection):
     """
