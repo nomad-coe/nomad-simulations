@@ -14,7 +14,6 @@ nav:
     - Outputs: outputs/outputs.md
   - How to use the Simulation schema: howto_use.md
   - The normalize function: normalize.md
-  - Contact: contact.md
   - References:
     - general.py: references/general.md
     - model_system.py: references/model_system.md
@@ -38,6 +37,7 @@ nav:
       - thermodynamics.py: references/properties/thermodynamics.md
     - Utils:
       - utils.py: references/utils/utils.md
+  - Contact: contact.md
 theme:
   name: material
   font:

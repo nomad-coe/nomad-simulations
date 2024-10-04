@@ -3,9 +3,11 @@
 <!--
 Improve these paragraphs once `Program` and `BaseSimulation` are integrated in `basesections.py`
 --->
-In NOMAD, all the simulation metadata is defined in the `Simulation` section. You can find its Python schema definition in [src/nomad_simulations/general.py](https://github.com/nomad-coe/nomad-simulations/blob/develop/src/nomad_simulations/general.py). This section will appear under the `data` section for the [*archive*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#archive) metadata structure of each [*entry*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#entry).
+In NOMAD, all the simulation metadata is defined in the `Simulation` section. You can find its Python schema definition in [src/nomad_simulations/schema_packages/general.py](https://github.com/nomad-coe/nomad-simulations/blob/develop/src/nomad_simulations/schema_packages/general.py){:target="_blank"}. This section will appear under the `data` section for the [*archive*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#archive){:target="_blank"} metadata structure of each [*entry*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#entry){:target="_blank"}.
 
-The `Simulation` section inherits from a _base section_ `BaseSimulation`. In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/base_sections.html) derived from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/) are defined. We used them to define `BaseSimulation` as an [`Activity`](http://purl.obolibrary.org/obo/BFO_0000015). The UML diagram is:
+The `Simulation` section inherits from a _base section_ `BaseSimulation`. In NOMAD, a set of [base sections](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/base_sections.html){:target="_blank"} derived from the [Basic Formal Ontology (BFO)](https://basic-formal-ontology.org/){:target="_blank"} are defined. We used them to define `BaseSimulation` as an [`Activity`](http://purl.obolibrary.org/obo/BFO_0000015){:target="_blank"}.
+<!-- TODO Fix this and all obo links -->
+The UML diagram is:
 
 <div class="click-zoom">
     <label>
@@ -47,9 +49,9 @@ The `Simulation` base section is composed of 4 main sub-sections:
 4. `Outputs`: contains all the output properties, as well as references to the `ModelSystem` used to obtain such properties. It might also contain information which will populate `ModelSystem` (e.g., atomic occupations, atomic moments, crystal field energies, etc.).
 
 !!! note "Self-consistent steps, SinglePoint entries, and more complex workflows."
-    The minimal unit for storing data in the NOMAD archive is an [*entry*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#entry). In the context of simulation data, an entry may contain data from a calculation on an individual system configuration (e.g., a single-point DFT calculation) using **only** the above-mentioned sections of the `Simulation` section. Information from self-consistent iterations to converge properties for this configuration are also contained within these sections.
+    The minimal unit for storing data in the NOMAD archive is an [*entry*](https://nomad-lab.eu/prod/v1/staging/docs/reference/glossary.html#entry){:target="_blank"}. In the context of simulation data, an entry may contain data from a calculation on an individual system configuration (e.g., a single-point DFT calculation) using **only** the above-mentioned sections of the `Simulation` section. Information from self-consistent iterations to converge properties for this configuration are also contained within these sections.
 
-    More complex calculations that involve multiple configurations require the definition of a *workflow* section within the archive. Depending on the situation, the information from individual workflow steps may be stored within a single or multiple entries. For example, for efficiency, the data from workflows involving a large amount of configurations, e.g., molecular dynamics trajectories, are stored within a single entry. Other standard workflows store the single-point data in separate entries, e.g.,  a `GW` calculation is composed of a `DFT SinglePoint` entry and a `GW SinglePoint` entry. Higher-level workflows, which simply connect a series of standard or custom workflows, are typically stored as a separate entry. You can check the [NOMAD simulations workflow schema](https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow) for more information.
+    More complex calculations that involve multiple configurations require the definition of a *workflow* section within the archive. Depending on the situation, the information from individual workflow steps may be stored within a single or multiple entries. For example, for efficiency, the data from workflows involving a large amount of configurations, e.g., molecular dynamics trajectories, are stored within a single entry. Other standard workflows store the single-point data in separate entries, e.g.,  a `GW` calculation is composed of a `DFT SinglePoint` entry and a `GW SinglePoint` entry. Higher-level workflows, which simply connect a series of standard or custom workflows, are typically stored as a separate entry. You can check the [NOMAD simulations workflow schema](https://github.com/nomad-coe/nomad-schema-plugin-simulation-workflow){:target="_blank"} for more information.
 
 The following schematic represents a simplified representation of the `Simulation` section (note that the arrows here are a simple way of visually defining _inputs_ and _outputs_):
 
@@ -62,7 +64,7 @@ The following schematic represents a simplified representation of the `Simulatio
 
 ### `Program` {#program}
 
-The `Program` base section contains all the information about the program / software / code used to perform the simulation. We consider it to be a [`(Continuant) Entity`](http://purl.obolibrary.org/obo/BFO_0000002) and contained within `BaseSimulation` as a sub-section. The detailed UML diagram is:
+The `Program` base section contains all the information about the program / software / code used to perform the simulation. We consider it to be a [`(Continuant) Entity`](http://purl.obolibrary.org/obo/BFO_0000002){:target="_blank"} and contained within `BaseSimulation` as a sub-section. The detailed UML diagram is:
 
 <div class="click-zoom">
     <label>
@@ -72,7 +74,7 @@ The `Program` base section contains all the information about the program / soft
 </div>
 
 
-When [writing a parser](https://nomad-lab.eu/prod/v1/staging/docs/howto/customization/parsers.html), we recommend to start by instantiating the `Program` section and populating its quantities, in order to get acquainted with the NOMAD parsing infrastructure.
+When [writing a parser](https://nomad-lab.eu/prod/v1/staging/docs/howto/plugins/parsers.html){:target="_blank"}, we recommend to start by instantiating the `Program` section and populating its quantities, in order to get acquainted with the NOMAD parsing infrastructure.
 
 For example, imagine we have a file which we want to parse with the following information:
 ```txt
@@ -81,7 +83,7 @@ For example, imagine we have a file which we want to parse with the following in
 ...
 ```
 
-We can parse the program `name` and `version` by matching the texts (see, e.g., [Wikipedia page for Regular expressions, also called _regex_](https://en.wikipedia.org/wiki/Regular_expression)):
+We can parse the program `name` and `version` by matching the texts (see, e.g., [Wikipedia page for Regular expressions, also called _regex_](https://en.wikipedia.org/wiki/Regular_expression){:target="_blank"}):
 
 ```python
 from nomad.parsing.file_parser import TextParser, Quantity
