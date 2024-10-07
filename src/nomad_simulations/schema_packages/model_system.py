@@ -376,38 +376,38 @@ class Cell(GeometricSpace):
         return wrapper
 
     @_check_implemented
-    def __lt__(self, other) -> bool:
+    def is_lt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) < set(
             self._generate_comparer(other.positions)
         )
 
     @_check_implemented
-    def __gt__(self, other) -> bool:
+    def is_gt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) > set(
             self._generate_comparer(other.positions)
         )
 
     @_check_implemented
-    def __le__(self, other) -> bool:
+    def is_le_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) <= set(
             self._generate_comparer(other.positions)
         )
 
     @_check_implemented
-    def __ge__(self, other) -> bool:
+    def is_ge_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) >= set(
             self._generate_comparer(other.positions)
         )
 
     @_check_implemented
-    def __eq__(self, other) -> bool:
+    def is_equal_cell(self, other) -> bool:  # TODO: improve naming
         return set(self._generate_comparer(self.positions)) == set(
             self._generate_comparer(other.positions)
         )
 
     def __ne__(self, other) -> bool:
         # this does not hold in general, but here we use finite sets
-        return not self.__eq__(other)
+        return not self.is_equal_cell(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -474,31 +474,31 @@ class AtomicCell(Cell):
         return wrapper
 
     @_check_implemented
-    def __lt__(self, other) -> bool:
+    def is_lt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) < set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
     @_check_implemented
-    def __gt__(self, other) -> bool:
+    def is_gt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) > set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
     @_check_implemented
-    def __le__(self, other) -> bool:
+    def is_le_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) <= set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
     @_check_implemented
-    def __ge__(self, other) -> bool:
+    def is_ge_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) >= set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
     @_check_implemented
-    def __eq__(self, other) -> bool:
+    def is_equal_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) == set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
