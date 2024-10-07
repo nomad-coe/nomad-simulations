@@ -233,7 +233,7 @@ class PartialOrderElement:
         return self.representative_variable.__hash__()
 
     @staticmethod
-    def _check_implemented(func: Callable):
+    def _check_implemented(func: 'Callable'):
         """
         Decorator to restrict the comparison functions to the same class.
         """
@@ -370,7 +370,7 @@ class Cell(GeometricSpace):
     )
 
     @staticmethod
-    def _generate_comparer(obj) -> Generator[Any, None, None]:
+    def _generate_comparer(obj: 'Cell') -> 'Generator[Any, None, None]':
         try:
             return ((HashedPositions(pos)) for pos in obj.positions)
         except AttributeError:
@@ -398,7 +398,7 @@ class Cell(GeometricSpace):
 
     def is_ne_cell(self, other) -> bool:
         # this does not hold in general, but here we use finite sets
-        return not self.is_equal_cell(other)
+        return (not self.is_equal_cell(other))
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -444,9 +444,7 @@ class AtomicCell(Cell):
         self.name = self.m_def.name
 
     @staticmethod
-    def _generate_comparer(
-        obj,
-    ) -> Generator[Any, None, None]:
+    def _generate_comparer(obj: 'AtomicCell') -> 'Generator[Any, None, None]':
         # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
         try:
             return (
@@ -456,7 +454,7 @@ class AtomicCell(Cell):
         except AttributeError:
             raise NotImplementedError
 
-    def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
+    def to_ase_atoms(self, logger: 'BoundLogger') -> 'Optional[ase.Atoms]':
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
         section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
@@ -646,8 +644,8 @@ class Symmetry(ArchiveSection):
     )
 
     def resolve_analyzed_atomic_cell(
-        self, symmetry_analyzer: SymmetryAnalyzer, cell_type: str, logger: 'BoundLogger'
-    ) -> Optional[AtomicCell]:
+        self, symmetry_analyzer: 'SymmetryAnalyzer', cell_type: str, logger: 'BoundLogger'
+    ) -> 'Optional[AtomicCell]':
         """
         Resolves the `AtomicCell` section from the `SymmetryAnalyzer` object and the cell_type
         (primitive or conventional).
@@ -691,8 +689,8 @@ class Symmetry(ArchiveSection):
         return atomic_cell
 
     def resolve_bulk_symmetry(
-        self, original_atomic_cell: AtomicCell, logger: 'BoundLogger'
-    ) -> tuple[Optional[AtomicCell], Optional[AtomicCell]]:
+        self, original_atomic_cell: 'AtomicCell', logger: 'BoundLogger'
+    ) -> 'tuple[Optional[AtomicCell], Optional[AtomicCell]]':
         """
         Resolves the symmetry of the material being simulated using MatID and the
         originally parsed data under original_atomic_cell. It generates two other

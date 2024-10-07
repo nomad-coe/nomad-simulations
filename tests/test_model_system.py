@@ -222,7 +222,9 @@ class TestAtomicCell:
             ),  # different position-symbol map
         ],
     )
-    def test_partial_order(self, cell_1: Cell, cell_2: Cell, result: dict[str, bool]):
+    def test_partial_order(
+        self, cell_1: 'Cell', cell_2: 'Cell', result: dict[str, bool]
+    ):
         """
         Test the comparison operators of `Cell` and `AtomicCell`.
         """
