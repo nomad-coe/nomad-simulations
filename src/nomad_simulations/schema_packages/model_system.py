@@ -51,6 +51,7 @@ from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.utils import (
     get_sibling_section,
     is_not_representative,
+    catch_not_implemented,
 )
 
 configuration = config.get_plugin_entry_point(
@@ -367,45 +368,31 @@ class Cell(GeometricSpace):
     def _generate_comparer(positions: 'pint.Quantity') -> tuple:
         return (HashedPositions(pos) for pos in positions)
 
-    def _check_implemented(func: callable):
-        """
-        Decorator to default comparison functions outside the same class to `False`.
-        """
-        def wrapper(self, other):
-            if not isinstance(other, self.__class__):
-                return False  # ? should this throw an error instead?
-            try:
-                return func(self, other)
-            except (TypeError, NotImplementedError):
-                return False
-
-        return wrapper
-
-    @_check_implemented
+    @catch_not_implemented
     def is_lt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) < set(
             self._generate_comparer(other.positions)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_gt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) > set(
             self._generate_comparer(other.positions)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_le_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) <= set(
             self._generate_comparer(other.positions)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_ge_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions)) >= set(
             self._generate_comparer(other.positions)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_equal_cell(self, other) -> bool:  # TODO: improve naming
         return set(self._generate_comparer(self.positions)) == set(
             self._generate_comparer(other.positions)
@@ -468,7 +455,7 @@ class AtomicCell(Cell):
             for pos, st in zip(positions, atoms_states)
         )
 
-    def _check_implemented(func: callable):
+    def catch_not_implemented(func: callable):
         """
         Decorator to default comparison functions outside the same class to `False`.
         """
@@ -482,31 +469,31 @@ class AtomicCell(Cell):
 
         return wrapper
 
-    @_check_implemented
+    @catch_not_implemented
     def is_lt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) < set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_gt_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) > set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_le_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) <= set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_ge_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) >= set(
             self._generate_comparer(other.positions, other.atoms_state)
         )
 
-    @_check_implemented
+    @catch_not_implemented
     def is_equal_cell(self, other) -> bool:
         return set(self._generate_comparer(self.positions, self.atoms_state)) == set(
             self._generate_comparer(other.positions, other.atoms_state)

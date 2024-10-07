@@ -154,3 +154,18 @@ def get_composition(children_names: 'list[str]') -> str:
     children_count_tup = np.unique(children_names, return_counts=True)
     formula = ''.join([f'{name}({count})' for name, count in zip(*children_count_tup)])
     return formula if formula else None
+
+
+def catch_not_implemented(func: callable):
+    """
+    Decorator to default comparison functions outside the same class to `False`.
+    """
+    def wrapper(self, other):
+        if not isinstance(other, self.__class__):
+            return False  # ? should this throw an error instead?
+        try:
+            return func(self, other)
+        except (TypeError, NotImplementedError):
+            return False
+
+    return wrapper

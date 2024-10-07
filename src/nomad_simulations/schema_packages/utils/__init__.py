@@ -4,4 +4,5 @@ from .utils import (
     get_sibling_section,
     get_variables,
     is_not_representative,
+    catch_not_implemented,
 )
