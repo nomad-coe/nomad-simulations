@@ -233,6 +233,7 @@ class PartialOrderElement:
         """
         Decorator to restrict the comparison functions to the same class.
         """
+
         def wrapper(self, other):
             if not isinstance(other, self.__class__):
                 return NotImplemented
@@ -365,38 +366,31 @@ class Cell(GeometricSpace):
     )
 
     @staticmethod
-    def _generate_comparer(positions: 'pint.Quantity') -> tuple:
-        return (HashedPositions(pos) for pos in positions)
+    def _generate_comparer(obj) -> tuple:
+        try:
+            return (HashedPositions(pos) for pos in obj.positions)
+        except AttributeError:
+            raise NotImplementedError
 
     @catch_not_implemented
     def is_lt_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions)) < set(
-            self._generate_comparer(other.positions)
-        )
+        return set(self._generate_comparer(self)) < set(self._generate_comparer(other))
 
     @catch_not_implemented
     def is_gt_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions)) > set(
-            self._generate_comparer(other.positions)
-        )
+        return set(self._generate_comparer(self)) > set(self._generate_comparer(other))
 
     @catch_not_implemented
     def is_le_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions)) <= set(
-            self._generate_comparer(other.positions)
-        )
+        return set(self._generate_comparer(self)) <= set(self._generate_comparer(other))
 
     @catch_not_implemented
     def is_ge_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions)) >= set(
-            self._generate_comparer(other.positions)
-        )
+        return set(self._generate_comparer(self)) >= set(self._generate_comparer(other))
 
     @catch_not_implemented
     def is_equal_cell(self, other) -> bool:  # TODO: improve naming
-        return set(self._generate_comparer(self.positions)) == set(
-            self._generate_comparer(other.positions)
-        )
+        return set(self._generate_comparer(self)) == set(self._generate_comparer(other))
 
     def is_ne_cell(self, other) -> bool:
         # this does not hold in general, but here we use finite sets
@@ -446,58 +440,15 @@ class AtomicCell(Cell):
         self.name = self.m_def.name
 
     @staticmethod
-    def _generate_comparer(
-        positions: 'pint.Quantity', atoms_states: 'list[AtomsState]'
-    ) -> tuple:
+    def _generate_comparer(obj) -> tuple:
         # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
-        return (
-            (HashedPositions(pos), PartialOrderElement(st.chemical_symbol))
-            for pos, st in zip(positions, atoms_states)
-        )
-
-    def catch_not_implemented(func: callable):
-        """
-        Decorator to default comparison functions outside the same class to `False`.
-        """
-        def wrapper(self, other):
-            if not isinstance(other, self.__class__):
-                return False  # ? should this throw an error instead?
-            try:
-                return func(self, other)
-            except (TypeError, NotImplementedError):
-                return False
-
-        return wrapper
-
-    @catch_not_implemented
-    def is_lt_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions, self.atoms_state)) < set(
-            self._generate_comparer(other.positions, other.atoms_state)
-        )
-
-    @catch_not_implemented
-    def is_gt_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions, self.atoms_state)) > set(
-            self._generate_comparer(other.positions, other.atoms_state)
-        )
-
-    @catch_not_implemented
-    def is_le_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions, self.atoms_state)) <= set(
-            self._generate_comparer(other.positions, other.atoms_state)
-        )
-
-    @catch_not_implemented
-    def is_ge_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions, self.atoms_state)) >= set(
-            self._generate_comparer(other.positions, other.atoms_state)
-        )
-
-    @catch_not_implemented
-    def is_equal_cell(self, other) -> bool:
-        return set(self._generate_comparer(self.positions, self.atoms_state)) == set(
-            self._generate_comparer(other.positions, other.atoms_state)
-        )
+        try:
+            return (
+                (HashedPositions(pos), PartialOrderElement(st.chemical_symbol))
+                for pos, st in zip(obj.positions, obj.atoms_state)
+            )
+        except AttributeError:
+            raise NotImplementedError
 
     def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
         """

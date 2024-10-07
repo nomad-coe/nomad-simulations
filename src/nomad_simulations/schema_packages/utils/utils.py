@@ -160,6 +160,7 @@ def catch_not_implemented(func: callable):
     """
     Decorator to default comparison functions outside the same class to `False`.
     """
+
     def wrapper(self, other):
         if not isinstance(other, self.__class__):
             return False  # ? should this throw an error instead?
