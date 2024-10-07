@@ -59,7 +59,8 @@ class TestCell:
         """
         Test the `is_equal_cell` methods of `Cell`.
         """
-        assert cell_1.is_equal_cell(other=cell_2) == result
+        assert cell_1.is_equal_cell(cell_2) == result
+        assert cell_1.is_ne_cell(cell_2) != result
 
 
 class TestAtomicCell:
@@ -252,12 +253,12 @@ class TestAtomicCell:
         """
         Test the `is_equal_cell` methods of `AtomicCell`.
         """
-        assert (cell_1 < cell_2) == result['lt']
-        assert (cell_1 > cell_2) == result['gt']
-        assert (cell_1 <= cell_2) == (result['lt'] or result['eq'])
-        assert (cell_1 >= cell_2) == (result['gt'] or result['eq'])
-        assert (cell_1 == cell_2) == result['eq']
-        assert (cell_1 != cell_2) != (result[0] and result[1])
+        assert cell_1.is_lt_cell(cell_2) == result['lt']
+        assert cell_1.is_gt_cell(cell_2) == result['gt']
+        assert cell_1.is_le_cell(cell_2) == (result['lt'] or result['eq'])
+        assert cell_1.is_ge_cell(cell_2) == (result['gt'] or result['eq'])
+        assert cell_1.is_equal_cell(cell_2) == result['eq']
+        assert cell_1.is_ne_cell(cell_2) != (result[0] and result[1])
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
