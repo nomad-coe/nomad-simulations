@@ -43,7 +43,7 @@ from nomad.units import ureg
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import Callable, Optional
+    from typing import Callable, Optional, Any
 
     import pint
     from nomad.datamodel.datamodel import EntryArchive
@@ -232,6 +232,7 @@ class PartialOrderElement:
     def __hash__(self):
         return self.representative_variable.__hash__()
 
+    @staticmethod
     def _check_implemented(func: Callable):
         """
         Decorator to restrict the comparison functions to the same class.
@@ -369,9 +370,9 @@ class Cell(GeometricSpace):
     )
 
     @staticmethod
-    def _generate_comparer(obj) -> Generator[HashedPositions, None, None]:
+    def _generate_comparer(obj) -> Generator[Any, None, None]:
         try:
-            return (HashedPositions(pos) for pos in obj.positions)
+            return ((HashedPositions(pos)) for pos in obj.positions)
         except AttributeError:
             raise NotImplementedError
 
@@ -445,7 +446,7 @@ class AtomicCell(Cell):
     @staticmethod
     def _generate_comparer(
         obj,
-    ) -> Generator[HashedPositions, PartialOrderElement, None, None]:
+    ) -> Generator[Any, None, None]:
         # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
         try:
             return (
