@@ -16,9 +16,9 @@
 # limitations under the License.
 #
 
+import re
 from functools import lru_cache
 from hashlib import sha1
-import re
 from typing import TYPE_CHECKING, Optional
 
 import ase
@@ -42,16 +42,16 @@ from nomad.metainfo import MEnum, Quantity, SectionProxy, SubSection
 from nomad.units import ureg
 
 if TYPE_CHECKING:
+    import pint
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
-    import pint
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.utils import (
+    catch_not_implemented,
     get_sibling_section,
     is_not_representative,
-    catch_not_implemented,
 )
 
 configuration = config.get_plugin_entry_point(
