@@ -225,25 +225,25 @@ class GeometricSpace(Entity):
             return
 
 
+def _check_implemented(func: 'Callable'):
+    """
+    Decorator to restrict the comparison functions to the same class.
+    """
+
+    def wrapper(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return func(self, other)
+
+    return wrapper
+
+
 class PartialOrderElement:
     def __init__(self, representative_variable):
         self.representative_variable = representative_variable
 
     def __hash__(self):
         return self.representative_variable.__hash__()
-
-    @staticmethod
-    def _check_implemented(func: 'Callable'):
-        """
-        Decorator to restrict the comparison functions to the same class.
-        """
-
-        def wrapper(self, other):
-            if not isinstance(other, self.__class__):
-                return NotImplemented
-            return func(self, other)
-
-        return wrapper
 
     @_check_implemented
     def __eq__(self, other):
@@ -398,7 +398,7 @@ class Cell(GeometricSpace):
 
     def is_ne_cell(self, other) -> bool:
         # this does not hold in general, but here we use finite sets
-        return (not self.is_equal_cell(other))
+        return not self.is_equal_cell(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -644,7 +644,10 @@ class Symmetry(ArchiveSection):
     )
 
     def resolve_analyzed_atomic_cell(
-        self, symmetry_analyzer: 'SymmetryAnalyzer', cell_type: str, logger: 'BoundLogger'
+        self,
+        symmetry_analyzer: 'SymmetryAnalyzer',
+        cell_type: str,
+        logger: 'BoundLogger',
     ) -> 'Optional[AtomicCell]':
         """
         Resolves the `AtomicCell` section from the `SymmetryAnalyzer` object and the cell_type
