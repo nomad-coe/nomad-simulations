@@ -43,7 +43,7 @@ from nomad.units import ureg
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-    from typing import Callable, Optional, Any
+    from typing import Any, Callable, Optional
 
     import pint
     from nomad.datamodel.datamodel import EntryArchive
