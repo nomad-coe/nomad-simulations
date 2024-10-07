@@ -19,7 +19,7 @@
 import re
 from functools import lru_cache
 from hashlib import sha1
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import ase
 import numpy as np
@@ -42,6 +42,9 @@ from nomad.metainfo import MEnum, Quantity, SectionProxy, SubSection
 from nomad.units import ureg
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+    from typing import Callable, Optional
+
     import pint
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
@@ -229,7 +232,7 @@ class PartialOrderElement:
     def __hash__(self):
         return self.representative_variable.__hash__()
 
-    def _check_implemented(func: callable):
+    def _check_implemented(func: Callable):
         """
         Decorator to restrict the comparison functions to the same class.
         """
@@ -304,7 +307,7 @@ class Cell(GeometricSpace):
         type=MEnum('original', 'primitive', 'conventional'),
         description="""
         Representation type of the cell structure. It might be:
-            - 'original' as in origanally parsed,
+            - 'original' as in originally parsed,
             - 'primitive' as the primitive unit cell,
             - 'conventional' as the conventional cell used for referencing.
         """,
@@ -366,7 +369,7 @@ class Cell(GeometricSpace):
     )
 
     @staticmethod
-    def _generate_comparer(obj) -> tuple:
+    def _generate_comparer(obj) -> Generator[HashedPositions, None, None]:
         try:
             return (HashedPositions(pos) for pos in obj.positions)
         except AttributeError:
@@ -440,7 +443,9 @@ class AtomicCell(Cell):
         self.name = self.m_def.name
 
     @staticmethod
-    def _generate_comparer(obj) -> tuple:
+    def _generate_comparer(
+        obj,
+    ) -> Generator[HashedPositions, PartialOrderElement, None, None]:
         # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
         try:
             return (

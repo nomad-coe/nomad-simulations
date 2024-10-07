@@ -5,7 +5,7 @@ import numpy as np
 from nomad.config import config
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Callable, Optional
 
     from nomad.datamodel.data import ArchiveSection
     from structlog.stdlib import BoundLogger
@@ -156,7 +156,7 @@ def get_composition(children_names: 'list[str]') -> str:
     return formula if formula else None
 
 
-def catch_not_implemented(func: callable):
+def catch_not_implemented(func: Callable):
     """
     Decorator to default comparison functions outside the same class to `False`.
     """
