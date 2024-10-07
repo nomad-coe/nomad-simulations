@@ -17,52 +17,6 @@ from nomad_simulations.schema_packages.model_system import (
 from . import logger
 from .conftest import generate_atomic_cell
 
-
-class TestCell:
-    """
-    Test the `Cell` section defined in model_system.py
-    """
-
-    @pytest.mark.parametrize(
-        'cell_1, cell_2, result',
-        [
-            (Cell(), None, False),  # one cell is None
-            (Cell(), Cell(), False),  # both cells are empty
-            (
-                Cell(positions=[[1, 0, 0]]),
-                Cell(),
-                False,
-            ),  # one cell has positions, the other is empty
-            (
-                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
-                Cell(positions=[[1, 0, 0]]),
-                False,
-            ),  # length mismatch
-            (
-                Cell(positions=[[1, 0, 0], [0, 1, 0]]),
-                Cell(positions=[[1, 0, 0], [0, -1, 0]]),
-                False,
-            ),  # different positions
-            (
-                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                True,
-            ),  # same ordered positions
-            (
-                Cell(positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]]),
-                Cell(positions=[[1, 0, 0], [0, 0, 1], [0, 1, 0]]),
-                True,
-            ),  # different ordered positions but same cell
-        ],
-    )
-    def test_is_equal_cell(self, cell_1: Cell, cell_2: Cell, result: bool):
-        """
-        Test the `is_equal_cell` methods of `Cell`.
-        """
-        assert cell_1.is_equal_cell(cell_2) == result
-        assert cell_1.is_ne_cell(cell_2) != result
-
-
 class TestAtomicCell:
     """
     Test the `AtomicCell`, `Cell` and `GeometricSpace` classes defined in model_system.py
@@ -251,14 +205,14 @@ class TestAtomicCell:
     )
     def test_partial_order(self, cell_1: Cell, cell_2: Cell, result: bool):
         """
-        Test the `is_equal_cell` methods of `AtomicCell`.
+        Test the comparison operators of `Cell` and `AtomicCell`.
         """
         assert cell_1.is_lt_cell(cell_2) == result['lt']
         assert cell_1.is_gt_cell(cell_2) == result['gt']
         assert cell_1.is_le_cell(cell_2) == (result['lt'] or result['eq'])
         assert cell_1.is_ge_cell(cell_2) == (result['gt'] or result['eq'])
         assert cell_1.is_equal_cell(cell_2) == result['eq']
-        assert cell_1.is_ne_cell(cell_2) != (result[0] and result[1])
+        assert cell_1.is_ne_cell(cell_2) == (not result['eq'])
 
     @pytest.mark.parametrize(
         'chemical_symbols, atomic_numbers, formula, lattice_vectors, positions, periodic_boundary_conditions',
