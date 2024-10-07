@@ -229,6 +229,9 @@ class PartialOrderElement:
         return self.representative_variable.__hash__()
 
     def _check_implemented(func: callable):
+        """
+        Decorator to restrict the comparison functions to the same class.
+        """
         def wrapper(self, other):
             if not isinstance(other, self.__class__):
                 return NotImplemented
@@ -365,6 +368,9 @@ class Cell(GeometricSpace):
         return (HashedPositions(pos) for pos in positions)
 
     def _check_implemented(func: callable):
+        """
+        Decorator to default comparison functions outside the same class to `False`.
+        """
         def wrapper(self, other):
             if not isinstance(other, self.__class__):
                 return False  # ? should this throw an error instead?
@@ -405,7 +411,7 @@ class Cell(GeometricSpace):
             self._generate_comparer(other.positions)
         )
 
-    def __ne__(self, other) -> bool:
+    def is_ne_cell(self, other) -> bool:
         # this does not hold in general, but here we use finite sets
         return not self.is_equal_cell(other)
 
@@ -463,6 +469,9 @@ class AtomicCell(Cell):
         )
 
     def _check_implemented(func: callable):
+        """
+        Decorator to default comparison functions outside the same class to `False`.
+        """
         def wrapper(self, other):
             if not isinstance(other, self.__class__):
                 return False  # ? should this throw an error instead?
