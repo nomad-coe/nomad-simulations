@@ -17,6 +17,7 @@ from nomad_simulations.schema_packages.model_system import (
 from . import logger
 from .conftest import generate_atomic_cell
 
+
 class TestAtomicCell:
     """
     Test the `AtomicCell`, `Cell` and `GeometricSpace` classes defined in model_system.py
@@ -125,6 +126,24 @@ class TestAtomicCell:
                 ),
                 {'lt': True, 'gt': False, 'eq': False},
             ),  # one is a subset of the other
+            (
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                AtomicCell(
+                    positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+                    atoms_state=[
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='H'),
+                        AtomsState(chemical_symbol='O'),
+                    ],
+                ),
+                {'lt': False, 'gt': False, 'eq': False},
+            ),
             (
                 AtomicCell(
                     positions=[[1, 0, 0], [0, 1, 0], [0, 0, 1]],
