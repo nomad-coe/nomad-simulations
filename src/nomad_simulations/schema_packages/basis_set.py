@@ -13,7 +13,7 @@ import pint
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import MEnum, Quantity, SubSection, JSON
+from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -187,13 +187,16 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
 
 class AtomCenteredFunction(ArchiveSection):
     """
-    Specifies a single function (term) in an atom-centered basis set.
+    Specifies a single function (term) in a Gaussian-type basis set.
+    Cartesian Gaussian-type orbitals (GTOs)
     """
 
     function_type = Quantity(
         type=MEnum('s', 'p', 'd', 'f', 'g', 'h', 'i', 'j'),
         description="""
-        the angular momentum of the shell to be added.
+        the l value:
+        l = i + j + k
+        the angular momentum of GTO to be added.
         """,
     )
 
@@ -226,96 +229,43 @@ class AtomCenteredFunction(ArchiveSection):
 
 class AtomCenteredBasisSet(BasisSetComponent):
     """
-    Defines an atom-centered basis set, using a single JSON quantity for all basis set types,
-    while allowing different AtomState references for each basis set type.
-    """
-
-    basis_set_data = Quantity(
-        type=JSON,  # Use JSON to store basis set information, including atom references
-        description="""
-        JSON object containing all the basis set information along with atom references. Example:
-        {
-            "main_basis_set": {
-                "name": "cc-pVTZ",
-                "atoms_ref": [ref_to_atoms_1, ref_to_atoms_2]
-            },
-            "aux_c_basis_set": {
-                "name": "cc-pVTZ/C",
-                "atoms_ref": [ref_to_atoms_3]
-            },
-            "aux_j_basis_set": {
-                "name": "RIJ",
-                "atoms_ref": [ref_to_atoms_4]
-            },
-            "aux_jk_basis_set": {
-                "name": "aug-cc-pVTZ/JK",
-                "atoms_ref": [ref_to_atoms_1, ref_to_atoms_5]
-            }
-        }
-        """,
-    )
-
-    functional_composition = SubSection(
-        sub_section=AtomCenteredFunction.m_def, repeats=True
-    )
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-
-
-
-'''
-class AtomCenteredBasisSet(BasisSetComponent):
-    """
     Defines an atom-centered basis set.
     """
 
-    main_basis_set = Quantity(
+    basis_set = Quantity(
         type=str,
         description="""
-        Name of the main basis set.
+        name of the basis set
         """,
     )
 
-    aux_c_basis_set = Quantity(
-        type=str,
+    type = Quantity(
+        type=MEnum('STO', 'GTO'),
         description="""
-        AuxC type of basis set.
+        Type of the basis set, e.g. STO or GTO.
         """,
     )
 
-    aux_j_basis_set = Quantity(
-        type=str,
-        description="""
-        AuxJ type of basis set.
-        """,
-    )
+    # TODO: connect RI approximation
 
-    aux_jk_basis_set = Quantity(
-        type=str,
+    auxiliary_type =  Quantity(
+        type=MEnum('AuxC', 'AuxJ', 'AuxJK'),
         description="""
-        AuxJK type of basis set.
-        """,
-    )
-
-    atoms_ref = Quantity(
-        type=AtomsState,
-        shape=['*'],
-        description="""
-        References to the `AtomsState` sections that define the atoms this basis set applies to.
+        the type of RI approximation.
+        AuxJ and AuxJK: Fock matrix construction.
+        AuxC: all other integral generation steps, e.g. post-HF methods.
+        Since a JK-type basis set can be assined to AuxJ, this quantity is needed.
         """,
     )
 
     functional_composition = SubSection(
         sub_section=AtomCenteredFunction.m_def, repeats=True
-    )  # TODO change name
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        # self.name = self.m_def.name
-        # TODO: set name based on basis functions
-        # ? use basis set names from Basis Set Exchange
-'''
+        #self.name = self.m_def.name
+
 
 class APWBaseOrbital(ArchiveSection):
     """
