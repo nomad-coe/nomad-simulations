@@ -191,6 +191,19 @@ class AtomCenteredFunction(ArchiveSection):
     Cartesian Gaussian-type orbitals (GTOs)
     """
 
+    # TODO: add a quantity for spherical-harmonic or Cartesian angular functions
+    # Most of the codes use only spherical harmonic.
+
+    basis_type = Quantity(
+        type=MEnum(
+            'spherical',
+            'cartesian',
+        ),
+        description="""
+        spherical-harmonic or cartesian functions.
+        """,
+    )
+
     function_type = Quantity(
         type=MEnum('s', 'p', 'd', 'f', 'g', 'h', 'i', 'j'),
         description="""
@@ -236,26 +249,31 @@ class AtomCenteredBasisSet(BasisSetComponent):
     basis_set = Quantity(
         type=str,
         description="""
-        name of the basis set
+        name of the basis set.
         """,
     )
 
     type = Quantity(
-        type=MEnum('STO', 'GTO'),
+        type=MEnum(
+            'STO',  # Slater-type orbitals
+            'GTO',  # Gaussian-type orbitals
+            'NAO',  # Numerical atomic orbitals
+            'PC',  # Point charges
+        ),
         description="""
         Type of the basis set, e.g. STO or GTO.
         """,
     )
 
-    # TODO: connect RI approximation
-
-    auxiliary_type = Quantity(
-        type=MEnum('AuxC', 'AuxJ', 'AuxJK'),
+    role = Quantity(
+        type=MEnum(
+            'orbital',
+            'auxiliary_scf',
+            'auxiliary_post_hf',
+            'cabs',
+        ),
         description="""
-        the type of RI approximation.
-        AuxJ and AuxJK: Fock matrix construction.
-        AuxC: all other integral generation steps, e.g. post-HF methods.
-        Since a JK-type basis set can be assined to AuxJ, this quantity is needed.
+        role of the basis set
         """,
     )
 
