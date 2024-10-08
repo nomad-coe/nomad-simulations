@@ -227,6 +227,7 @@ class AtomCenteredFunction(ArchiveSection):
         super().normalize(archive, logger)
         # self.name = self.m_def.name
 
+
 class AtomCenteredBasisSet(BasisSetComponent):
     """
     Defines an atom-centered basis set.
@@ -248,7 +249,7 @@ class AtomCenteredBasisSet(BasisSetComponent):
 
     # TODO: connect RI approximation
 
-    auxiliary_type =  Quantity(
+    auxiliary_type = Quantity(
         type=MEnum('AuxC', 'AuxJ', 'AuxJK'),
         description="""
         the type of RI approximation.
@@ -264,7 +265,7 @@ class AtomCenteredBasisSet(BasisSetComponent):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
-        #self.name = self.m_def.name
+        # self.name = self.m_def.name
 
 
 class APWBaseOrbital(ArchiveSection):
