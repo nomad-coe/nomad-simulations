@@ -35,6 +35,7 @@ class SinglePoint(SimulationWorkflow):
         - tasks = []
     """
 
+    # ? is this necessary?
     n_scf_steps = Quantity(
         type=np.int32,
         default=1,

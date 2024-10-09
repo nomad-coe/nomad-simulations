@@ -56,6 +56,8 @@ class SimulationWorkflow(Workflow):
         """,
     )
 
+    # TODO implement sorting of tasks in terms of `time_step`/`time` (this makes ParallelWorkflow and SerialWorkflow irrelevant)
+
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
 
