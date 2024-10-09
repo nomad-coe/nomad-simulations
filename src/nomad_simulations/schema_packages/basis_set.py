@@ -199,8 +199,9 @@ class AtomCenteredFunction(ArchiveSection):
             'spherical',
             'cartesian',
         ),
+        default='spherical',
         description="""
-        spherical-harmonic or cartesian functions.
+        Specifies whether the basis functions are spherical-harmonic or cartesian functions.
         """,
     )
 
@@ -214,7 +215,7 @@ class AtomCenteredFunction(ArchiveSection):
     )
 
     n_primitive = Quantity(
-        type=int,
+        type=np.int32,
         description="""
         Number of primitives.
         """,
@@ -233,6 +234,13 @@ class AtomCenteredFunction(ArchiveSection):
         shape=['n_primitive'],
         description="""
         List of contraction coefficients corresponding to the exponents.
+        """,
+    )
+
+    point_charge = Quantity(
+        type=np.int32,
+        description="""
+        the value of the point charge.
         """,
     )
 
@@ -258,6 +266,7 @@ class AtomCenteredBasisSet(BasisSetComponent):
             'STO',  # Slater-type orbitals
             'GTO',  # Gaussian-type orbitals
             'NAO',  # Numerical atomic orbitals
+            'cECP',  # Capped effective core potentials
             'PC',  # Point charges
         ),
         description="""
@@ -270,10 +279,10 @@ class AtomCenteredBasisSet(BasisSetComponent):
             'orbital',
             'auxiliary_scf',
             'auxiliary_post_hf',
-            'cabs',
+            'cabs',  # complementary auxiliary basis set
         ),
         description="""
-        role of the basis set
+        The role of the basis set.
         """,
     )
 
