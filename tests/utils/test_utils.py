@@ -10,7 +10,6 @@ from nomad_simulations.schema_packages.model_system import (
 )
 from nomad_simulations.schema_packages.outputs import Outputs
 from nomad_simulations.schema_packages.utils import (
-    extract_all_simulation_subsections,
     get_sibling_section,
     get_variables,
     is_not_representative,
@@ -89,82 +88,3 @@ def test_get_variables(variables: list, result: list, result_length: int):
     assert len(energies) == result_length
     for i, energy in enumerate(energies):  # asserting energies == result does not work
         assert energy.n_points == result[i].n_points
-
-
-@pytest.mark.parametrize(
-    'archive, subsection_indices, result',
-    [
-        # no data section
-        (
-            EntryArchive(),
-            [0, -1, -1],
-            [None, None, None],
-        ),
-        # no subsections
-        (
-            EntryArchive(data=Simulation()),
-            [0, -1, -1],
-            [None, None, None],
-        ),
-        # no model_method and outputs
-        (
-            EntryArchive(data=Simulation(model_system=[ModelSystem()])),
-            [0, -1, -1],
-            [None, None, None],
-        ),
-        # no outputs
-        (
-            EntryArchive(
-                data=Simulation(
-                    model_system=[ModelSystem()], model_method=[ModelMethod()]
-                )
-            ),
-            [0, -1, -1],
-            [None, None, None],
-        ),
-        # all subsections
-        (
-            EntryArchive(
-                data=Simulation(
-                    model_system=[ModelSystem()],
-                    model_method=[ModelMethod()],
-                    outputs=[Outputs()],
-                )
-            ),
-            [0, -1, -1],
-            [ModelSystem(), ModelMethod(), Outputs()],
-        ),
-        # wrong index for model_system
-        (
-            EntryArchive(
-                data=Simulation(
-                    model_system=[ModelSystem()],
-                    model_method=[ModelMethod()],
-                    outputs=[Outputs()],
-                )
-            ),
-            [2, -1, -1],
-            [None, None, None],
-        ),
-    ],
-)
-def test_extract_all_simulation_subsections(
-    archive: EntryArchive, subsection_indices: list, result: list
-):
-    """
-    Test the `extract_all_simulation_subsections` utility function.
-    """
-    system, method, output = extract_all_simulation_subsections(
-        archive=archive,
-        i_system=subsection_indices[0],
-        i_method=subsection_indices[1],
-        i_output=subsection_indices[2],
-    )
-    if result[0] is not None:
-        assert (
-            isinstance(system, ModelSystem)
-            and isinstance(method, ModelMethod)
-            and isinstance(output, Outputs)
-        )
-    else:
-        assert system == result[0] and method == result[1] and output == result[2]
