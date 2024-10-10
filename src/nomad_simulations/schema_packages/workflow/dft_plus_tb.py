@@ -69,23 +69,19 @@ class DFTPlusTB(BeyondDFT):
         """
         Resolve the `inputs` and `outputs` of the `DFTPlusTB` workflow.
         """
-        input = extract_section(self.tasks[0], ['task', 'inputs[0]', 'section'])
-        print(
-            self.tasks[0],
-            extract_section(self.tasks[0], ['task']),
-            extract_section(self.tasks[0], ['task', 'inputs[0]']),
-            extract_section(self.tasks[0], ['task', 'inputs[0]', 'section']),
-        )
-        if not input:
+        # Input system reference
+        inputs = extract_section(self.tasks[0], ['task', 'inputs'], full_list=True)
+        if not inputs:
             return None
-        print(input)
-        self.inputs = [LinkReference(name='Input Model System', section=input)]
+        input_section = inputs[0].section
+        self.inputs = [LinkReference(name='Input Model System', section=input_section)]
 
-        output = extract_section(self.tasks[1], ['task', 'outputs[-1]', 'section'])
-        if not output:
+        # Output TB data reference
+        outputs = extract_section(self.tasks[0], ['task', 'outputs'], full_list=True)
+        if not outputs:
             return None
-        print(output)
-        self.outputs = [LinkReference(name='Output TB Data', section=output)]
+        output_section = outputs[0].section
+        self.outputs = [LinkReference(name='Output TB Data', section=output_section)]
 
     # TODO check if implementing overwritting the FermiLevel.value in the TB entry from the DFT entry
 
