@@ -29,7 +29,7 @@ maintainers = [
 ]
 license = { file = "LICENSE" }
 dependencies = [
-    "nomad-lab>=1.3.0",
+    "nomad-lab@git+https://gitlab.mpcdf.mpg.de/nomad-lab/nomad-FAIR.git@6b7149a71b2999abbb2225fcb67a5acafc811806",
     "matid>=2.0.0.dev2",
 ]
 

@@ -1,33 +1,31 @@
 from functools import wraps
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from nomad.datamodel.datamodel import EntryArchive
     from structlog.stdlib import BoundLogger
 
 from nomad.datamodel.data import ArchiveSection
-from nomad.datamodel.metainfo.workflow import TaskReference, Workflow
+from nomad.datamodel.metainfo.workflow_new import BaseTask
+from nomad.datamodel.metainfo.workflow_new import Workflow2 as Workflow
 from nomad.metainfo import SubSection
 
 from nomad_simulations.schema_packages.model_method import BaseModelMethod
 from nomad_simulations.schema_packages.outputs import Outputs
 
 
-def check_n_tasks(n_tasks: Optional[int] = None):
+def check_n_tasks(n_tasks: int = 1):
     """
-    Check if the `tasks` of a workflow exist. If the `n_tasks` input specified, it checks whether `tasks`
-    is of the same length as `n_tasks`.
+    Check if the `tasks` of a workflow exist. It checks whether `tasks` is of the same length as `n_tasks`.
 
     Args:
-        n_tasks (Optional[int], optional): The length of the `tasks` needs to be checked if set to an integer. Defaults to None.
+        n_tasks (int): The length of the `tasks` needs to be checked if set to an integer. Defaults to 1.
     """
 
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
-            if not self.tasks:
-                return None
-            if n_tasks is not None and len(self.tasks) != n_tasks:
+            if not self.tasks or len(self.tasks) != n_tasks:
                 return None
 
             return func(self, *args, **kwargs)
@@ -39,14 +37,14 @@ def check_n_tasks(n_tasks: Optional[int] = None):
 
 class SimulationWorkflow(Workflow):
     """
-    A base section used to define the workflows of a simulation with references to specific `tasks`, `inputs`, and `outputs`. The
+    A base section used to define the workflows of a simulation with specific `tasks`, `inputs`, and `outputs`. The
     normalize function checks the definition of these sections and sets the name of the workflow.
 
     A `SimulationWorkflow` will be composed of:
         - a `method` section containing methodological parameters used specifically during the workflow,
         - a list of `inputs` with references to the `ModelSystem` and, optionally, `ModelMethod` input sections,
         - a list of `outputs` with references to the `Outputs` section,
-        - a list of `tasks` containing references to the activity `Simulation` used in the workflow,
+        - a list of `tasks` containing references or the section information of the `task` used in the workflow,
     """
 
     method = SubSection(
@@ -66,7 +64,7 @@ class BeyondDFTMethod(ArchiveSection):
     """
     An abstract section used to store references to the `ModelMethod` sections of each of the
     archives defining the `tasks` and used to build the standard `BeyondDFT` workflow. This section needs to be
-    inherit and the method references need to be defined for each specific case (see, e.g., dft_plus_tb.py module).
+    inherit and the method references need to be defined for each specific case (see, e.g., `dft_plus_tb.py` module).
     """
 
     pass
@@ -104,16 +102,15 @@ class BeyondDFT(SimulationWorkflow):
             all_outputs.append(task.outputs[-1])
         return all_outputs
 
-    @check_n_tasks()
     def resolve_method_refs(
-        self, tasks: list[TaskReference], tasks_names: list[str]
+        self, tasks: list[BaseTask], tasks_names: list[str]
     ) -> list[BaseModelMethod]:
         """
         Resolve the references to the `BaseModelMethod` sections in the list of `tasks`. This is useful
         when defining the `method` section of the `BeyondDFT` workflow.
 
         Args:
-            tasks (list[TaskReference]): The list of tasks from which resolve the `BaseModelMethod` sections.
+            tasks (list[BaseTask]): The list of tasks from which resolve the `BaseModelMethod` sections.
             tasks_names (list[str]): The list of names for each of the tasks forming the BeyondDFT workflow.
 
         Returns:
@@ -132,7 +129,7 @@ class BeyondDFT(SimulationWorkflow):
             if not task.m_xpath('task.inputs'):
                 continue
 
-            # Resolve the method of each task.inputs
+            # Resolve the method of each `tasks[*].task.inputs`
             for input in task.task.inputs:
                 if isinstance(input.section, BaseModelMethod):
                     method_refs.append(input.section)
