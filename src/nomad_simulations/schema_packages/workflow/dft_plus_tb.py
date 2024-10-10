@@ -73,6 +73,7 @@ class DFTPlusTB(BeyondDFT):
         inputs = extract_section(self.tasks[0], ['task', 'inputs'], full_list=True)
         if not inputs:
             return None
+        # ! check if this works (maybe refs are wrong as the tb_archive and dftplustb_archive share the same mainfile)
         input_section = inputs[0].section
         self.inputs = [LinkReference(name='Input Model System', section=input_section)]
 
@@ -80,6 +81,7 @@ class DFTPlusTB(BeyondDFT):
         outputs = extract_section(self.tasks[0], ['task', 'outputs'], full_list=True)
         if not outputs:
             return None
+        # ! check if this works (maybe refs are wrong as the tb_archive and dftplustb_archive share the same mainfile)
         output_section = outputs[0].section
         self.outputs = [LinkReference(name='Output TB Data', section=output_section)]
 
