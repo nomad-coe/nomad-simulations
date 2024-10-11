@@ -238,7 +238,7 @@ class AtomCenteredFunction(ArchiveSection):
     )
 
     point_charge = Quantity(
-        type=np.int32,
+        type=np.float32,
         description="""
         the value of the point charge.
         """,
