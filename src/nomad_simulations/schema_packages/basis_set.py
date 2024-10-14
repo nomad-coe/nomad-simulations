@@ -187,12 +187,8 @@ class APWPlaneWaveBasisSet(PlaneWaveBasisSet):
 
 class AtomCenteredFunction(ArchiveSection):
     """
-    Specifies a single function (term) in a Gaussian-type basis set.
-    Cartesian Gaussian-type orbitals (GTOs)
+    Specifies a single function (term) in an atom-centered basis set.
     """
-
-    # TODO: add a quantity for spherical-harmonic or Cartesian angular functions
-    # Most of the codes use only spherical harmonic.
 
     basis_type = Quantity(
         type=MEnum(
@@ -206,11 +202,10 @@ class AtomCenteredFunction(ArchiveSection):
     )
 
     function_type = Quantity(
-        type=MEnum('s', 'p', 'd', 'f', 'g', 'h', 'i', 'j'),
+        type=MEnum('s', 'p', 'd', 'f', 'g', 'h', 'i', 'j', 'k', 'l'),
         description="""
-        the l value:
-        l = i + j + k
-        the angular momentum of GTO to be added.
+        L=a+b+c
+        The angular momentum of GTO to be added.
         """,
     )
 
@@ -218,6 +213,7 @@ class AtomCenteredFunction(ArchiveSection):
         type=np.int32,
         description="""
         Number of primitives.
+        Linear combinations of the primitive Gaussians are formed to approximate the radial extent of an STO.
         """,
     )
 
