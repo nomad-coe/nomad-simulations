@@ -454,6 +454,26 @@ class AtomicCell(Cell):
         except AttributeError:
             raise NotImplementedError
 
+    def get_chemical_symbols(self, logger: 'BoundLogger') -> list[str]:
+        """
+        Get the chemical symbols of the atoms in the atomic cell. These are defined on `atoms_state[*].chemical_symbol`.
+        Args:
+            logger (BoundLogger): The logger to log messages.
+
+        Returns:
+            list: The list of chemical symbols of the atoms in the atomic cell.
+        """
+        if not self.atoms_state:
+            return []
+
+        chemical_symbols = []
+        for atom_state in self.atoms_state:
+            if not atom_state.chemical_symbol:
+                logger.warning('Could not find `AtomsState[*].chemical_symbol`.')
+                return []
+            chemical_symbols.append(atom_state.chemical_symbol)
+        return chemical_symbols
+
     def to_ase_atoms(self, logger: 'BoundLogger') -> 'Optional[ase.Atoms]':
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
