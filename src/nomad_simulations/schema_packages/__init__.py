@@ -31,8 +31,8 @@ class NOMADSimulationsEntryPoint(SchemaPackageEntryPoint):
         description='Limite of the number of atoms in the unit cell to be treated for the system type classification from MatID to work. This is done to avoid overhead of the package.',
     )
     equal_cell_positions_tolerance: float = Field(
-        1e-12,
-        description='Tolerance (in meters) for the cell positions to be considered equal.',
+        12,
+        description='Decimal order or tolerance (in meters) for comparing cell positions.',
     )
 
     def load(self):

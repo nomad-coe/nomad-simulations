@@ -1,5 +1,25 @@
+#
+# Copyright The NOMAD Authors.
+#
+# This file is part of NOMAD. See https://nomad-lab.eu for further info.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
 import re
-from typing import TYPE_CHECKING, Optional
+from functools import lru_cache
+from hashlib import sha1
+from typing import TYPE_CHECKING
 
 import ase
 import numpy as np
@@ -22,12 +42,17 @@ from nomad.metainfo import MEnum, Quantity, SectionProxy, SubSection
 from nomad.units import ureg
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+    from typing import Any, Callable, Optional
+
+    import pint
     from nomad.datamodel.datamodel import EntryArchive
     from nomad.metainfo import Context, Section
     from structlog.stdlib import BoundLogger
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
 from nomad_simulations.schema_packages.utils import (
+    catch_not_implemented,
     get_sibling_section,
     is_not_representative,
 )
@@ -200,6 +225,72 @@ class GeometricSpace(Entity):
             return
 
 
+def _check_implemented(func: 'Callable'):
+    """
+    Decorator to restrict the comparison functions to the same class.
+    """
+
+    def wrapper(self, other):
+        if not isinstance(other, self.__class__):
+            return NotImplemented
+        return func(self, other)
+
+    return wrapper
+
+
+class PartialOrderElement:
+    def __init__(self, representative_variable):
+        self.representative_variable = representative_variable
+
+    def __hash__(self):
+        return self.representative_variable.__hash__()
+
+    @_check_implemented
+    def __eq__(self, other):
+        return self.representative_variable == other.representative_variable
+
+    @_check_implemented
+    def __lt__(self, other):
+        return False
+
+    @_check_implemented
+    def __gt__(self, other):
+        return False
+
+    def __le__(self, other):
+        return self.__eq__(other)
+
+    def __ge__(self, other):
+        return self.__eq__(other)
+
+    # __ne__ assumes that usage in a finite set with its comparison definitions
+
+
+class HashedPositions(PartialOrderElement):
+    # `representative_variable` is a `pint.Quantity` object
+
+    def __hash__(self):
+        hash_str = sha1(
+            np.ascontiguousarray(
+                np.round(
+                    self.representative_variable.to_base_units().magnitude,
+                    decimals=configuration.equal_cell_positions_tolerance,
+                    out=None,
+                )
+            ).tobytes()
+        ).hexdigest()
+        return int(hash_str, 16)
+
+    def __eq__(self, other):
+        """Equality as defined between HashedPositions."""
+        if (
+            self.representative_variable is None
+            or other.representative_variable is None
+        ):
+            return NotImplemented
+        return np.allclose(self.representative_variable, other.representative_variable)
+
+
 class Cell(GeometricSpace):
     """
     A base section used to specify the cell quantities of a system at a given moment in time.
@@ -217,7 +308,7 @@ class Cell(GeometricSpace):
         type=MEnum('original', 'primitive', 'conventional'),
         description="""
         Representation type of the cell structure. It might be:
-            - 'original' as in origanally parsed,
+            - 'original' as in originally parsed,
             - 'primitive' as the primitive unit cell,
             - 'conventional' as the conventional cell used for referencing.
         """,
@@ -278,45 +369,36 @@ class Cell(GeometricSpace):
         """,
     )
 
-    def _check_positions(self, positions_1, positions_2) -> list:
-        # Check that all the `positions`` of `cell_1` match with the ones in `cell_2`
-        check_positions = []
-        for i1, pos1 in enumerate(positions_1):
-            for i2, pos2 in enumerate(positions_2):
-                if np.allclose(
-                    pos1, pos2, atol=configuration.equal_cell_positions_tolerance
-                ):
-                    check_positions.append([i1, i2])
-                    break
-        return check_positions
+    @staticmethod
+    def _generate_comparer(obj: 'Cell') -> 'Generator[Any, None, None]':
+        try:
+            return ((HashedPositions(pos)) for pos in obj.positions)
+        except AttributeError:
+            raise NotImplementedError
 
-    def is_equal_cell(self, other) -> bool:
-        """
-        Check if the cell is equal to an`other` cell by comparing the `positions`.
-        Args:
-            other: The other cell to compare with.
-        Returns:
-            bool: True if the cells are equal, False otherwise.
-        """
-        # TODO implement checks on `lattice_vectors` and other quantities to ensure the equality of primitive cells
-        if not isinstance(other, Cell):
-            return False
+    @catch_not_implemented
+    def is_lt_cell(self, other) -> bool:
+        return set(self._generate_comparer(self)) < set(self._generate_comparer(other))
 
-        # If the `positions` are empty, return False
-        if self.positions is None or other.positions is None:
-            return False
+    @catch_not_implemented
+    def is_gt_cell(self, other) -> bool:
+        return set(self._generate_comparer(self)) > set(self._generate_comparer(other))
 
-        # The `positions` should have the same length (same number of positions)
-        if len(self.positions) != len(other.positions):
-            return False
-        n_positions = len(self.positions)
+    @catch_not_implemented
+    def is_le_cell(self, other) -> bool:
+        return set(self._generate_comparer(self)) <= set(self._generate_comparer(other))
 
-        check_positions = self._check_positions(
-            positions_1=self.positions, positions_2=other.positions
-        )
-        if len(check_positions) != n_positions:
-            return False
-        return True
+    @catch_not_implemented
+    def is_ge_cell(self, other) -> bool:
+        return set(self._generate_comparer(self)) >= set(self._generate_comparer(other))
+
+    @catch_not_implemented
+    def is_equal_cell(self, other) -> bool:  # TODO: improve naming
+        return set(self._generate_comparer(self)) == set(self._generate_comparer(other))
+
+    def is_ne_cell(self, other) -> bool:
+        # this does not hold in general, but here we use finite sets
+        return not self.is_equal_cell(other)
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
@@ -361,40 +443,20 @@ class AtomicCell(Cell):
         # Set the name of the section
         self.name = self.m_def.name
 
-    def is_equal_cell(self, other) -> bool:
-        """
-        Check if the atomic cell is equal to an`other` atomic cell by comparing the `positions` and
-        the `AtomsState[*].chemical_symbol`.
-        Args:
-            other: The other atomic cell to compare with.
-        Returns:
-            bool: True if the atomic cells are equal, False otherwise.
-        """
-        if not isinstance(other, AtomicCell):
-            return False
-
-        # Compare positions using the parent sections's `__eq__` method
-        if not super().is_equal_cell(other=other):
-            return False
-
-        # Check that the `chemical_symbol` of the atoms in `cell_1` match with the ones in `cell_2`
-        check_positions = self._check_positions(
-            positions_1=self.positions, positions_2=other.positions
-        )
+    @staticmethod
+    def _generate_comparer(obj: 'AtomicCell') -> 'Generator[Any, None, None]':
+        # presumes `atoms_state` mapping 1-to-1 with `positions` and conserves the order
         try:
-            for atom in check_positions:
-                element_1 = self.atoms_state[atom[0]].chemical_symbol
-                element_2 = other.atoms_state[atom[1]].chemical_symbol
-                if element_1 != element_2:
-                    return False
-        except Exception:
-            return False
-        return True
+            return (
+                (HashedPositions(pos), PartialOrderElement(st.chemical_symbol))
+                for pos, st in zip(obj.positions, obj.atoms_state)
+            )
+        except AttributeError:
+            raise NotImplementedError
 
     def get_chemical_symbols(self, logger: 'BoundLogger') -> list[str]:
         """
         Get the chemical symbols of the atoms in the atomic cell. These are defined on `atoms_state[*].chemical_symbol`.
-
         Args:
             logger (BoundLogger): The logger to log messages.
 
@@ -412,7 +474,7 @@ class AtomicCell(Cell):
             chemical_symbols.append(atom_state.chemical_symbol)
         return chemical_symbols
 
-    def to_ase_atoms(self, logger: 'BoundLogger') -> Optional[ase.Atoms]:
+    def to_ase_atoms(self, logger: 'BoundLogger') -> 'Optional[ase.Atoms]':
         """
         Generates an ASE Atoms object with the most basic information from the parsed `AtomicCell`
         section (labels, periodic_boundary_conditions, positions, and lattice_vectors).
@@ -602,8 +664,11 @@ class Symmetry(ArchiveSection):
     )
 
     def resolve_analyzed_atomic_cell(
-        self, symmetry_analyzer: SymmetryAnalyzer, cell_type: str, logger: 'BoundLogger'
-    ) -> Optional[AtomicCell]:
+        self,
+        symmetry_analyzer: 'SymmetryAnalyzer',
+        cell_type: str,
+        logger: 'BoundLogger',
+    ) -> 'Optional[AtomicCell]':
         """
         Resolves the `AtomicCell` section from the `SymmetryAnalyzer` object and the cell_type
         (primitive or conventional).
@@ -647,8 +712,8 @@ class Symmetry(ArchiveSection):
         return atomic_cell
 
     def resolve_bulk_symmetry(
-        self, original_atomic_cell: AtomicCell, logger: 'BoundLogger'
-    ) -> tuple[Optional[AtomicCell], Optional[AtomicCell]]:
+        self, original_atomic_cell: 'AtomicCell', logger: 'BoundLogger'
+    ) -> 'tuple[Optional[AtomicCell], Optional[AtomicCell]]':
         """
         Resolves the symmetry of the material being simulated using MatID and the
         originally parsed data under original_atomic_cell. It generates two other
