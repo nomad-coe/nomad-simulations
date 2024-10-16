@@ -600,6 +600,7 @@ class ParticleCell(Cell):
         # Lattice vectors
         if self.lattice_vectors is not None:
             particles.set_cell(cell=self.lattice_vectors.to('angstrom').magnitude)
+            print(particles.get_cell())
         else:
             logger.info('Could not find `ParticleCell.lattice_vectors`.')
 

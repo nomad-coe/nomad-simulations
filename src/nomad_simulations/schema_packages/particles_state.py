@@ -282,47 +282,20 @@ class Particles:
 
         Parameters:
 
-        cell: 3x3 matrix or length 3 or 6 vector
-            Unit cell.  A 3x3 matrix (the three unit cell vectors) or
-            just three numbers for an orthorhombic cell. Another option is
-            6 numbers, which describes unit cell with lengths of unit cell
-            vectors and with angles between them (in degrees), in following
-            order: [len(a), len(b), len(c), angle(b,c), angle(a,c),
-            angle(a,b)].  First vector will lie in x-direction, second in
+        cell: 3x3 matrix
+            Unit cell. A 3x3 matrix (the three unit cell vectors).
+            First vector will lie in x-direction, second in
             xy-plane, and the third one in z-positive subspace.
         scale_atoms: bool
             Fix atomic positions or move atoms with the unit cell?
             Default behavior is to *not* move the atoms (scale_atoms=False).
         apply_constraint: bool
             Whether to apply constraints to the given cell.
-
-        Examples:
-
-        Two equivalent ways to define an orthorhombic cell:
-
-        >>> atoms = Atoms('He')
-        >>> a, b, c = 7, 7.5, 8
-        >>> atoms.set_cell([a, b, c])
-        >>> atoms.set_cell([(a, 0, 0), (0, b, 0), (0, 0, c)])
-
-        FCC unit cell:
-
-        >>> atoms.set_cell([(0, b, b), (b, 0, b), (b, b, 0)])
-
-        Hexagonal unit cell:
-
-        >>> atoms.set_cell([a, a, c, 90, 90, 120])
-
-        Rhombohedral unit cell:
-
-        >>> alpha = 77
-        >>> atoms.set_cell([a, a, a, alpha, alpha, alpha])
         """
 
         # Override pbcs if and only if given a Cell object:
         cell = ase.Cell.new(cell)
 
-        # XXX not working well during initialize due to missing _constraints
         if apply_constraint and hasattr(self, '_constraints'):
             for constraint in self.constraints:
                 if hasattr(constraint, 'adjust_cell'):
