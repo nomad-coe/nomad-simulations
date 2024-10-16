@@ -887,3 +887,29 @@ class SelfConsistency(NumericalSettings):
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
+
+
+class ResolutionOfIdentity(NumericalSettings):
+    """
+    The RI related numerical settings for 2-electron integrals.
+    It is also known as Density Fitting and currently used interchangeably.
+
+    """
+    approximation = Quantity(
+        type=str,
+        description="""
+        The approach, e.g. RIJ, RI-JK, RI-C, RICD
+        DCCD...
+        """,
+    )
+
+    # TODO: connect to the AtomCenteredBasisSet
+
+    aux_basis_set = Quantity(
+        #type=AtomCenteredBasisSet
+        type=str,
+        description="""
+        the auxiliary basis set.
+        """,
+    )
+    pass
