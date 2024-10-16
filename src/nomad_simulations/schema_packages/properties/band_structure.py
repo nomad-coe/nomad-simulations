@@ -27,7 +27,7 @@ configuration = config.get_plugin_entry_point(
 
 class BaseElectronicEigenvalues(PhysicalProperty):
     """
-    A base section used to define basic quantities for the `ElectronicEigenvalues`  and `ElectronicBandStructure` properties.
+    A base section used to define basic quantities for the `ElectronicEigenvalues` and `ElectronicBandStructure` properties.
     """
 
     iri = ''
@@ -52,7 +52,13 @@ class BaseElectronicEigenvalues(PhysicalProperty):
     ) -> None:
         super().__init__(m_def, m_context, **kwargs)
         # ! `n_bands` need to be set up during initialization of the class
-        self.rank = [int(kwargs.get('n_bands'))]
+        if (
+            n_bands := kwargs.get('n_bands')
+        ) is None:  # ! alt: derive n_bands from value
+            raise ValueError(
+                '`n_bands` is not defined during initialization of the class.'
+            )
+        self.rank = [int(n_bands)]
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
