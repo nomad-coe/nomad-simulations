@@ -889,63 +889,26 @@ class SelfConsistency(NumericalSettings):
         super().normalize(archive, logger)
 
 
-class ResolutionOfIdentity(NumericalSettings):
+class IntegralDecomposition(NumericalSettings):
     """
-    The RI related numerical settings for 2-electron integrals.
-    It is also known as Density Fitting and currently used interchangeably.
+    A general class for integral decomposition techniques for Coulomb and exchange integrals.
+    Examples:
+    Resolution of identity (RI-approximation):
+    Chain-of-spheres (COSX) algorithm for exchange: doi:10.1016/j.chemphys.2008.10.036
     """
 
-    approximation = Quantity(
+
+    approximation_type = Quantity(
         type=str,
         description="""
-        The approach, e.g. RIJ, RI-JK, RI-C, RICD
-        DCCD...
+        RIJ, RIK, RIJK,
         """,
     )
 
-    # TODO: connect to the AtomCenteredBasisSet
-
-    aux_basis_set = Quantity(
-        #type=AtomCenteredBasisSet
+    auxiliary_basis = Quantity(
         type=str,
         description="""
-        the auxiliary basis set.
-        """,
-    )
-
-    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
-        super().normalize(archive, logger)
-
-
-class ChainOfSpheres(NumericalSettings):
-    """
-    Draft COSX and SENEX stuff. will find a good name.
-    combine both COSX and RI
-    """
-
-    approximation = Quantity(
-        type=str,
-        description="""
-        The approach, e.g. RIJ, RI-JK, RI-C, RICD
-        DCCD...
-        """,
-    )
-
-    # TODO: connect to the AtomCenteredBasisSet
-
-    aux_basis_set = Quantity(
-        type=str,
-        description="""
-        the auxiliary basis set.
-        """,
-    )
-
-    # TODO: connect to Mesh/Numerical Integration settings
-
-    grid_settings = Quantity(
-        type=str,
-        description="""
-        connect to Mesh and numerical grid settings later.
+        # TODO: connect to AtomCenteredBasisSet
         """,
     )
 
