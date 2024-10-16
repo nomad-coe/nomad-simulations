@@ -912,4 +912,33 @@ class ResolutionOfIdentity(NumericalSettings):
         the auxiliary basis set.
         """,
     )
-    pass
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+
+
+class ChainOfSpheres(NumericalSettings):
+    """
+    Draft COSX and SENEX stuff. will find a good name.
+    combine both COSX and RI
+    """
+    approximation = Quantity(
+        type=str,
+        description="""
+        The approach, e.g. RIJ, RI-JK, RI-C, RICD
+        DCCD...
+        """,
+    )
+
+    # TODO: connect to the AtomCenteredBasisSet
+
+    aux_basis_set = Quantity(
+        #type=AtomCenteredBasisSet
+        type=str,
+        description="""
+        the auxiliary basis set.
+        """,
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
