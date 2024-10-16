@@ -893,8 +893,8 @@ class ResolutionOfIdentity(NumericalSettings):
     """
     The RI related numerical settings for 2-electron integrals.
     It is also known as Density Fitting and currently used interchangeably.
-
     """
+
     approximation = Quantity(
         type=str,
         description="""
@@ -922,6 +922,7 @@ class ChainOfSpheres(NumericalSettings):
     Draft COSX and SENEX stuff. will find a good name.
     combine both COSX and RI
     """
+
     approximation = Quantity(
         type=str,
         description="""
@@ -933,10 +934,18 @@ class ChainOfSpheres(NumericalSettings):
     # TODO: connect to the AtomCenteredBasisSet
 
     aux_basis_set = Quantity(
-        #type=AtomCenteredBasisSet
         type=str,
         description="""
         the auxiliary basis set.
+        """,
+    )
+
+    # TODO: connect to Mesh/Numerical Integration settings
+
+    grid_settings = Quantity(
+        type=str,
+        description="""
+        connect to Mesh and numerical grid settings later.
         """,
     )
 
