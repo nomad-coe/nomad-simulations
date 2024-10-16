@@ -889,11 +889,15 @@ class SelfConsistency(NumericalSettings):
         super().normalize(archive, logger)
 
 
-class IntegralDecomposition(NumericalSettings):
+class GTOIntegralDecomposition(NumericalSettings):
     """
     A general class for integral decomposition techniques for Coulomb and exchange integrals.
+
     Examples:
     Resolution of identity (RI-approximation):
+    RI
+    RIJK
+    ....
     Chain-of-spheres (COSX) algorithm for exchange: doi:10.1016/j.chemphys.2008.10.036
     """
 
