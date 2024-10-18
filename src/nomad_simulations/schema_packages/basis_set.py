@@ -13,7 +13,7 @@ import pint
 from nomad import utils
 from nomad.datamodel.data import ArchiveSection
 from nomad.datamodel.metainfo.annotations import ELNAnnotation
-from nomad.metainfo import MEnum, Quantity, SubSection
+from nomad.metainfo import JSON, MEnum, Quantity, SubSection
 from nomad.units import ureg
 
 from nomad_simulations.schema_packages.atoms_state import AtomsState
@@ -190,9 +190,59 @@ class AtomCenteredFunction(ArchiveSection):
     Specifies a single function (term) in an atom-centered basis set.
     """
 
-    pass
+    basis_type = Quantity(
+        type=MEnum(
+            'spherical',
+            'cartesian',
+        ),
+        default='spherical',
+        description="""
+        Specifies whether the basis functions are spherical-harmonic or cartesian functions.
+        """,
+    )
 
-    # TODO: design system for writing basis functions like gaussian or slater orbitals
+    function_type = Quantity(
+        type=MEnum('s', 'p', 'd', 'f', 'g', 'h', 'i', 'j', 'k', 'l'),
+        description="""
+        L=a+b+c
+        The angular momentum of GTO to be added.
+        """,
+    )
+
+    n_primitive = Quantity(
+        type=np.int32,
+        description="""
+        Number of primitives.
+        Linear combinations of the primitive Gaussians are formed to approximate the radial extent of an STO.
+        """,
+    )
+
+    exponents = Quantity(
+        type=np.float32,
+        shape=['n_primitive'],
+        description="""
+        List of exponents for the basis function.
+        """,
+    )
+
+    contraction_coefficients = Quantity(
+        type=np.float32,
+        shape=['n_primitive'],
+        description="""
+        List of contraction coefficients corresponding to the exponents.
+        """,
+    )
+
+    point_charge = Quantity(
+        type=np.float32,
+        description="""
+        the value of the point charge.
+        """,
+    )
+
+    def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
+        super().normalize(archive, logger)
+        # self.name = self.m_def.name
 
 
 class AtomCenteredBasisSet(BasisSetComponent):
@@ -200,15 +250,45 @@ class AtomCenteredBasisSet(BasisSetComponent):
     Defines an atom-centered basis set.
     """
 
+    basis_set = Quantity(
+        type=str,
+        description="""
+        name of the basis set.
+        """,
+    )
+
+    type = Quantity(
+        type=MEnum(
+            'STO',  # Slater-type orbitals
+            'GTO',  # Gaussian-type orbitals
+            'NAO',  # Numerical atomic orbitals
+            'cECP',  # Capped effective core potentials
+            'PC',  # Point charges
+        ),
+        description="""
+        Type of the basis set, e.g. STO or GTO.
+        """,
+    )
+
+    role = Quantity(
+        type=MEnum(
+            'orbital',
+            'auxiliary_scf',
+            'auxiliary_post_hf',
+            'cabs',  # complementary auxiliary basis set
+        ),
+        description="""
+        The role of the basis set.
+        """,
+    )
+
     functional_composition = SubSection(
         sub_section=AtomCenteredFunction.m_def, repeats=True
-    )  # TODO change name
+    )
 
     def normalize(self, archive: 'EntryArchive', logger: 'BoundLogger') -> None:
         super().normalize(archive, logger)
         # self.name = self.m_def.name
-        # TODO: set name based on basis functions
-        # ? use basis set names from Basis Set Exchange
 
 
 class APWBaseOrbital(ArchiveSection):
