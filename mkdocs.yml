@@ -71,6 +71,8 @@ nav:
       - Bounded Data Types: schema_development/data_types.md
       - Normalization: schema_development/normalize.md
       - Model System Usage Guidelines: schema_development/model_system_usage_guidelines.md
+  - Reference:
+      - runschema Mapping: reference/runschema_mapping.md
   - Contact: contact.md
 theme:
   name: material
